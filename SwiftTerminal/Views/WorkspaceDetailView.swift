@@ -5,15 +5,14 @@ struct WorkspaceDetailView: View {
     @Bindable var workspace: Workspace
 
     var body: some View {
-        ZStack {
+        Group {
             if workspace.tabs.isEmpty {
                 ContentUnavailableView("No Terminal", systemImage: "terminal")
             } else {
-                ForEach(workspace.tabs) { tab in
-                    TerminalRepresentable(tab: tab)
-                        .zIndex(workspace.selectedTabID == tab.id ? 1 : 0)
-                        .opacity(workspace.selectedTabID == tab.id ? 1 : 0)
-                }
+                TerminalContainerRepresentable(
+                    tabs: workspace.tabs,
+                    selectedTabID: workspace.selectedTabID
+                )
             }
         }
         .safeAreaBar(edge: .top, spacing: 0) {
