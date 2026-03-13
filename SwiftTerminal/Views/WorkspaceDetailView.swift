@@ -1,4 +1,3 @@
-#if os(macOS)
 import SwiftUI
 
 struct WorkspaceDetailView: View {
@@ -30,4 +29,3 @@ struct WorkspaceDetailView: View {
         }
     }
 }
-#endif

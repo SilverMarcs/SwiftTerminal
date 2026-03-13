@@ -1,4 +1,3 @@
-#if os(macOS)
 import SwiftUI
 import SwiftTerm
 
@@ -116,4 +115,3 @@ struct TerminalContainerRepresentable: NSViewRepresentable {
         func processTerminated(source: TerminalView, exitCode: Int32?) {}
     }
 }
-#endif

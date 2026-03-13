@@ -1,4 +1,3 @@
-#if os(macOS)
 import SwiftUI
 
 struct DocumentTabBar: View {
@@ -71,4 +70,3 @@ struct DocumentTabBar: View {
         .buttonStyle(.plain)
     }
 }
-#endif
