@@ -80,7 +80,13 @@ struct TerminalContainerRepresentable: NSViewRepresentable {
             register(tv, for: tab)
 
             let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
+            let shellName = "-" + (shell as NSString).lastPathComponent  // e.g. "-zsh" for login shell
             let home = FileManager.default.homeDirectoryForCurrentUser.path
+            var env = ProcessInfo.processInfo.environment
+            env["TERM"] = "xterm-256color"
+            env["COLORTERM"] = "truecolor"
+            env["LANG"] = env["LANG"] ?? "en_US.UTF-8"
+            let environment = env.map { "\($0.key)=\($0.value)" }
 
             tv.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
             tv.processDelegate = self
@@ -88,8 +94,8 @@ struct TerminalContainerRepresentable: NSViewRepresentable {
             tv.startProcess(
                 executable: shell,
                 args: [],
-                environment: nil,
-                execName: nil,
+                environment: environment,
+                execName: shellName,
                 currentDirectory: home
             )
 

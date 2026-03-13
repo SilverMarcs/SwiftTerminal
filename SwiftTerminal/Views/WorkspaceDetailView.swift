@@ -18,7 +18,7 @@ struct WorkspaceDetailView: View {
         .safeAreaBar(edge: .top, spacing: 0) {
             DocumentTabBar(workspace: workspace)
         }
-        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+//        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
     }
 }
 #endif

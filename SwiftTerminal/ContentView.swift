@@ -11,6 +11,7 @@ struct ContentView: View {
         } detail: {
             if let workspace = appState.selectedWorkspace {
                 WorkspaceDetailView(workspace: workspace)
+//                    .backgroundExtensionEffect()
             } else {
                 ContentUnavailableView(
                     "No Workspace Selected",
