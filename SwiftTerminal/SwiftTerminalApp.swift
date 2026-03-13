@@ -1,17 +1,18 @@
-//
-//  SwiftTerminalApp.swift
-//  SwiftTerminal
-//
-//  Created by Zabir Raihan on 14/03/2026.
-//
-
 import SwiftUI
 
 @main
 struct SwiftTerminalApp: App {
     var body: some Scene {
         WindowGroup {
+            #if os(macOS)
             ContentView()
+                .frame(minWidth: 600, minHeight: 400)
+            #else
+            Text("macOS only")
+            #endif
         }
+        #if os(macOS)
+        .defaultSize(width: 900, height: 600)
+        #endif
     }
 }
