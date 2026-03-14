@@ -1,22 +1,19 @@
 import SwiftUI
 
-struct SidebarView: View {
-    @Bindable var appState: AppState
+struct WorkspaceList: View {
+    @Environment(AppState.self) private var appState
+    @State private var renamingWorkspace: Workspace?
 
     var body: some View {
+        @Bindable var appState = appState
+
         List(selection: $appState.selectedWorkspace) {
             ForEach(appState.workspaces) { workspace in
-                Label(workspace.name, systemImage: "folder")
-                    .tag(workspace)
-                    .contextMenu {
-                        Button("Rename...") {
-                            // TODO: rename
-                        }
-                        Divider()
-                        Button("Delete", role: .destructive) {
-                            appState.removeWorkspace(workspace)
-                        }
-                    }
+                WorkspaceRow(
+                    workspace: workspace,
+                    renamingWorkspace: $renamingWorkspace
+                )
+                .tag(workspace)
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -33,3 +30,4 @@ struct SidebarView: View {
         }
     }
 }
+

@@ -56,6 +56,13 @@ final class Workspace: Identifiable {
         }
     }
 
+    func rename(to name: String) {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else { return }
+        guard self.name != trimmedName else { return }
+        self.name = trimmedName
+    }
+
     func terminateAll() {
         for tab in tabs {
             tab.terminate()

@@ -1,11 +1,11 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var appState = AppState()
+    @Environment(AppState.self) private var appState
 
     var body: some View {
         NavigationSplitView {
-            SidebarView(appState: appState)
+            WorkspaceList()
                 .navigationSplitViewColumnWidth(min: 160, ideal: 200, max: 300)
         } detail: {
             if let workspace = appState.selectedWorkspace {
@@ -28,4 +28,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+        .environment(AppState())
 }
