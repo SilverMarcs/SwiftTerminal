@@ -51,7 +51,7 @@ struct DocumentTabBar: View {
             }
         }
         .padding(.vertical, 5)
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 10)
         .background(
             Capsule()
                 .fill(isSelected ? AnyShapeStyle(.quaternary) : AnyShapeStyle(.clear))
@@ -65,10 +65,11 @@ struct DocumentTabBar: View {
 
     private var addButton: some View {
         Button {
-            workspace.addTab()
+            workspace.addTabFromSelectedDirectory()
         } label: {
             Image(systemName: "plus")
         }
+        .help("New Tab (\u{2318}T)")
         .controlSize(.large)
         .buttonStyle(.glass)
         .buttonBorderShape(.circle)

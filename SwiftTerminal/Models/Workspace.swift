@@ -48,6 +48,11 @@ final class Workspace: Identifiable {
         return tab
     }
 
+    @discardableResult
+    func addTabFromSelectedDirectory() -> TerminalTab {
+        addTab(currentDirectory: selectedTab?.currentDirectory)
+    }
+
     func closeTab(_ tab: TerminalTab) {
         tab.terminate()
         tabs.removeAll { $0.id == tab.id }
@@ -63,6 +68,14 @@ final class Workspace: Identifiable {
         self.name = trimmedName
     }
 
+    func selectNextTab() {
+        selectTab(movingBy: 1)
+    }
+
+    func selectPreviousTab() {
+        selectTab(movingBy: -1)
+    }
+
     func terminateAll() {
         for tab in tabs {
             tab.terminate()
@@ -74,6 +87,19 @@ final class Workspace: Identifiable {
             tab.onPersistChange = onPersistChange
         }
     }
+
+    private func selectTab(movingBy offset: Int) {
+        guard !tabs.isEmpty else { return }
+
+        guard let selectedTab,
+              let currentIndex = tabs.firstIndex(of: selectedTab) else {
+            self.selectedTab = tabs.first
+            return
+        }
+
+        let nextIndex = (currentIndex + offset).positiveModulo(tabs.count)
+        self.selectedTab = tabs[nextIndex]
+    }
 }
 
 extension Workspace: Hashable {
@@ -83,5 +109,12 @@ extension Workspace: Hashable {
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
+    }
+}
+
+private extension Int {
+    func positiveModulo(_ divisor: Int) -> Int {
+        let remainder = self % divisor
+        return remainder >= 0 ? remainder : remainder + divisor
     }
 }
