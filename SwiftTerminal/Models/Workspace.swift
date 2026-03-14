@@ -61,6 +61,11 @@ final class Workspace: Identifiable {
         }
     }
 
+    func closeSelectedTab() {
+        guard let selectedTab, tabs.count > 1 else { return }
+        closeTab(selectedTab)
+    }
+
     func rename(to name: String) {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else { return }

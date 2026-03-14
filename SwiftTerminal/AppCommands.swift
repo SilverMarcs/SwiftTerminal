@@ -6,10 +6,20 @@ struct AppCommands: Commands {
     var body: some Commands {
         CommandGroup(after: .newItem) {
             Button("New Tab") {
-                appState.selectedWorkspace?.addTabFromSelectedDirectory()
+                withAnimation {
+                    _ = appState.selectedWorkspace?.addTabFromSelectedDirectory()
+                }
             }
             .keyboardShortcut("t", modifiers: .command)
             .disabled(appState.selectedWorkspace == nil)
+
+            Button("Close Tab") {
+                withAnimation {
+                    appState.selectedWorkspace?.closeSelectedTab()
+                }
+            }
+            .keyboardShortcut("w", modifiers: .command)
+            .disabled((appState.selectedWorkspace?.tabs.count ?? 0) < 2)
         }
 
         CommandMenu("Tabs") {
