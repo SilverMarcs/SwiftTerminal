@@ -1,15 +1,14 @@
 import SwiftUI
 
 struct DocumentTabBar: View {
-    @Bindable var workspace: Workspace
+    let workspace: Workspace
 
     var body: some View {
         HStack(spacing: 5) {
             tabStrip
             addButton
         }
-        .padding(.horizontal, 5)
-        .padding(.bottom, 3)
+        .padding(.horizontal, 8)
     }
 
     private var tabStrip: some View {
@@ -21,7 +20,7 @@ struct DocumentTabBar: View {
         .padding(2)
         .background(
             Capsule()
-                .fill(.background.quinary)
+                .fill(.background.secondary)
         )
     }
 
@@ -32,7 +31,9 @@ struct DocumentTabBar: View {
         Text(
             tab.title
         )
-        .font(.system(size: 12))
+        .font(.subheadline)
+        .fontWeight(isSelected ? .semibold : .regular)
+        .foregroundStyle(isSelected ? .primary : .secondary)
         .lineLimit(1)
         .truncationMode(.middle)
         .frame(maxWidth: .infinity)
@@ -48,11 +49,12 @@ struct DocumentTabBar: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 5)
         .padding(.horizontal, 12)
         .background(
             Capsule()
                 .fill(isSelected ? AnyShapeStyle(.quaternary) : AnyShapeStyle(.clear))
+                .strokeBorder(isSelected ? AnyShapeStyle(.separator) : AnyShapeStyle(.clear))
         )
         .contentShape(.capsule)
         .onTapGesture {
