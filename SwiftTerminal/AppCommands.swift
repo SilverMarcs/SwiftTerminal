@@ -5,7 +5,19 @@ struct AppCommands: Commands {
     @Bindable var appState: AppState
 
     var body: some Commands {
-        CommandGroup(after: .newItem) {
+        CommandMenu("Terminal") {
+            Button("Clear Terminal") {
+                guard let terminalView = appState.selectedWorkspace?.selectedTab?.localProcessTerminalView else { return }
+                let terminal = terminalView.getTerminal()
+                terminal.resetToInitialState()
+                // Send Ctrl+L to the shell to redraw the prompt
+                terminalView.send(txt: "\u{0C}")
+            }
+            .keyboardShortcut("k", modifiers: .command)
+            .disabled(appState.selectedWorkspace?.selectedTab?.localProcessTerminalView == nil)
+        }
+
+        CommandMenu("Tabs") {
             Button("New Tab") {
                 withAnimation {
                     _ = appState.selectedWorkspace?.addTabFromSelectedDirectory()
@@ -21,21 +33,9 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("w", modifiers: .command)
             .disabled((appState.selectedWorkspace?.tabs.count ?? 0) < 2)
-        }
 
-        CommandMenu("Terminal") {
-            Button("Clear Terminal") {
-                guard let terminalView = appState.selectedWorkspace?.selectedTab?.localProcessTerminalView else { return }
-                let terminal = terminalView.getTerminal()
-                terminal.resetToInitialState()
-                // Send Ctrl+L to the shell to redraw the prompt
-                terminalView.send(txt: "\u{0C}")
-            }
-            .keyboardShortcut("k", modifiers: .command)
-            .disabled(appState.selectedWorkspace?.selectedTab?.localProcessTerminalView == nil)
-        }
+            Divider()
 
-        CommandMenu("Tabs") {
             Button("Select Previous Tab") {
                 appState.selectedWorkspace?.selectPreviousTab()
             }

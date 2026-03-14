@@ -123,7 +123,7 @@ struct DocumentTabBar: View {
         } label: {
             Image(systemName: "plus")
         }
-        .help("New Tab (\u{2318}T)")
+        .help("New Tab")
         .controlSize(.large)
         .buttonStyle(.glass)
         .buttonBorderShape(.circle)

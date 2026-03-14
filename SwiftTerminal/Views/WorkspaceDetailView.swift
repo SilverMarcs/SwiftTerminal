@@ -20,7 +20,9 @@ struct WorkspaceDetailView: View {
             focusTerminal()
         }
         .safeAreaBar(edge: .top, spacing: 0) {
-            DocumentTabBar(workspace: workspace)
+            if workspace.tabs.count > 1 {
+                DocumentTabBar(workspace: workspace)
+            }
         }
     }
 
