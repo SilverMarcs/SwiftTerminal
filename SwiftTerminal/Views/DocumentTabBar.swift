@@ -3,6 +3,8 @@ import SwiftUI
 struct DocumentTabBar: View {
     let workspace: Workspace
     @State private var hoveredTabID: UUID?
+    @State private var renamingTab: TerminalTab?
+    @State private var renameDraft = ""
 
     var body: some View {
         HStack(spacing: 5) {
@@ -11,6 +13,17 @@ struct DocumentTabBar: View {
         }
         .padding(.horizontal, 8)
         .padding(.bottom, 3)
+        .alert("Rename Tab", isPresented: isRenameAlertPresented) {
+            TextField("Tab Name", text: $renameDraft)
+            Button("Cancel", role: .cancel) {
+                renamingTab = nil
+            }
+            Button("Rename") {
+                commitRename()
+            }
+        } message: {
+            Text("Set a custom name for this terminal tab.")
+        }
     }
 
     private var tabStrip: some View {
@@ -42,7 +55,7 @@ struct DocumentTabBar: View {
 
                 Text(tab.title)
                     .font(.subheadline)
-                    .fontWeight(isSelected ? .semibold : .regular)
+                    .fontWeight(.medium)
                     .foregroundStyle(isSelected ? .primary : .secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -64,6 +77,11 @@ struct DocumentTabBar: View {
                 .padding(.leading, 10)
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            Button("Rename") {
+                beginRenaming(tab)
+            }
+        }
         .onHover { isHovering in
             hoveredTabID = isHovering ? tab.id : (hoveredTabID == tab.id ? nil : hoveredTabID)
         }
@@ -143,5 +161,26 @@ struct DocumentTabBar: View {
         withAnimation {
             workspace.closeTab(tab)
         }
+    }
+
+    private func beginRenaming(_ tab: TerminalTab) {
+        renamingTab = tab
+        renameDraft = tab.title
+    }
+
+    private func commitRename() {
+        renamingTab?.rename(to: renameDraft)
+        renamingTab = nil
+    }
+
+    private var isRenameAlertPresented: Binding<Bool> {
+        Binding(
+            get: { renamingTab != nil },
+            set: { isPresented in
+                if !isPresented {
+                    renamingTab = nil
+                }
+            }
+        )
     }
 }

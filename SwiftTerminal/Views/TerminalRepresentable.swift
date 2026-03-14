@@ -149,12 +149,7 @@ struct TerminalContainerRepresentable: NSViewRepresentable {
 
         func sizeChanged(source: LocalProcessTerminalView, newCols: Int, newRows: Int) {}
 
-        func setTerminalTitle(source: LocalProcessTerminalView, title: String) {
-            let entry = viewMap[ObjectIdentifier(source)]
-            Task { @MainActor in
-                entry?.tab.title = title.isEmpty ? "Terminal" : title
-            }
-        }
+        func setTerminalTitle(source: LocalProcessTerminalView, title: String) {}
 
         func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) {
             guard let localProcessView = source as? LocalProcessTerminalView else { return }

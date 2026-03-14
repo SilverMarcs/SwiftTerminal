@@ -33,6 +33,13 @@ final class TerminalTab: Identifiable {
         // LocalProcessTerminalView cleans up its process on dealloc
         localProcessTerminalView = nil
     }
+
+    func rename(to name: String) {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else { return }
+        guard title != trimmedName else { return }
+        title = trimmedName
+    }
 }
 
 extension TerminalTab: Hashable {
