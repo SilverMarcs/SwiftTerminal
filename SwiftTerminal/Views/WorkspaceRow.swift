@@ -36,13 +36,9 @@ struct WorkspaceRow: View {
                     .lineLimit(1)
             }
 
-            if workspace.hasNotification {
-                Spacer()
-                Circle()
-                    .fill(.orange)
-                    .frame(width: 6, height: 6)
-            }
         }
+        .badge(workspace.notificationCount)
+        .badgeProminence(.increased)
         .contextMenu {
             RenameButton()
             Divider()

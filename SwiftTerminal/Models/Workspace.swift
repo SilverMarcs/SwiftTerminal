@@ -110,6 +110,10 @@ final class Workspace: Identifiable {
         tabs.contains { $0.hasBellNotification }
     }
 
+    var notificationCount: Int {
+        tabs.filter { $0.hasBellNotification }.count
+    }
+
     func terminateAll() {
         for tab in tabs {
             tab.terminate()
