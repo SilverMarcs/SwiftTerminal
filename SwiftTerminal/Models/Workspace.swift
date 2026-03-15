@@ -53,7 +53,7 @@ final class Workspace: Identifiable {
 
     @discardableResult
     func addTabFromSelectedDirectory() -> TerminalTab {
-        addTab(currentDirectory: selectedTab?.currentDirectory)
+        addTab(currentDirectory: selectedTab?.liveCurrentDirectory)
     }
 
     func closeTab(_ tab: TerminalTab) {

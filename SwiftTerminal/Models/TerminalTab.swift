@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import SwiftTerm
 
 @Observable
@@ -60,6 +60,25 @@ final class TerminalTab: Identifiable {
             return "~" + relativePath
         }
         return currentDirectory
+    }
+
+    /// Returns the live working directory of the shell process, falling back to the cached `currentDirectory`.
+    var liveCurrentDirectory: String? {
+        guard let tv = localProcessTerminalView else { return currentDirectory }
+        let pid = tv.process.shellPid
+        guard pid > 0 else { return currentDirectory }
+
+        var pathInfo = proc_vnodepathinfo()
+        let size = MemoryLayout<proc_vnodepathinfo>.size
+        let result = proc_pidinfo(pid, PROC_PIDVNODEPATHINFO, 0, &pathInfo, Int32(size))
+        guard result == size else { return currentDirectory }
+
+        let path = withUnsafePointer(to: pathInfo.pvi_cdir.vip_path) { ptr in
+            ptr.withMemoryRebound(to: CChar.self, capacity: Int(MAXPATHLEN)) {
+                String(cString: $0)
+            }
+        }
+        return path.isEmpty ? currentDirectory : path
     }
 
     func terminate() {
