@@ -76,7 +76,11 @@ struct DocumentTabBar: View {
                     .truncationMode(.middle)
                     .frame(maxWidth: .infinity, alignment: .center)
 
-                tabAccessoryPlaceholder
+                if !isSelected && tab.hasBellNotification {
+                    bellBadge
+                } else {
+                    tabAccessoryPlaceholder
+                }
             }
             .padding(.vertical, 5)
             .padding(.horizontal, 10)
@@ -131,6 +135,13 @@ struct DocumentTabBar: View {
 
     private var tabAccessoryPlaceholder: some View {
         Color.clear
+            .frame(width: 10, height: 10)
+    }
+
+    private var bellBadge: some View {
+        Circle()
+            .fill(.orange)
+            .frame(width: 6, height: 6)
             .frame(width: 10, height: 10)
     }
 
@@ -256,4 +267,3 @@ private struct TabDropDelegate: DropDelegate {
         return workspace.tabs.first { $0.id == draggedTabID }
     }
 }
-

@@ -76,7 +76,23 @@ struct TerminalContainerRepresentable: NSViewRepresentable {
         }
 
         func createTerminalView(for tab: TerminalTab) -> LocalProcessTerminalView {
-            let tv = LocalProcessTerminalView(frame: .zero)
+            let tv = BellNotifyingTerminalView(frame: .zero)
+            tv.onAttention = { [weak tab] title, body in
+                Task { @MainActor in
+                    tab?.hasBellNotification = true
+                    guard let tab else { return }
+                    // Find workspace ID by walking up — tab knows its own ID
+                    // Use NotificationCenter to find workspace, or just pass IDs
+                    AppDelegate.bounceDockIcon()
+                    AppDelegate.sendNotification(
+                        title: title,
+                        body: body,
+                        workspaceID: tab.workspaceID ?? UUID(),
+                        tabID: tab.id
+                    )
+                }
+            }
+            
             tab.localProcessTerminalView = tv
             register(tv, for: tab)
 

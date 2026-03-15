@@ -16,6 +16,8 @@ final class TerminalTab: Identifiable {
             onPersistChange?()
         }
     }
+    var hasBellNotification = false
+    var workspaceID: UUID?
     var localProcessTerminalView: LocalProcessTerminalView?
     var onPersistChange: (() -> Void)?
 

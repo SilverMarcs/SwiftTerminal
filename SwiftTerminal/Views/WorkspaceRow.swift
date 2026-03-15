@@ -35,6 +35,13 @@ struct WorkspaceRow: View {
                 Text(workspace.name)
                     .lineLimit(1)
             }
+
+            if workspace.hasNotification {
+                Spacer()
+                Circle()
+                    .fill(.orange)
+                    .frame(width: 6, height: 6)
+            }
         }
         .contextMenu {
             RenameButton()

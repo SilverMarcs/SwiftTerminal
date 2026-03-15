@@ -18,6 +18,7 @@ final class Workspace: Identifiable {
     var selectedTab: TerminalTab? {
         didSet {
             guard selectedTab?.id != oldValue?.id else { return }
+            selectedTab?.hasBellNotification = false
             onPersistChange?()
         }
     }
@@ -37,12 +38,14 @@ final class Workspace: Identifiable {
         self.name = name
         self.tabs = tabs
         self.selectedTab = tabs.first { $0.id == selectedTabID } ?? tabs.first
+        for tab in tabs { tab.workspaceID = id }
         configureTabPersistence()
     }
 
     @discardableResult
     func addTab(currentDirectory: String? = nil) -> TerminalTab {
         let tab = TerminalTab(currentDirectory: currentDirectory)
+        tab.workspaceID = id
         tabs.append(tab)
         selectedTab = tab
         return tab
@@ -101,6 +104,10 @@ final class Workspace: Identifiable {
 
     func selectPreviousTab() {
         selectTab(movingBy: -1)
+    }
+
+    var hasNotification: Bool {
+        tabs.contains { $0.hasBellNotification }
     }
 
     func terminateAll() {
