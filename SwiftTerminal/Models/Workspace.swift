@@ -1,4 +1,5 @@
 import Foundation
+import SwiftTerm
 
 @Observable
 final class Workspace: Identifiable {
@@ -112,6 +113,37 @@ final class Workspace: Identifiable {
 
     var notificationCount: Int {
         tabs.filter { $0.hasBellNotification }.count
+    }
+
+    /// Number of tabs that have at least one child process running under their shell.
+    /// Uses a single sysctl snapshot for efficiency.
+    var runningProcessCount: Int {
+        let shellPids: [pid_t] = tabs.compactMap { tab in
+            guard let tv = tab.localProcessTerminalView else { return nil }
+            let pid = tv.process.shellPid
+            return pid > 0 ? pid : nil
+        }
+        guard !shellPids.isEmpty else { return 0 }
+
+        let shellPidSet = Set(shellPids)
+
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
+        var size: Int = 0
+        sysctl(&mib, 3, nil, &size, nil, 0)
+        let count = size / MemoryLayout<kinfo_proc>.stride
+        let procs = UnsafeMutablePointer<kinfo_proc>.allocate(capacity: count)
+        defer { procs.deallocate() }
+        sysctl(&mib, 3, procs, &size, nil, 0)
+        let actualCount = size / MemoryLayout<kinfo_proc>.stride
+
+        var pidsWithChildren = Set<pid_t>()
+        for i in 0..<actualCount {
+            let parentPid = procs[i].kp_eproc.e_ppid
+            if shellPidSet.contains(parentPid) {
+                pidsWithChildren.insert(parentPid)
+            }
+        }
+        return pidsWithChildren.count
     }
 
     func terminateAll() {

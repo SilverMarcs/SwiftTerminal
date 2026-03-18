@@ -7,6 +7,7 @@ struct WorkspaceRow: View {
     @Binding var renamingWorkspace: Workspace?
 
     @State private var renameDraft = ""
+    @State private var runningProcessCount = 0
     @FocusState private var isNameFieldFocused: Bool
 
     private var isRenaming: Bool {
@@ -16,6 +17,16 @@ struct WorkspaceRow: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "folder")
+                .overlay(alignment: .bottomTrailing) {
+                    if runningProcessCount > 0 {
+                        Text("\(runningProcessCount)")
+                            .font(.caption2)
+                            .monospaced()
+                            .padding(4)
+                            .background(.ultraThickMaterial, in: .circle)
+                            .offset(x: 5, y: 5)
+                    }
+                }
 
             if isRenaming {
                 TextField("Workspace Name", text: $renameDraft)
@@ -35,7 +46,12 @@ struct WorkspaceRow: View {
                 Text(workspace.name)
                     .lineLimit(1)
             }
-
+        }
+        .task {
+            while !Task.isCancelled {
+                runningProcessCount = workspace.runningProcessCount
+                try? await Task.sleep(for: .seconds(2))
+            }
         }
         .badge(workspace.notificationCount)
         .badgeProminence(.increased)
@@ -45,7 +61,7 @@ struct WorkspaceRow: View {
             Button(role: .destructive) {
                 appState.removeWorkspace(workspace)
             } label: {
-                Label("Delet", systemImage: "trash")
+                Label("Delete", systemImage: "trash")
             }
         }
         .renameAction(beginRenaming)

@@ -77,12 +77,14 @@ struct TerminalContainerRepresentable: NSViewRepresentable {
 
         func createTerminalView(for tab: TerminalTab) -> LocalProcessTerminalView {
             let tv = BellNotifyingTerminalView(frame: .zero)
-            tv.onAttention = { [weak tab] in
+            tv.onAttention = { [weak tab, weak tv] in
                 Task { @MainActor in
-                    tab?.hasBellNotification = true
                     guard let tab else { return }
-                    // Find workspace ID by walking up — tab knows its own ID
-                    // Use NotificationCenter to find workspace, or just pass IDs
+                    // Only badge if the tab isn't currently visible to the user
+                    let isVisible = tv.map { !$0.isHidden && $0.window != nil } ?? false
+                    if !isVisible {
+                        tab.hasBellNotification = true
+                    }
                     AppDelegate.bounceDockIcon()
                     AppDelegate.updateBadge(count: 1)
                     AppDelegate.sendNotification(
