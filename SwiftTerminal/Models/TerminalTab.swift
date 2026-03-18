@@ -19,10 +19,10 @@ final class TerminalTab: Identifiable {
     var hasBellNotification = false
     var workspaceID: UUID?
     var localProcessTerminalView: LocalProcessTerminalView?
-    var hasChildProcess: Bool {
-        guard let tv = localProcessTerminalView else { return false }
+    private func childProcesses() -> [(pid: pid_t, name: String)] {
+        guard let tv = localProcessTerminalView else { return [] }
         let shellPid = tv.process.shellPid
-        guard shellPid > 0 else { return false }
+        guard shellPid > 0 else { return [] }
 
         var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
         var size: Int = 0
@@ -33,12 +33,27 @@ final class TerminalTab: Identifiable {
         sysctl(&mib, 3, procs, &size, nil, 0)
         let actualCount = size / MemoryLayout<kinfo_proc>.stride
 
+        var children: [(pid: pid_t, name: String)] = []
         for i in 0..<actualCount {
             if procs[i].kp_eproc.e_ppid == shellPid {
-                return true
+                let name = withUnsafePointer(to: procs[i].kp_proc.p_comm) { ptr in
+                    ptr.withMemoryRebound(to: CChar.self, capacity: Int(MAXCOMLEN) + 1) {
+                        String(cString: $0)
+                    }
+                }
+                children.append((procs[i].kp_proc.p_pid, name))
             }
         }
-        return false
+        return children
+    }
+
+    var hasChildProcess: Bool {
+        !childProcesses().isEmpty
+    }
+
+    /// The name of the foreground process running under the shell, if any.
+    var foregroundProcessName: String? {
+        childProcesses().first?.name
     }
     var onPersistChange: (() -> Void)?
 

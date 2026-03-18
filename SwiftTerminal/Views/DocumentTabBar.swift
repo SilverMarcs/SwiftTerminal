@@ -8,6 +8,7 @@ struct DocumentTabBar: View {
     @State private var draggedTabID: UUID?
     @State private var renamingTab: TerminalTab?
     @State private var renameDraft = ""
+    @State private var processNames: [UUID: String] = [:]
 
     var body: some View {
         HStack(spacing: 5) {
@@ -16,6 +17,18 @@ struct DocumentTabBar: View {
         }
         .padding(.horizontal, 8)
         .padding(.bottom, 3)
+        .task {
+            while !Task.isCancelled {
+                var names: [UUID: String] = [:]
+                for tab in workspace.tabs {
+                    if let name = tab.foregroundProcessName {
+                        names[tab.id] = name
+                    }
+                }
+                processNames = names
+                try? await Task.sleep(for: .seconds(2))
+            }
+        }
         .alert("Rename Tab", isPresented: isRenameAlertPresented) {
             TextField("Tab Name", text: $renameDraft)
             Button("Cancel", role: .cancel) {
@@ -68,7 +81,7 @@ struct DocumentTabBar: View {
             HStack(spacing: 0) {
                 tabAccessoryPlaceholder
 
-                Text(tab.title)
+                Text(tabDisplayTitle(for: tab))
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(isSelected ? .primary : .secondary)
@@ -231,6 +244,13 @@ struct DocumentTabBar: View {
                 }
             }
         )
+    }
+
+    private func tabDisplayTitle(for tab: TerminalTab) -> String {
+        if let processName = processNames[tab.id] {
+            return "\(tab.title) \u{2014} \(processName)"
+        }
+        return tab.title
     }
 
     private func tabLayout(for availableWidth: CGFloat) -> (tabWidth: CGFloat, contentWidth: CGFloat) {
