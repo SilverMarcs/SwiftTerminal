@@ -33,6 +33,8 @@ struct TerminalContainerRepresentable: NSViewRepresentable {
 
             if let existing = tab.localProcessTerminalView {
                 terminalView = existing
+                // Re-register in case the coordinator was recreated (e.g. workspace switch)
+                coordinator.register(existing, for: tab)
             } else {
                 terminalView = coordinator.createTerminalView(for: tab)
             }

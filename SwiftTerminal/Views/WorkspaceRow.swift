@@ -20,7 +20,7 @@ struct WorkspaceRow: View {
                 .overlay(alignment: .bottomTrailing) {
                     if runningProcessCount > 0 {
                         Text("\(runningProcessCount)")
-                            .font(.caption2)
+                            .font(.system(size: 8, weight: .semibold))
                             .monospaced()
                             .padding(4)
                             .background(.ultraThickMaterial, in: .circle)

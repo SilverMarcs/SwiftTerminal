@@ -101,7 +101,7 @@ final class AppState {
                             TerminalTabSnapshot(
                                 id: tab.id,
                                 title: tab.title,
-                                currentDirectory: tab.currentDirectory
+                                currentDirectory: tab.liveCurrentDirectory ?? tab.currentDirectory
                             )
                         },
                         selectedTabID: workspace.selectedTab?.id
