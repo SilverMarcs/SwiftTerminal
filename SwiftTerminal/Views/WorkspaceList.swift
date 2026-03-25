@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct WorkspaceList: View {
     @Environment(AppState.self) private var appState
@@ -21,7 +22,7 @@ struct WorkspaceList: View {
         }
         .safeAreaInset(edge: .bottom) {
             Button {
-                appState.addWorkspace()
+                chooseDirectoryForNewWorkspace()
             } label: {
                 Label("New Workspace", systemImage: "plus")
             }
@@ -30,6 +31,18 @@ struct WorkspaceList: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
         }
+    }
+
+    private func chooseDirectoryForNewWorkspace() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.message = "Choose a directory for the new workspace"
+        panel.prompt = "Select"
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        appState.addWorkspace(directory: url.path)
     }
 }
 

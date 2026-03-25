@@ -28,6 +28,7 @@ final class AppState {
                 Workspace(
                     id: workspaceSnapshot.id,
                     name: workspaceSnapshot.name,
+                    directory: workspaceSnapshot.directory,
                     tabs: workspaceSnapshot.tabs.map {
                         TerminalTab(
                             id: $0.id,
@@ -45,9 +46,10 @@ final class AppState {
     }
 
     @discardableResult
-    func addWorkspace(name: String? = nil) -> Workspace {
-        let workspace = Workspace(name: name ?? "Workspace \(workspaces.count + 1)")
-        workspace.addTab()
+    func addWorkspace(name: String? = nil, directory: String? = nil) -> Workspace {
+        let resolvedName = name ?? directory.flatMap { URL(fileURLWithPath: $0).lastPathComponent } ?? "Workspace \(workspaces.count + 1)"
+        let workspace = Workspace(name: resolvedName, directory: directory)
+        workspace.addTab(currentDirectory: directory)
         workspaces.append(workspace)
         selectedWorkspace = workspace
         return workspace
@@ -97,6 +99,7 @@ final class AppState {
                     WorkspaceSnapshot(
                         id: workspace.id,
                         name: workspace.name,
+                        directory: workspace.directory,
                         tabs: workspace.tabs.map { tab in
                             TerminalTabSnapshot(
                                 id: tab.id,

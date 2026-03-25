@@ -56,6 +56,16 @@ struct AppCommands: Commands {
             .disabled(appState.selectedWorkspace == nil)
 
             Button {
+                withAnimation {
+                    _ = appState.selectedWorkspace?.addTabFromWorkspaceDirectory()
+                }
+            } label: {
+                Label("New Tab in Workspace Directory", systemImage: "plus.square.on.square")
+            }
+            .keyboardShortcut("n", modifiers: [.command])
+            .disabled(appState.selectedWorkspace == nil)
+
+            Button {
                 appState.closeSelectedTabWithConfirmation()
             } label: {
                 Label("Close Tab", systemImage: "xmark.square")

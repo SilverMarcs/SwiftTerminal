@@ -9,6 +9,7 @@ struct TerminalTabSnapshot: Codable {
 struct WorkspaceSnapshot: Codable {
     let id: UUID
     let name: String
+    let directory: String?
     let tabs: [TerminalTabSnapshot]
     let selectedTabID: UUID?
 }

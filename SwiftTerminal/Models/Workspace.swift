@@ -10,6 +10,12 @@ final class Workspace: Identifiable {
             onPersistChange?()
         }
     }
+    var directory: String? {
+        didSet {
+            guard directory != oldValue else { return }
+            onPersistChange?()
+        }
+    }
     var tabs: [TerminalTab] = [] {
         didSet {
             configureTabPersistence()
@@ -32,11 +38,13 @@ final class Workspace: Identifiable {
     init(
         id: UUID = UUID(),
         name: String,
+        directory: String? = nil,
         tabs: [TerminalTab] = [],
         selectedTabID: UUID? = nil
     ) {
         self.id = id
         self.name = name
+        self.directory = directory
         self.tabs = tabs
         self.selectedTab = tabs.first { $0.id == selectedTabID } ?? tabs.first
         for tab in tabs { tab.workspaceID = id }
@@ -55,6 +63,11 @@ final class Workspace: Identifiable {
     @discardableResult
     func addTabFromSelectedDirectory() -> TerminalTab {
         addTab(currentDirectory: selectedTab?.liveCurrentDirectory)
+    }
+
+    @discardableResult
+    func addTabFromWorkspaceDirectory() -> TerminalTab {
+        addTab(currentDirectory: directory)
     }
 
     func closeTab(_ tab: TerminalTab) {
