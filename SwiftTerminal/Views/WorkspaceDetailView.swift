@@ -3,7 +3,7 @@ import SwiftUI
 struct WorkspaceDetailView: View {
     @Bindable var workspace: Workspace
     @FocusState private var isTerminalFocused: Bool
-    @State private var showingInspector = false
+    @State private var showingInspector = true
 
     var body: some View {
         ScrollView {
@@ -12,8 +12,9 @@ struct WorkspaceDetailView: View {
                 selectedTab: workspace.selectedTab
             )
             .focusable()
+            .focusEffectDisabled()
             .focused($isTerminalFocused)
-                .containerRelativeFrame(.vertical)
+            .containerRelativeFrame(.vertical)
         }
         .navigationTitle(workspace.name)
         .navigationSubtitle(workspace.selectedTab?.displayDirectory ?? "")
