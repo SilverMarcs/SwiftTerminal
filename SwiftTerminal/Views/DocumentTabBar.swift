@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 
 struct DocumentTabBar: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.colorScheme) private var colorScheme
     let workspace: Workspace
     @State private var hoveredTabID: UUID?
     @State private var draggedTabID: UUID?
@@ -76,7 +77,7 @@ struct DocumentTabBar: View {
         .padding(.bottom, 0)
         .background(
             Capsule()
-                .fill(.background.tertiary)
+                .fill(colorScheme == .dark ? AnyShapeStyle(.fill.tertiary) : AnyShapeStyle(.fill.secondary))
         )
     }
 

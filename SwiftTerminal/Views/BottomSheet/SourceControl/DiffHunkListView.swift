@@ -7,20 +7,28 @@ struct DiffHunkListView: View {
     let onReload: () async -> Void
 
     var body: some View {
-        ScrollView(.vertical) {
-            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                ForEach(hunks) { hunk in
-                    Section {
-                        HunkTextView(hunk: hunk, fileExtension: fileExtension)
-                            .frame(height: CGFloat(hunk.lines.count) * HunkTextViewConstants.lineHeight)
-                    } header: {
-                        DiffHunkHeaderView(
+        GeometryReader { geometry in
+            ScrollView(.vertical) {
+                LazyVStack(spacing: 12, pinnedViews: [.sectionHeaders]) {
+                    ForEach(hunks) { hunk in
+                        let wrappedHeight = HunkTextView.calculateWrappedHeight(
                             hunk: hunk,
-                            reference: reference,
-                            onReload: onReload
+                            fileExtension: fileExtension,
+                            containerWidth: geometry.size.width
                         )
+                        Section {
+                            HunkTextView(hunk: hunk, fileExtension: fileExtension)
+                                .frame(height: wrappedHeight)
+                        } header: {
+                            DiffHunkHeaderView(
+                                hunk: hunk,
+                                reference: reference,
+                                onReload: onReload
+                            )
+                        }
                     }
                 }
+                .padding(.vertical, 8)
             }
         }
     }

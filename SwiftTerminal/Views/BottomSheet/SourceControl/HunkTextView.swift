@@ -23,6 +23,32 @@ struct HunkTextView: NSViewRepresentable {
         textView.appearance = textView.effectiveAppearance
         textView.needsDisplay = true
     }
+
+    /// Calculates the actual wrapped height for a hunk given a container width
+    static func calculateWrappedHeight(hunk: DiffHunk, fileExtension: String, containerWidth: CGFloat) -> CGFloat {
+        let constants = HunkTextViewConstants.self
+        let verticalInset: CGFloat = 6 // matches textContainerInset height
+        let source = hunk.lines.map(\.content).joined(separator: "\n")
+
+        // Actual text rendering width after accounting for gutter
+        let textWidth = max(1, containerWidth - constants.gutterWidth)
+
+        // Create layout for measuring wrapped height
+        let textStorage = NSTextStorage()
+        let layoutManager = NSLayoutManager()
+        let textContainer = NSTextContainer(containerSize: NSSize(width: textWidth, height: CGFloat.greatestFiniteMagnitude))
+
+        layoutManager.addTextContainer(textContainer)
+        textStorage.addLayoutManager(layoutManager)
+
+        let attributed = SyntaxHighlighter.highlight(source, fileExtension: fileExtension)
+        textStorage.setAttributedString(attributed)
+
+        layoutManager.ensureLayout(for: textContainer)
+        let usedRect = layoutManager.usedRect(for: textContainer)
+
+        return usedRect.height + verticalInset * 2
+    }
 }
 
 /// NSTextView that draws line backgrounds and a line number gutter for a single hunk.
@@ -42,7 +68,7 @@ final class HunkNSTextView: NSTextView {
         backgroundColor = .windowBackgroundColor
         drawsBackground = true
         textColor = .labelColor
-        textContainerInset = NSSize(width: constants.gutterWidth, height: 0)
+        textContainerInset = NSSize(width: constants.gutterWidth, height: 6)
         isVerticallyResizable = false
         isHorizontallyResizable = false
         textContainer?.widthTracksTextView = true
