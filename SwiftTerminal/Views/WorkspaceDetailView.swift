@@ -41,7 +41,7 @@ struct WorkspaceDetailView: View {
                                 )
                         }
                     }
-                EditorPanelView(
+                BottomSheetView(
                     directoryURL: workspace.directory.map { URL(fileURLWithPath: $0) } ?? URL(fileURLWithPath: "/")
                 )
                 .frame(height: editorPanel.isOpen ? panelHeight : 30, alignment: .top)

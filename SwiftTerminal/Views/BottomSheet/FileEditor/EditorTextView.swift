@@ -1,252 +1,8 @@
 import AppKit
-import SwiftUI
 
-struct FileEditorPanel: View {
-    let fileURL: URL
-    let directoryURL: URL
-    @Environment(EditorPanel.self) private var panel
-    @State private var content: String = ""
-    @State private var savedContent: String = ""
-    @State private var isLoaded = false
-    @State private var isSaving = false
-    @State private var errorMessage: String?
-    @State private var gutterDiff: GutterDiffResult = .empty
-
-    private var hasUnsavedChanges: Bool {
-        isLoaded && content != savedContent
-    }
-
-    var body: some View {
-        Group {
-            if isLoaded {
-                HighlightedTextEditor(
-                    text: $content,
-                    fileExtension: fileURL.pathExtension.lowercased(),
-                    gutterDiff: gutterDiff,
-                    highlightRequest: panel.highlightRequest
-                )
-            } else if let errorMessage {
-                ContentUnavailableView {
-                    Label("Cannot Open File", systemImage: "exclamationmark.triangle")
-                } description: {
-                    Text(errorMessage)
-                }
-            } else {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-        .task(id: fileURL) { loadFile() }
-        .onChange(of: hasUnsavedChanges) { _, dirty in
-            panel.isDirty = dirty
-        }
-        .onChange(of: panel.saveRequested) { _, requested in
-            if requested {
-                saveFile()
-                panel.saveRequested = false
-            }
-        }
-        .alert("Unsaved Changes", isPresented: Binding(
-            get: { panel.showUnsavedAlert },
-            set: { if !$0 { panel.cancelDiscard() } }
-        )) {
-            Button("Save") {
-                saveFile()
-                panel.confirmDiscard()
-            }
-            Button("Discard", role: .destructive) {
-                panel.confirmDiscard()
-            }
-            Button("Cancel", role: .cancel) {
-                panel.cancelDiscard()
-            }
-        } message: {
-            Text("Do you want to save changes to \"\(fileURL.lastPathComponent)\"?")
-        }
-    }
-
-    private func loadFile() {
-        content = ""
-        savedContent = ""
-        isLoaded = false
-        errorMessage = nil
-        gutterDiff = .empty
-        panel.isDirty = false
-        do {
-            let data = try Data(contentsOf: fileURL)
-            guard let string = String(data: data, encoding: .utf8) else {
-                errorMessage = "Binary file — cannot display."
-                return
-            }
-            content = string
-            savedContent = string
-            isLoaded = true
-            loadGutterDiff()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    private func saveFile() {
-        isSaving = true
-        do {
-            try content.write(to: fileURL, atomically: true, encoding: .utf8)
-            savedContent = content
-            loadGutterDiff()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-        isSaving = false
-    }
-
-    private func loadGutterDiff() {
-        Task {
-            do {
-                gutterDiff = try await GitRepository.shared.gutterDiff(for: fileURL, in: directoryURL)
-            } catch {
-                gutterDiff = .empty
-            }
-        }
-    }
-}
-
-// MARK: - NSTextView wrapper with syntax highlighting
-
-private let gutterWidth: CGFloat = 44
-private let markerBarWidth: CGFloat = 3
-
-struct HighlightedTextEditor: NSViewRepresentable {
-    @Binding var text: String
-    let fileExtension: String
-    var gutterDiff: GutterDiffResult
-    var highlightRequest: HighlightRequest?
-
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-
-    func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSScrollView()
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = true
-        scrollView.autohidesScrollers = true
-        scrollView.borderType = .noBorder
-
-        let contentSize = scrollView.contentSize
-        let textContainer = NSTextContainer(containerSize: NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
-        textContainer.widthTracksTextView = false
-        textContainer.heightTracksTextView = false
-
-        let layoutManager = NSLayoutManager()
-        layoutManager.addTextContainer(textContainer)
-
-        let textStorage = NSTextStorage()
-        textStorage.addLayoutManager(layoutManager)
-
-        let textView = EditorTextView(frame: NSRect(origin: .zero, size: contentSize), textContainer: textContainer)
-        textView.isEditable = true
-        textView.isSelectable = true
-        textView.allowsUndo = true
-        textView.usesFindBar = true
-        textView.isIncrementalSearchingEnabled = true
-        textView.isAutomaticQuoteSubstitutionEnabled = false
-        textView.isAutomaticDashSubstitutionEnabled = false
-        textView.isAutomaticTextReplacementEnabled = false
-        textView.isAutomaticSpellingCorrectionEnabled = false
-        textView.isRichText = false
-        textView.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
-        textView.textColor = .labelColor
-        textView.backgroundColor = .textBackgroundColor
-        textView.drawsBackground = true
-        textView.textContainerInset = NSSize(width: gutterWidth, height: 4)
-        textView.delegate = context.coordinator
-
-        // Line wrapping enabled
-        textView.isHorizontallyResizable = false
-        textView.isVerticallyResizable = true
-        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-        textView.minSize = NSSize(width: 0, height: contentSize.height)
-        textView.textContainer?.widthTracksTextView = true
-        textView.textContainer?.containerSize = NSSize(width: contentSize.width, height: CGFloat.greatestFiniteMagnitude)
-        textView.autoresizingMask = [.width]
-
-        scrollView.documentView = textView
-
-        textView.gutterDiff = gutterDiff
-        textView.fileExtension = fileExtension
-        context.coordinator.textView = textView
-
-        // Initial content
-        let highlighted = SyntaxHighlighter.highlight(text, fileExtension: fileExtension)
-        textView.textStorage?.setAttributedString(highlighted)
-
-        // Apply highlight request after initial content is set
-        if let request = highlightRequest {
-            context.coordinator.lastAppliedHighlight = request
-            DispatchQueue.main.async {
-                textView.scrollToLineAndHighlight(
-                    lineNumber: request.lineNumber,
-                    columnRange: request.columnRange
-                )
-            }
-        }
-
-        return scrollView
-    }
-
-    func updateNSView(_ scrollView: NSScrollView, context: Context) {
-        guard let textView = scrollView.documentView as? EditorTextView else { return }
-
-        textView.gutterDiff = gutterDiff
-        textView.needsDisplay = true
-
-        // Only update if the binding changed externally (not from editing)
-        if !context.coordinator.isEditing, textView.string != text {
-            let highlighted = SyntaxHighlighter.highlight(text, fileExtension: fileExtension)
-            textView.textStorage?.setAttributedString(highlighted)
-        }
-
-        // Apply pending highlight request
-        if let request = highlightRequest, request != context.coordinator.lastAppliedHighlight {
-            context.coordinator.lastAppliedHighlight = request
-            // Delay slightly to ensure layout is complete after content load
-            DispatchQueue.main.async {
-                textView.scrollToLineAndHighlight(
-                    lineNumber: request.lineNumber,
-                    columnRange: request.columnRange
-                )
-            }
-        }
-    }
-
-    final class Coordinator: NSObject, NSTextViewDelegate {
-        let parent: HighlightedTextEditor
-        weak var textView: EditorTextView?
-        var isEditing = false
-        var lastAppliedHighlight: HighlightRequest?
-        private var rehighlightTask: DispatchWorkItem?
-
-        init(_ parent: HighlightedTextEditor) { self.parent = parent }
-
-        func textDidChange(_ notification: Notification) {
-            guard let textView = notification.object as? NSTextView else { return }
-            isEditing = true
-            parent.text = textView.string
-            isEditing = false
-
-            // Debounced re-highlight
-            rehighlightTask?.cancel()
-            let task = DispatchWorkItem { [weak self] in
-                guard let self, let tv = self.textView else { return }
-                let source = tv.string
-                let ext = self.parent.fileExtension
-                let selectedRanges = tv.selectedRanges
-                let highlighted = SyntaxHighlighter.highlight(source, fileExtension: ext)
-                tv.textStorage?.setAttributedString(highlighted)
-                tv.setSelectedRanges(selectedRanges, affinity: .downstream, stillSelecting: false)
-            }
-            rehighlightTask = task
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: task)
-        }
-    }
+enum EditorTextViewConstants {
+    static let gutterWidth: CGFloat = 44
+    static let markerBarWidth: CGFloat = 3
 }
 
 // MARK: - Editor Text View with Gutter
@@ -262,6 +18,8 @@ final class EditorTextView: NSTextView {
 
         guard let layoutManager, let textContainer else { return }
 
+        let gutterWidth = EditorTextViewConstants.gutterWidth
+        let markerBarWidth = EditorTextViewConstants.markerBarWidth
         let containerOrigin = textContainerOrigin
         let text = string as NSString
 
@@ -387,7 +145,7 @@ final class EditorTextView: NSTextView {
         let localPoint = convert(event.locationInWindow, from: nil)
 
         // Only intercept clicks in the gutter area
-        guard localPoint.x < gutterWidth else {
+        guard localPoint.x < EditorTextViewConstants.gutterWidth else {
             super.mouseDown(with: event)
             return
         }
@@ -422,6 +180,8 @@ final class EditorTextView: NSTextView {
     }
 
     private func showDiffPopover(for hunk: GutterDiffHunk, at point: NSPoint) {
+        let gutterWidth = EditorTextViewConstants.gutterWidth
+
         // Build line data for the popover text view
         let currentLines = string.components(separatedBy: "\n")
         var popoverLines: [DiffPopoverLine] = []
@@ -500,16 +260,16 @@ final class EditorTextView: NSTextView {
     }
 }
 
-// MARK: - Diff Popover Text View
+// MARK: - Diff Popover
 
-private struct DiffPopoverLine {
+struct DiffPopoverLine {
     let content: String
     let kind: GitDiffLineKind  // .added or .removed
     let oldLineNumber: Int?
     let newLineNumber: Int?
 }
 
-private enum DiffPopoverConstants {
+enum DiffPopoverConstants {
     static let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
     static let lineHeight: CGFloat = 17
     static let gutterWidth: CGFloat = 48
@@ -518,7 +278,7 @@ private enum DiffPopoverConstants {
 }
 
 /// Draws diff lines with line number gutter and colored backgrounds, like HunkNSTextView.
-private final class DiffPopoverTextView: NSTextView {
+final class DiffPopoverTextView: NSTextView {
     private var lineData: [(kind: GitDiffLineKind, oldNum: Int?, newNum: Int?)] = []
 
     func configure(lines: [DiffPopoverLine], fileExtension: String, width: CGFloat) {

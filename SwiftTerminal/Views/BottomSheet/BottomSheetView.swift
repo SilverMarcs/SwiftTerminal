@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct EditorPanelView: View {
+struct BottomSheetView: View {
     let directoryURL: URL
     @Environment(EditorPanel.self) private var panel
     var body: some View {
@@ -34,7 +34,6 @@ struct EditorPanelView: View {
             Divider()
                 .frame(height: 15)
                 .padding(.horizontal, 3)
-//                .padding(.leading, 1)
 
             contentTitle
 
