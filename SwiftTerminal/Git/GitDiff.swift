@@ -1,0 +1,296 @@
+import AppKit
+import Foundation
+
+enum GitDiffStage: Hashable {
+    case staged
+    case unstaged
+
+    var displayName: String {
+        switch self {
+            case .staged: "Staged Changes"
+            case .unstaged: "Changes"
+        }
+    }
+}
+
+enum GitDiffLineKind: Hashable {
+    case added
+    case removed
+
+    var color: NSColor {
+        switch self {
+            case .added: NSColor.systemGreen
+            case .removed: NSColor.systemRed
+        }
+    }
+}
+
+struct GitDiffLineNumbers: Hashable {
+    var old: Int?
+    var new: Int?
+}
+
+struct GitDiffReference: Hashable {
+    var repositoryRootURL: URL
+    var fileURL: URL
+    var repositoryRelativePath: String
+    var stage: GitDiffStage
+    var kind: GitChangeKind
+}
+
+// MARK: - Gutter Change Markers
+
+enum GutterChangeKind: Hashable {
+    case added
+    case modified
+    case deleted
+
+    var color: NSColor {
+        switch self {
+            case .added: NSColor(srgbRed: 0.35, green: 0.62, blue: 0.35, alpha: 0.75)
+            case .modified: NSColor(srgbRed: 0.35, green: 0.52, blue: 0.75, alpha: 0.75)
+            case .deleted: NSColor(srgbRed: 0.72, green: 0.35, blue: 0.35, alpha: 0.75)
+        }
+    }
+}
+
+struct GutterDiffHunk {
+    var newStart: Int
+    var newCount: Int
+    var oldStart: Int
+    var oldCount: Int
+    var kind: GutterChangeKind
+    var oldContent: String
+}
+
+struct GutterDiffResult {
+    var markers: [Int: GutterChangeKind]
+    var hunks: [GutterDiffHunk]
+    static let empty = GutterDiffResult(markers: [:], hunks: [])
+}
+
+enum GutterDiffParser {
+    static func parse(_ raw: String) -> GutterDiffResult {
+        guard !raw.isEmpty else { return .empty }
+
+        var markers: [Int: GutterChangeKind] = [:]
+        var hunks: [GutterDiffHunk] = []
+        let lines = raw.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        var index = 0
+
+        while index < lines.count {
+            let line = lines[index]
+            guard line.hasPrefix("@@") else { index += 1; continue }
+            guard let header = GutterHunkHeader(line) else { index += 1; continue }
+            index += 1
+
+            var removedLines: [String] = []
+            var addedLines: [String] = []
+
+            while index < lines.count && !lines[index].hasPrefix("@@") && !lines[index].hasPrefix("diff ") {
+                let hunkLine = lines[index]
+                if hunkLine.hasPrefix("-") && !hunkLine.hasPrefix("---") {
+                    removedLines.append(String(hunkLine.dropFirst()))
+                } else if hunkLine.hasPrefix("+") && !hunkLine.hasPrefix("+++") {
+                    addedLines.append(String(hunkLine.dropFirst()))
+                }
+                index += 1
+            }
+
+            let kind: GutterChangeKind
+            if !addedLines.isEmpty && !removedLines.isEmpty {
+                kind = .modified
+            } else if !addedLines.isEmpty {
+                kind = .added
+            } else if !removedLines.isEmpty {
+                kind = .deleted
+            } else {
+                continue
+            }
+
+            if kind == .deleted {
+                markers[max(header.newStart, 1)] = .deleted
+            } else {
+                for lineNum in header.newStart..<(header.newStart + header.newCount) {
+                    markers[lineNum] = kind
+                }
+            }
+
+            hunks.append(GutterDiffHunk(
+                newStart: header.newStart, newCount: header.newCount,
+                oldStart: header.oldStart, oldCount: header.oldCount,
+                kind: kind, oldContent: removedLines.joined(separator: "\n")
+            ))
+        }
+
+        return GutterDiffResult(markers: markers, hunks: hunks)
+    }
+}
+
+private struct GutterHunkHeader {
+    let oldStart: Int
+    let oldCount: Int
+    let newStart: Int
+    let newCount: Int
+
+    init?(_ line: String) {
+        guard line.hasPrefix("@@ -") else { return nil }
+        let components = line.split(separator: " ").filter { $0 != "@@" }
+        guard components.count >= 2 else { return nil }
+
+        guard
+            let (oldStart, oldCount) = Self.parseRange(components[0], expectedPrefix: "-"),
+            let (newStart, newCount) = Self.parseRange(components[1], expectedPrefix: "+")
+        else { return nil }
+
+        self.oldStart = oldStart
+        self.oldCount = oldCount
+        self.newStart = newStart
+        self.newCount = newCount
+    }
+
+    private static func parseRange(_ component: Substring, expectedPrefix: Character) -> (Int, Int)? {
+        guard component.first == expectedPrefix else { return nil }
+        let numbers = component.dropFirst().split(separator: ",", maxSplits: 1, omittingEmptySubsequences: false)
+        guard let start = numbers.first.flatMap({ Int(String($0)) }) else { return nil }
+        let count = numbers.count > 1 ? (Int(String(numbers[1])) ?? 1) : 1
+        return (start, count)
+    }
+}
+
+// MARK: - Diff Presentation
+
+struct GitDiffPresentation {
+    var string: String
+    var lineKinds: [Int: GitDiffLineKind]
+    var lineNumbers: [Int: GitDiffLineNumbers]
+    var hunkSeparatorLines: Set<Int>
+
+    init(raw: String) {
+        let parsed = Self.parse(raw)
+        self.string = parsed.string
+        self.lineKinds = parsed.lineKinds
+        self.lineNumbers = parsed.lineNumbers
+        self.hunkSeparatorLines = parsed.hunkSeparatorLines
+    }
+
+    init(message: String) {
+        self.string = message
+        self.lineKinds = [:]
+        self.lineNumbers = [:]
+        self.hunkSeparatorLines = []
+    }
+
+    private static func parse(_ raw: String) -> (string: String, lineKinds: [Int: GitDiffLineKind], lineNumbers: [Int: GitDiffLineNumbers], hunkSeparatorLines: Set<Int>) {
+        guard !raw.isEmpty else { return ("", [:], [:], []) }
+
+        let lines = raw.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        var renderedLines: [String] = []
+        var lineKinds: [Int: GitDiffLineKind] = [:]
+        var lineNumbers: [Int: GitDiffLineNumbers] = [:]
+        var hunkSeparatorLines: Set<Int> = []
+        var hasSeenHunk = false
+        var oldLineNumber: Int?
+        var newLineNumber: Int?
+
+        for line in lines {
+            let renderedLine: String
+            let lineKind: GitDiffLineKind?
+            let displayedLineNumbers: GitDiffLineNumbers
+
+            switch line.first {
+                case "+" where !line.hasPrefix("+++"):
+                    renderedLine = String(line.dropFirst())
+                    lineKind = .added
+                    displayedLineNumbers = .init(old: nil, new: newLineNumber)
+                    self.increment(&newLineNumber)
+                case "-" where !line.hasPrefix("---"):
+                    renderedLine = String(line.dropFirst())
+                    lineKind = .removed
+                    displayedLineNumbers = .init(old: oldLineNumber, new: nil)
+                    self.increment(&oldLineNumber)
+                case " ":
+                    renderedLine = String(line.dropFirst())
+                    lineKind = nil
+                    displayedLineNumbers = .init(old: oldLineNumber, new: newLineNumber)
+                    self.increment(&oldLineNumber)
+                    self.increment(&newLineNumber)
+                case "@":
+                    if hasSeenHunk, !renderedLines.isEmpty {
+                        hunkSeparatorLines.insert(renderedLines.count + 1)
+                    }
+                    hasSeenHunk = true
+                    let hunkHeader = DiffHunkHeader(line)
+                    oldLineNumber = hunkHeader?.oldLineStart
+                    newLineNumber = hunkHeader?.newLineStart
+                    continue
+                default:
+                    if line.hasPrefix("diff --git ") || line.hasPrefix("index ")
+                        || line.hasPrefix("--- ") || line.hasPrefix("+++ ")
+                        || line.hasPrefix("old mode ") || line.hasPrefix("new mode ")
+                        || line.hasPrefix("new file mode ") || line.hasPrefix("deleted file mode ")
+                        || line.hasPrefix("similarity index ")
+                        || line.hasPrefix("rename from ") || line.hasPrefix("rename to ")
+                        || line.hasPrefix("copy from ") || line.hasPrefix("copy to ")
+                        || line.hasPrefix("Binary files ")
+                        || line.hasPrefix("\\ No newline at end of file")
+                    { continue }
+
+                    renderedLine = line
+                    lineKind = nil
+                    displayedLineNumbers = .init(old: oldLineNumber, new: newLineNumber)
+            }
+
+            renderedLines.append(renderedLine)
+            lineNumbers[renderedLines.count] = displayedLineNumbers
+            if let lineKind {
+                lineKinds[renderedLines.count] = lineKind
+            }
+        }
+
+        return (renderedLines.joined(separator: "\n"), lineKinds, lineNumbers, hunkSeparatorLines)
+    }
+
+    private static func increment(_ value: inout Int?) {
+        guard let v = value else { return }
+        value = v + 1
+    }
+}
+
+private struct DiffHunkHeader {
+    let oldLineStart: Int
+    let newLineStart: Int
+
+    init?(_ line: String) {
+        guard line.hasPrefix("@@ -") else { return nil }
+        let components = line.split(separator: " ").filter { $0 != "@@" }
+        guard components.count >= 2 else { return nil }
+
+        let oldStart = Self.parseLineStart(components[0], expectedPrefix: "-")
+        let newStart = Self.parseLineStart(components[1], expectedPrefix: "+")
+        guard let oldStart, let newStart else { return nil }
+        self.oldLineStart = oldStart
+        self.newLineStart = newStart
+    }
+
+    private static func parseLineStart(_ component: Substring, expectedPrefix: Character) -> Int? {
+        guard component.first == expectedPrefix else { return nil }
+        let numbers = component.dropFirst().split(separator: ",", maxSplits: 1, omittingEmptySubsequences: false)
+        return numbers.first.flatMap { Int(String($0)) }
+    }
+}
+
+struct GitDiffCommand: GitCommand {
+    let reference: GitDiffReference
+
+    var arguments: [String] {
+        var arguments = ["diff", "--no-color", "--no-ext-diff"]
+        if reference.stage == .staged {
+            arguments.append("--cached")
+        }
+        arguments += ["--", reference.repositoryRelativePath]
+        return arguments
+    }
+
+    func parse(output: String) throws -> String { output }
+}

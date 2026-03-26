@@ -7,6 +7,7 @@ struct FileItem: Identifiable, Hashable {
     let url: URL
     let isDirectory: Bool
     var children: [FileItem]?
+    var gitStatus: GitChangeKind?
 
     var icon: NSImage {
         if isDirectory {
@@ -22,6 +23,47 @@ struct FileItem: Identifiable, Hashable {
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(url)
+    }
+
+    /// Returns a filtered copy of the tree.
+    func filtered(searchText: String, changedURLs: Set<URL>?, showChangedOnly: Bool) -> FileItem? {
+        if !isDirectory {
+            let nameMatch = searchText.isEmpty || name.localizedCaseInsensitiveContains(searchText)
+            let gitMatch = !showChangedOnly || changedURLs?.contains(url.standardizedFileURL) == true
+            return (nameMatch && gitMatch) ? self : nil
+        }
+
+        let filteredChildren = children?.compactMap {
+            $0.filtered(searchText: searchText, changedURLs: changedURLs, showChangedOnly: showChangedOnly)
+        }
+
+        guard let filteredChildren, !filteredChildren.isEmpty else { return nil }
+
+        var copy = self
+        copy.children = filteredChildren
+        return copy
+    }
+
+    /// Applies git statuses to this item and all descendants.
+    /// Directories bubble up the highest-priority status from their children.
+    mutating func applyGitStatuses(_ statuses: [URL: GitChangeKind]) {
+        let resolved = url.standardizedFileURL
+        if let status = statuses[resolved] {
+            gitStatus = status
+        }
+
+        if var kids = children {
+            for i in kids.indices {
+                kids[i].applyGitStatuses(statuses)
+            }
+            children = kids
+
+            // Bubble up: take the highest-priority child status
+            if gitStatus == nil {
+                let childStatuses = kids.compactMap(\.gitStatus)
+                gitStatus = childStatuses.max(by: { $0.priority < $1.priority })
+            }
+        }
     }
 
     static func buildTree(at directoryURL: URL) -> [FileItem] {
@@ -53,4 +95,21 @@ struct FileItem: Identifiable, Hashable {
         ".DS_Store", ".git", "node_modules", ".build", "DerivedData",
         "Pods", "__pycache__", ".venv", "venv", ".svn", ".hg",
     ]
+}
+
+
+extension GitChangeKind {
+
+    /// Higher = more important. Used to pick the dominant status for folders.
+    var priority: Int {
+        switch self {
+            case .typeChanged: 0
+            case .copied: 1
+            case .renamed: 2
+            case .modified: 3
+            case .added, .untracked: 4
+            case .deleted: 5
+            case .conflicted: 6
+        }
+    }
 }

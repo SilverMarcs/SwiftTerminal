@@ -1,12 +1,10 @@
 import SwiftUI
 
-struct FileTreeView: View {
-    let directoryURL: URL
-
-    @State private var items: [FileItem] = []
+struct FileRowView: View {
+    let item: FileItem
 
     var body: some View {
-        List(items, children: \.children) { item in
+        HStack(spacing: 4) {
             Label {
                 Text(item.name)
                     .lineLimit(1)
@@ -16,11 +14,15 @@ struct FileTreeView: View {
                     .resizable()
                     .frame(width: 16, height: 16)
             }
-            .listRowSeparator(.hidden)
-        }
-        .scrollContentBackground(.hidden)
-        .task(id: directoryURL) {
-            items = FileItem.buildTree(at: directoryURL)
+
+            Spacer()
+
+            if let status = item.gitStatus {
+                Text(status.statusSymbol)
+                    .font(.caption2.weight(.medium))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }
