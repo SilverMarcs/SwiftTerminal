@@ -149,6 +149,9 @@ struct FileEditorPanel: View {
 
 // MARK: - NSTextView wrapper with syntax highlighting
 
+private let gutterWidth: CGFloat = 44
+private let markerBarWidth: CGFloat = 3
+
 struct HighlightedTextEditor: NSViewRepresentable {
     @Binding var text: String
     let fileExtension: String
@@ -157,9 +160,24 @@ struct HighlightedTextEditor: NSViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSTextView.scrollableTextView()
-        let textView = scrollView.documentView as! NSTextView
+        let scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = true
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .noBorder
 
+        let contentSize = scrollView.contentSize
+        let textContainer = NSTextContainer(containerSize: NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
+        textContainer.widthTracksTextView = false
+        textContainer.heightTracksTextView = false
+
+        let layoutManager = NSLayoutManager()
+        layoutManager.addTextContainer(textContainer)
+
+        let textStorage = NSTextStorage()
+        textStorage.addLayoutManager(layoutManager)
+
+        let textView = EditorTextView(frame: NSRect(origin: .zero, size: contentSize), textContainer: textContainer)
         textView.isEditable = true
         textView.isSelectable = true
         textView.allowsUndo = true
@@ -171,29 +189,30 @@ struct HighlightedTextEditor: NSViewRepresentable {
         textView.isAutomaticSpellingCorrectionEnabled = false
         textView.isRichText = false
         textView.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        textView.textColor = .labelColor
         textView.backgroundColor = .textBackgroundColor
-        textView.textContainerInset = NSSize(width: 4, height: 4)
-        textView.isHorizontallyResizable = false
-        textView.textContainer?.widthTracksTextView = true
+        textView.drawsBackground = true
+        textView.textContainerInset = NSSize(width: gutterWidth, height: 4)
         textView.delegate = context.coordinator
 
-        // Set up ruler view for line numbers and git markers
-        scrollView.hasVerticalRuler = true
-        scrollView.rulersVisible = true
-        let rulerView = LineNumberRulerView(textView: textView, scrollView: scrollView)
-        rulerView.update(gutterDiff: gutterDiff)
-        scrollView.verticalRulerView = rulerView
+        // Horizontal scrolling (no line wrapping)
+        textView.isHorizontallyResizable = true
+        textView.isVerticallyResizable = true
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.minSize = NSSize(width: contentSize.width, height: 0)
+        textView.autoresizingMask = [.width]
 
+        // To enable line wrapping instead, uncomment the following and comment out the horizontal scrolling block above:
+        // textView.isHorizontallyResizable = false
+        // textView.isVerticallyResizable = true
+        // textView.textContainer?.widthTracksTextView = true
+        // textView.textContainer?.containerSize = NSSize(width: contentSize.width, height: CGFloat.greatestFiniteMagnitude)
+        // textView.autoresizingMask = [.width]
+
+        scrollView.documentView = textView
+
+        textView.gutterDiff = gutterDiff
         context.coordinator.textView = textView
-        context.coordinator.rulerView = rulerView
-
-        // Observe bounds changes to redraw ruler on scroll
-        NotificationCenter.default.addObserver(
-            context.coordinator,
-            selector: #selector(Coordinator.boundsDidChange(_:)),
-            name: NSView.boundsDidChangeNotification,
-            object: scrollView.contentView
-        )
 
         // Initial content
         let highlighted = SyntaxHighlighter.highlight(text, fileExtension: fileExtension)
@@ -203,12 +222,10 @@ struct HighlightedTextEditor: NSViewRepresentable {
     }
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
-        guard let textView = scrollView.documentView as? NSTextView else { return }
+        guard let textView = scrollView.documentView as? EditorTextView else { return }
 
-        // Update gutter diff on ruler
-        if let rulerView = scrollView.verticalRulerView as? LineNumberRulerView {
-            rulerView.update(gutterDiff: gutterDiff)
-        }
+        textView.gutterDiff = gutterDiff
+        textView.needsDisplay = true
 
         // Only update if the binding changed externally (not from editing)
         if !context.coordinator.isEditing, textView.string != text {
@@ -219,8 +236,7 @@ struct HighlightedTextEditor: NSViewRepresentable {
 
     final class Coordinator: NSObject, NSTextViewDelegate {
         let parent: HighlightedTextEditor
-        weak var textView: NSTextView?
-        weak var rulerView: LineNumberRulerView?
+        weak var textView: EditorTextView?
         var isEditing = false
         private var rehighlightTask: DispatchWorkItem?
 
@@ -231,9 +247,6 @@ struct HighlightedTextEditor: NSViewRepresentable {
             isEditing = true
             parent.text = textView.string
             isEditing = false
-
-            // Refresh ruler on text change
-            rulerView?.needsDisplay = true
 
             // Debounced re-highlight
             rehighlightTask?.cancel()
@@ -249,70 +262,47 @@ struct HighlightedTextEditor: NSViewRepresentable {
             rehighlightTask = task
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: task)
         }
-
-        @objc func boundsDidChange(_ notification: Notification) {
-            rulerView?.needsDisplay = true
-        }
     }
 }
 
-// MARK: - Line Number Ruler View
+// MARK: - Editor Text View with Gutter
 
-final class LineNumberRulerView: NSRulerView {
-    private var gutterDiff: GutterDiffResult = .empty
-    private weak var textView: NSTextView?
+final class EditorTextView: NSTextView {
+    var gutterDiff: GutterDiffResult = .empty
 
     private let lineNumberFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
-    private let markerWidth: CGFloat = 3
 
-    init(textView: NSTextView, scrollView: NSScrollView) {
-        self.textView = textView
-        super.init(scrollView: scrollView, orientation: .verticalRuler)
-        self.ruleThickness = 44
-        self.clientView = textView
-    }
+    override func drawBackground(in rect: NSRect) {
+        super.drawBackground(in: rect)
 
-    @available(*, unavailable)
-    required init(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
+        guard let layoutManager, let textContainer else { return }
 
-    func update(gutterDiff: GutterDiffResult) {
-        self.gutterDiff = gutterDiff
-        needsDisplay = true
-    }
+        let containerOrigin = textContainerOrigin
+        let text = string as NSString
 
-    override func drawHashMarksAndLabels(in rect: NSRect) {
-        guard let textView, let layoutManager = textView.layoutManager,
-              let textContainer = textView.textContainer else { return }
-
-        // Draw background
+        // Draw gutter background
+        let gutterRect = NSRect(x: 0, y: rect.minY, width: gutterWidth, height: rect.height)
         NSColor.controlBackgroundColor.withAlphaComponent(0.3).setFill()
-        rect.fill()
+        gutterRect.fill()
 
-        // Draw separator line on the right edge
-        NSColor.separatorColor.setStroke()
-        let sepPath = NSBezierPath()
-        sepPath.move(to: NSPoint(x: ruleThickness - 0.5, y: rect.minY))
-        sepPath.line(to: NSPoint(x: ruleThickness - 0.5, y: rect.maxY))
-        sepPath.lineWidth = 0.5
-        sepPath.stroke()
+        // Draw gutter separator
+        NSColor.separatorColor.withAlphaComponent(0.3).setStroke()
+        NSBezierPath.strokeLine(
+            from: NSPoint(x: gutterWidth - 0.5, y: rect.minY),
+            to: NSPoint(x: gutterWidth - 0.5, y: rect.maxY)
+        )
 
-        let text = textView.string as NSString
         guard text.length > 0 else { return }
 
-        let visibleRect = scrollView?.contentView.bounds ?? .zero
-        let containerOrigin = textView.textContainerOrigin
-
-        let visibleGlyphRange = layoutManager.glyphRange(forBoundingRect: visibleRect, in: textContainer)
+        let visibleGlyphRange = layoutManager.glyphRange(forBoundingRect: rect, in: textContainer)
         let visibleCharRange = layoutManager.characterRange(forGlyphRange: visibleGlyphRange, actualGlyphRange: nil)
 
-        let attrs: [NSAttributedString.Key: Any] = [
+        let lineNumAttrs: [NSAttributedString.Key: Any] = [
             .font: lineNumberFont,
             .foregroundColor: NSColor.secondaryLabelColor,
         ]
 
-        // Count lines before the visible range to find the starting line number
+        // Count lines before visible range
         var startLineNumber = 1
         if visibleCharRange.location > 0 {
             let preText = text.substring(to: visibleCharRange.location)
@@ -332,34 +322,29 @@ final class LineNumberRulerView: NSRulerView {
                 lineRect.origin.x += containerOrigin.x
                 lineRect.origin.y += containerOrigin.y
 
-                // Convert from textView coordinates to ruler coordinates
-                let yInRuler = lineRect.minY - visibleRect.origin.y
-
-                if yInRuler + lineRect.height >= rect.minY && yInRuler <= rect.maxY {
+                if lineRect.minY + lineRect.height >= rect.minY && lineRect.minY <= rect.maxY {
                     // Draw line number right-aligned
                     let numStr = "\(lineNumber)" as NSString
-                    let size = numStr.size(withAttributes: attrs)
-                    let x = ruleThickness - markerWidth - size.width - 6
-                    let y = yInRuler + (lineRect.height - size.height) / 2
-                    numStr.draw(at: NSPoint(x: x, y: y), withAttributes: attrs)
+                    let size = numStr.size(withAttributes: lineNumAttrs)
+                    let x = gutterWidth - markerBarWidth - size.width - 6
+                    let y = lineRect.minY + (lineRect.height - size.height) / 2
+                    numStr.draw(at: NSPoint(x: x, y: y), withAttributes: lineNumAttrs)
 
                     // Draw git change marker bar
                     if let kind = gutterDiff.markers[lineNumber] {
                         kind.color.setFill()
                         if kind == .deleted {
-                            // Deleted: thin horizontal bar to indicate removed lines
                             NSRect(
-                                x: ruleThickness - markerWidth - 1,
-                                y: yInRuler - 1,
-                                width: markerWidth + 1,
+                                x: gutterWidth - markerBarWidth - 1,
+                                y: lineRect.minY - 1,
+                                width: markerBarWidth + 1,
                                 height: 3
                             ).fill()
                         } else {
-                            // Added/modified: vertical bar spanning the line height
                             NSRect(
-                                x: ruleThickness - markerWidth - 1,
-                                y: yInRuler,
-                                width: markerWidth,
+                                x: gutterWidth - markerBarWidth - 1,
+                                y: lineRect.minY,
+                                width: markerBarWidth,
                                 height: lineRect.height
                             ).fill()
                         }
@@ -374,56 +359,42 @@ final class LineNumberRulerView: NSRulerView {
         }
     }
 
-    // MARK: - Click handling for diff popover
+    // MARK: - Click handling for gutter diff popover
 
     override func mouseDown(with event: NSEvent) {
         let localPoint = convert(event.locationInWindow, from: nil)
 
-        // Only handle clicks near the marker area (right side of gutter)
-        guard localPoint.x >= ruleThickness - 16 else {
+        // Only intercept clicks in the gutter area
+        guard localPoint.x < gutterWidth else {
             super.mouseDown(with: event)
             return
         }
 
-        guard let textView, let layoutManager = textView.layoutManager,
-              let textContainer = textView.textContainer else { return }
+        guard let layoutManager, let textContainer else { return }
 
-        let text = textView.string as NSString
+        let text = string as NSString
         guard text.length > 0 else { return }
 
-        let visibleRect = scrollView?.contentView.bounds ?? .zero
-        let containerOrigin = textView.textContainerOrigin
-
-        // Convert click point to text view coordinates
-        let textViewY = localPoint.y + visibleRect.origin.y - containerOrigin.y
-        let textViewPoint = NSPoint(x: 0, y: textViewY)
+        let containerOrigin = textContainerOrigin
+        let textPoint = NSPoint(x: containerOrigin.x, y: localPoint.y - containerOrigin.y)
 
         let charIndex = layoutManager.characterIndex(
-            for: textViewPoint, in: textContainer,
+            for: textPoint, in: textContainer,
             fractionOfDistanceBetweenInsertionPoints: nil
         )
 
-        // Count line number at that character
         let preText = text.substring(to: min(charIndex, text.length))
         let clickedLine = preText.components(separatedBy: "\n").count
 
-        // Check if this line has a marker
-        guard gutterDiff.markers[clickedLine] != nil else {
-            super.mouseDown(with: event)
-            return
-        }
+        guard gutterDiff.markers[clickedLine] != nil else { return }
 
-        // Find the hunk that contains this line
         guard let hunk = gutterDiff.hunks.first(where: { hunk in
             if hunk.kind == .deleted {
                 return clickedLine == max(hunk.newStart, 1)
             } else {
                 return clickedLine >= hunk.newStart && clickedLine < hunk.newStart + hunk.newCount
             }
-        }) else {
-            super.mouseDown(with: event)
-            return
-        }
+        }) else { return }
 
         showDiffPopover(for: hunk, at: localPoint)
     }
@@ -436,104 +407,86 @@ final class LineNumberRulerView: NSRulerView {
         let viewController = NSViewController()
         let container = NSView()
 
-        // Title label
+        // Title
         let titleLabel = NSTextField(labelWithString: hunkTitle(for: hunk))
         titleLabel.font = .systemFont(ofSize: 11, weight: .medium)
         titleLabel.textColor = .secondaryLabelColor
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        // Diff text view
-        let scrollView = NSTextView.scrollableTextView()
-        let diffTextView = scrollView.documentView as! NSTextView
+        // Diff content
+        let diffScrollView = NSTextView.scrollableTextView()
+        let diffTextView = diffScrollView.documentView as! NSTextView
         diffTextView.isEditable = false
         diffTextView.isSelectable = true
         diffTextView.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
         diffTextView.backgroundColor = NSColor.textBackgroundColor.withAlphaComponent(0.5)
         diffTextView.textContainerInset = NSSize(width: 6, height: 4)
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.hasVerticalScroller = true
-        scrollView.borderType = .noBorder
+        diffScrollView.translatesAutoresizingMaskIntoConstraints = false
+        diffScrollView.hasVerticalScroller = true
+        diffScrollView.borderType = .noBorder
 
-        // Build attributed string for diff content
-        let diffString = buildDiffAttributedString(for: hunk)
-        diffTextView.textStorage?.setAttributedString(diffString)
+        diffTextView.textStorage?.setAttributedString(buildDiffAttributedString(for: hunk))
 
         container.addSubview(titleLabel)
-        container.addSubview(scrollView)
+        container.addSubview(diffScrollView)
 
         NSLayoutConstraint.activate([
             titleLabel.topAnchor.constraint(equalTo: container.topAnchor, constant: 8),
             titleLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 10),
             titleLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10),
-
-            scrollView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 6),
-            scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            diffScrollView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 6),
+            diffScrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            diffScrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            diffScrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
         ])
 
         viewController.view = container
         let oldLineCount = hunk.oldContent.isEmpty ? 0 : hunk.oldContent.components(separatedBy: "\n").count
-        let lineCount = max(oldLineCount + hunk.newCount, 1)
-        let height = min(CGFloat(lineCount) * 16 + 44, 300)
+        let totalLines = max(oldLineCount + hunk.newCount, 1)
+        let height = min(CGFloat(totalLines) * 16 + 44, 300)
         viewController.preferredContentSize = NSSize(width: 400, height: height)
 
         popover.contentViewController = viewController
 
-        let anchorRect = NSRect(x: ruleThickness - 4, y: point.y - 4, width: 4, height: 8)
+        let anchorRect = NSRect(x: gutterWidth - 2, y: point.y - 4, width: 4, height: 8)
         popover.show(relativeTo: anchorRect, of: self, preferredEdge: .maxX)
     }
 
     private func hunkTitle(for hunk: GutterDiffHunk) -> String {
         switch hunk.kind {
         case .added:
-            return "Added \(hunk.newCount) line\(hunk.newCount == 1 ? "" : "s")"
+            "Added \(hunk.newCount) line\(hunk.newCount == 1 ? "" : "s")"
         case .modified:
-            return "Modified \(hunk.newCount) line\(hunk.newCount == 1 ? "" : "s")"
+            "Modified \(hunk.newCount) line\(hunk.newCount == 1 ? "" : "s")"
         case .deleted:
-            return "Deleted \(hunk.oldCount) line\(hunk.oldCount == 1 ? "" : "s")"
+            "Deleted \(hunk.oldCount) line\(hunk.oldCount == 1 ? "" : "s")"
         }
     }
 
     private func buildDiffAttributedString(for hunk: GutterDiffHunk) -> NSAttributedString {
         let result = NSMutableAttributedString()
         let baseFont = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
-
         let removedBg = NSColor.systemRed.withAlphaComponent(0.15)
         let addedBg = NSColor.systemGreen.withAlphaComponent(0.15)
 
-        // Show old (removed) content
         if !hunk.oldContent.isEmpty {
-            let oldLines = hunk.oldContent.components(separatedBy: "\n")
-            for line in oldLines {
-                let lineStr = NSMutableAttributedString(
+            for line in hunk.oldContent.components(separatedBy: "\n") {
+                result.append(NSAttributedString(
                     string: "- " + line + "\n",
-                    attributes: [
-                        .font: baseFont,
-                        .foregroundColor: NSColor.systemRed,
-                        .backgroundColor: removedBg,
-                    ]
-                )
-                result.append(lineStr)
+                    attributes: [.font: baseFont, .foregroundColor: NSColor.systemRed, .backgroundColor: removedBg]
+                ))
             }
         }
 
-        // Show new (added) content from current file
-        if hunk.kind == .added || hunk.kind == .modified, hunk.newCount > 0,
-           let currentLines = textView?.string.components(separatedBy: "\n")
-        {
+        if hunk.kind == .added || hunk.kind == .modified, hunk.newCount > 0 {
+            let currentLines = string.components(separatedBy: "\n")
             let start = max(hunk.newStart - 1, 0)
             let end = min(start + hunk.newCount, currentLines.count)
             for i in start..<end {
-                let lineStr = NSMutableAttributedString(
+                result.append(NSAttributedString(
                     string: "+ " + currentLines[i] + "\n",
-                    attributes: [
-                        .font: baseFont,
-                        .foregroundColor: NSColor.systemGreen,
-                        .backgroundColor: addedBg,
-                    ]
-                )
-                result.append(lineStr)
+                    attributes: [.font: baseFont, .foregroundColor: NSColor.systemGreen, .backgroundColor: addedBg]
+                ))
             }
         }
 
