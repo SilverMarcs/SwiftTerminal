@@ -3,33 +3,21 @@ import SwiftUI
 struct FileTreeView: View {
     let directoryURL: URL
 
+    @Environment(EditorPanel.self) private var editorPanel
     @State private var model = FileTreeModel()
     @State private var selectedItem: FileItem?
     @State private var expandedIDs: Set<String> = []
     @State private var savedExpandedIDs: Set<String>?
 
     var body: some View {
-        VStack(spacing: 0) {
-            if model.displayItems.isEmpty {
-                ContentUnavailableView {
-                    Label(
-                        model.isFiltering ? "No Results" : "No Files",
-                        systemImage: model.isFiltering ? "magnifyingglass" : "folder"
-                    )
-                }
-                .frame(maxHeight: .infinity)
-            } else {
-                List(selection: $selectedItem) {
-                    ForEach(model.displayItems) { item in
-                        FileNodeView(item: item, expandedIDs: $expandedIDs)
-                            .tag(item)
-                    }
-                }
-                .scrollContentBackground(.hidden)
+        List(selection: $selectedItem) {
+            ForEach(model.displayItems) { item in
+                FileNodeView(item: item, expandedIDs: $expandedIDs)
+                    .tag(item)
             }
-
-            Divider()
-
+        }
+        .scrollContentBackground(.hidden)
+        .safeAreaBar(edge: .bottom) {
             FileTreeFilterBar(
                 searchText: $model.searchText,
                 showChangedOnly: $model.showChangedOnly,
@@ -42,6 +30,10 @@ struct FileTreeView: View {
         }
         .task(id: directoryURL, priority: .low) {
             await pollGitStatus()
+        }
+        .onChange(of: selectedItem) { _, newItem in
+            guard let item = newItem, !item.isDirectory else { return }
+            editorPanel.openFile(item.url)
         }
     }
 

@@ -45,37 +45,27 @@ struct GitRepoContextMenu: View {
 
 struct GitFileContextMenu: View {
     let files: [GitChangedFile]
+    let staged: Bool
     let snapshot: GitRepositoryStatusSnapshot
     let onAction: (GitAction) -> Void
 
-    private var allStaged: Bool {
-        files.allSatisfy { snapshot.stagedFiles.contains($0) }
-    }
-
-    private var allUnstaged: Bool {
-        files.allSatisfy { snapshot.unstagedFiles.contains($0) }
-    }
-
     var body: some View {
-        if !allStaged {
-            Button { onAction(.stage(files, snapshot)) } label: {
-                Label("Stage Changes", systemImage: "tray.and.arrow.down")
-            }
+        Button { onAction(.stage(files, snapshot)) } label: {
+            Label("Stage Changes", systemImage: "tray.and.arrow.down")
         }
+        .disabled(staged)
 
-        if !allUnstaged {
-            Button { onAction(.unstage(files, snapshot)) } label: {
-                Label("Unstage Changes", systemImage: "tray.and.arrow.up")
-            }
+        Button { onAction(.unstage(files, snapshot)) } label: {
+            Label("Unstage Changes", systemImage: "tray.and.arrow.up")
         }
+        .disabled(!staged)
 
-        if !allStaged {
-            Divider()
+        Divider()
 
-            Button(role: .destructive) { onAction(.discard(files, snapshot)) } label: {
-                Label("Discard Changes", systemImage: "arrow.uturn.backward")
-            }
+        Button(role: .destructive) { onAction(.discard(files, snapshot)) } label: {
+            Label("Discard Changes", systemImage: "arrow.uturn.backward")
         }
+        .disabled(staged)
 
         Divider()
 

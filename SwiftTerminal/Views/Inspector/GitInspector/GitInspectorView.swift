@@ -4,9 +4,10 @@ import UniformTypeIdentifiers
 struct GitInspectorView: View {
     let directoryURL: URL
 
+    @Environment(EditorPanel.self) private var editorPanel
     @State private var model = GitInspectorModel()
     @State private var expandedRepos: Set<URL> = []
-    @State private var selectedFiles: Set<GitChangedFile> = []
+    @State private var selectedFileID: String?
     @State private var showCommitSheet = false
     @State private var commitMessage = ""
     @State private var discardTarget: DiscardTarget?
@@ -51,12 +52,23 @@ struct GitInspectorView: View {
             } message: {
                 Text(discardAlertMessage)
             }
+            .onChange(of: selectedFileID) { _, newID in
+                guard let id = newID else { return }
+                guard let (file, staged, snapshot) = resolveFile(id: id) else { return }
+                editorPanel.openDiff(GitDiffReference(
+                    repositoryRootURL: snapshot.repositoryRootURL,
+                    fileURL: file.fileURL,
+                    repositoryRelativePath: file.repositoryRelativePath,
+                    stage: staged ? .staged : .unstaged,
+                    kind: file.kind
+                ))
+            }
     }
 
     // MARK: - List
 
     private var changesList: some View {
-        List(selection: $selectedFiles) {
+        List(selection: $selectedFileID) {
             ForEach(model.snapshots, id: \.repositoryRootURL) { snapshot in
                 DisclosureGroup(isExpanded: repoBinding(snapshot.repositoryRootURL)) {
                     fileRows(snapshot.stagedFiles, staged: true, snapshot: snapshot)
@@ -66,6 +78,7 @@ struct GitInspectorView: View {
                         .contextMenu { GitRepoContextMenu(snapshot: snapshot, onAction: handleAction) }
                 }
             }
+            .listRowSeparator(.hidden)
         }
         .scrollContentBackground(.hidden)
     }
@@ -90,26 +103,15 @@ struct GitInspectorView: View {
 
     @ViewBuilder
     private func fileRows(_ files: [GitChangedFile], staged: Bool, snapshot: GitRepositoryStatusSnapshot) -> some View {
-        ForEach(files, id: \.self) { file in
-            FileLabel(name: file.repositoryRelativePath, icon: file.fileURL.fileIcon) {
-                GitStatusBadge(kind: file.kind, staged: staged)
+        let prefix = staged ? "staged" : "unstaged"
+        ForEach(files.map { (id: "\(prefix):\($0.repositoryRelativePath)", file: $0) }, id: \.id) { entry in
+            FileLabel(name: entry.file.repositoryRelativePath, icon: entry.file.fileURL.fileIcon) {
+                GitStatusBadge(kind: entry.file.kind, staged: staged)
             }
-            .id("\(staged ? "staged" : "unstaged"):\(file.repositoryRelativePath)")
-            .tag(file)
+            .tag(entry.id)
             .contextMenu {
-                let targets = contextMenuTargets(for: file)
-                GitFileContextMenu(files: targets, snapshot: snapshot, onAction: handleAction)
+                GitFileContextMenu(files: [entry.file], staged: staged, snapshot: snapshot, onAction: handleAction)
             }
-        }
-    }
-
-    /// If the right-clicked file is in the selection, act on the whole selection.
-    /// Otherwise act on just the clicked file.
-    private func contextMenuTargets(for file: GitChangedFile) -> [GitChangedFile] {
-        if selectedFiles.contains(file) {
-            Array(selectedFiles)
-        } else {
-            [file]
         }
     }
 
@@ -172,6 +174,18 @@ struct GitInspectorView: View {
         for snapshot in model.snapshots {
             expandedRepos.insert(snapshot.repositoryRootURL)
         }
+    }
+
+    private func resolveFile(id: String) -> (GitChangedFile, Bool, GitRepositoryStatusSnapshot)? {
+        let staged = id.hasPrefix("staged:")
+        let path = String(id.drop(while: { $0 != ":" }).dropFirst())
+        for snapshot in model.snapshots {
+            let files = staged ? snapshot.stagedFiles : snapshot.unstagedFiles
+            if let file = files.first(where: { $0.repositoryRelativePath == path }) {
+                return (file, staged, snapshot)
+            }
+        }
+        return nil
     }
 
     private func repoBinding(_ url: URL) -> Binding<Bool> {

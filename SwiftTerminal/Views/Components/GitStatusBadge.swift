@@ -17,15 +17,15 @@ struct GitStatusBadge: View {
     var body: some View {
         Text(kind.statusSymbol)
             .font(.system(size: 9, weight: .medium, design: .rounded))
-            .foregroundStyle(staged ? color : .white)
+            .foregroundStyle(staged ? .white : color)
             .frame(width: 16, height: 16)
             .background {
                 if staged {
                     RoundedRectangle(cornerRadius: 3)
-                        .strokeBorder(color, lineWidth: 1.5)
+                        .fill(color)
                 } else {
                     RoundedRectangle(cornerRadius: 3)
-                        .fill(color)
+                        .strokeBorder(color, lineWidth: 1)
                 }
             }
     }

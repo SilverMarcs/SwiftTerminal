@@ -18,7 +18,7 @@ struct DocumentTabBar: View {
                 }
             } label: {
                 Image(systemName: "plus")
-                    .padding(1)
+                    .padding(2)
             }
             .help("New Tab")
             .controlSize(.large)
