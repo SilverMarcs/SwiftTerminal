@@ -12,6 +12,7 @@ struct SearchField: View {
                 .foregroundStyle(.secondary)
 
             TextField("Search Contents", text: $text)
+                .font(.subheadline)
                 .textFieldStyle(.plain)
                 .focused($isFocused)
                 .onSubmit(onSubmit)

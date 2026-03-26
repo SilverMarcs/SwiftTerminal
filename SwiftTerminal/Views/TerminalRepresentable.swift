@@ -63,6 +63,10 @@ struct TerminalContainerRepresentable: NSViewRepresentable {
     }
 
     final class Coordinator: NSObject, LocalProcessTerminalViewDelegate {
+        func hostCurrentDirectoryUpdate(source: SwiftTerm.TerminalView, directory: String?) {
+            // SwiftTerm doesn't fire this callback; directory updates are handled via polling
+        }
+        
         /// Maps terminal view identity → (tab ID, weak tab ref) for delegate callbacks
         private var viewMap: [ObjectIdentifier: (id: UUID, tab: TerminalTab)] = [:]
 
@@ -118,6 +122,18 @@ struct TerminalContainerRepresentable: NSViewRepresentable {
                 currentDirectory: startingDirectory
             )
 
+            // Periodically update the stored directory from the live process state
+            Task {
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(5))
+                    guard !Task.isCancelled else { break }
+
+                    if let liveDir = tab.liveCurrentDirectory, liveDir != tab.currentDirectory {
+                        tab.currentDirectory = liveDir
+                    }
+                }
+            }
+
             return tv
         }
 
@@ -126,14 +142,6 @@ struct TerminalContainerRepresentable: NSViewRepresentable {
         func sizeChanged(source: LocalProcessTerminalView, newCols: Int, newRows: Int) {}
 
         func setTerminalTitle(source: LocalProcessTerminalView, title: String) {}
-
-        func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) {
-            guard let localProcessView = source as? LocalProcessTerminalView else { return }
-            let entry = viewMap[ObjectIdentifier(localProcessView)]
-            Task { @MainActor in
-                entry?.tab.currentDirectory = resolvedWorkingDirectoryPath(from: directory)
-            }
-        }
 
         func processTerminated(source: TerminalView, exitCode: Int32?) {}
 

@@ -26,7 +26,7 @@ struct SwiftTerminalApp: App {
                         if let workspace = appState.workspaces.first(where: { $0.id == workspaceID }) {
                             appState.selectedWorkspace = workspace
                             if let tab = workspace.tabs.first(where: { $0.id == tabID }) {
-                                workspace.selectedTab = tab
+                                workspace.selectTab(tab)
                             }
                         }
                     }

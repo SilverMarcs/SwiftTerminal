@@ -8,7 +8,7 @@ struct FileTreeFilterBar: View {
     var body: some View {
         FilterField(text: $searchText) {
             Button(action: onToggleChanged) {
-                Image(systemName: showChangedOnly ? "externaldrive.fill.badge.checkmark" : "externaldrive.badge.checkmark")
+                Image(systemName: showChangedOnly ? "plusminus.circle.fill" : "plusminus.circle")
                     .font(.caption)
                     .foregroundStyle(showChangedOnly ? Color.accentColor : .secondary)
             }

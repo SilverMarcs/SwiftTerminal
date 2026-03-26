@@ -10,7 +10,7 @@ final class TerminalTab {
     var sortOrder: Int = 0
     var workspace: Workspace?
 
-    @Transient var hasBellNotification = false
+    @Attribute(.ephemeral) var hasBellNotification = false
     @Transient var localProcessTerminalView: LocalProcessTerminalView?
 
     init(title: String = "Terminal", currentDirectory: String? = nil, sortOrder: Int = 0) {
@@ -80,6 +80,10 @@ final class TerminalTab {
     func resetFontSize() {
         guard let tv = localProcessTerminalView else { return }
         tv.font = .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+    }
+
+    func clearNotification() {
+        hasBellNotification = false
     }
 
     private func childProcesses() -> [(pid: pid_t, name: String)] {

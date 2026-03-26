@@ -66,7 +66,7 @@ final class Workspace {
         guard ordered.count > 1,
               let current = selectedTab,
               let index = ordered.firstIndex(of: current) else { return }
-        selectedTab = ordered[(index + 1) % ordered.count]
+        selectTab(ordered[(index + 1) % ordered.count])
     }
 
     func selectPreviousTab() {
@@ -74,7 +74,12 @@ final class Workspace {
         guard ordered.count > 1,
               let current = selectedTab,
               let index = ordered.firstIndex(of: current) else { return }
-        selectedTab = ordered[(index - 1 + ordered.count) % ordered.count]
+        selectTab(ordered[(index - 1 + ordered.count) % ordered.count])
+    }
+
+    func selectTab(_ tab: TerminalTab) {
+        selectedTab = tab
+        tab.clearNotification()
     }
 
     var notificationCount: Int {

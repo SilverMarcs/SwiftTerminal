@@ -86,7 +86,7 @@ struct DocumentTabBar: View {
         let isHovered = hoveredTabID == tab.id
 
         Button {
-            workspace.selectedTab = tab
+            workspace.selectTab(tab)
         } label: {
             HStack(spacing: 0) {
                 Color.clear.frame(width: 10, height: 10)
@@ -99,7 +99,7 @@ struct DocumentTabBar: View {
                     .truncationMode(.middle)
                     .frame(maxWidth: .infinity, alignment: .center)
 
-                if !isSelected && tab.hasBellNotification {
+                if tab.hasBellNotification {
                     Circle()
                         .fill(.orange)
                         .frame(width: 6, height: 6)
