@@ -212,6 +212,7 @@ struct HighlightedTextEditor: NSViewRepresentable {
         scrollView.documentView = textView
 
         textView.gutterDiff = gutterDiff
+        textView.fileExtension = fileExtension
         context.coordinator.textView = textView
 
         // Initial content
@@ -269,6 +270,7 @@ struct HighlightedTextEditor: NSViewRepresentable {
 
 final class EditorTextView: NSTextView {
     var gutterDiff: GutterDiffResult = .empty
+    var fileExtension: String = ""
 
     private let lineNumberFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
 
@@ -400,96 +402,206 @@ final class EditorTextView: NSTextView {
     }
 
     private func showDiffPopover(for hunk: GutterDiffHunk, at point: NSPoint) {
+        // Build line data for the popover text view
+        let currentLines = string.components(separatedBy: "\n")
+        var popoverLines: [DiffPopoverLine] = []
+
+        // Removed lines (from old content)
+        if !hunk.oldContent.isEmpty {
+            let oldLines = hunk.oldContent.components(separatedBy: "\n")
+            for (i, line) in oldLines.enumerated() {
+                popoverLines.append(DiffPopoverLine(
+                    content: line,
+                    kind: .removed,
+                    oldLineNumber: hunk.oldStart + i,
+                    newLineNumber: nil
+                ))
+            }
+        }
+
+        // Added/new lines (from current file)
+        if hunk.kind == .added || hunk.kind == .modified, hunk.newCount > 0 {
+            let start = max(hunk.newStart - 1, 0)
+            let end = min(start + hunk.newCount, currentLines.count)
+            for i in start..<end {
+                popoverLines.append(DiffPopoverLine(
+                    content: currentLines[i],
+                    kind: .added,
+                    oldLineNumber: nil,
+                    newLineNumber: i + 1
+                ))
+            }
+        }
+
+        guard !popoverLines.isEmpty else { return }
+
+        // Create the HunkNSTextView-style popover
+        let popoverTextView = DiffPopoverTextView()
+        popoverTextView.configure(lines: popoverLines, fileExtension: fileExtension)
+
+        let lineCount = popoverLines.count
+        let lineHeight: CGFloat = 17
+        let popoverHeight: CGFloat = 250
+        let contentHeight = CGFloat(lineCount) * lineHeight
+
+        let scrollView = NSScrollView()
+        scrollView.documentView = popoverTextView
+        scrollView.hasVerticalScroller = contentHeight > popoverHeight
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .noBorder
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+
+        popoverTextView.frame = NSRect(x: 0, y: 0, width: 420, height: max(contentHeight, popoverHeight))
+        popoverTextView.isVerticallyResizable = false
+
+        let viewController = NSViewController()
+        viewController.view = scrollView
+        viewController.preferredContentSize = NSSize(width: 420, height: popoverHeight)
+
         let popover = NSPopover()
         popover.behavior = .transient
         popover.animates = true
-
-        let viewController = NSViewController()
-        let container = NSView()
-
-        // Title
-        let titleLabel = NSTextField(labelWithString: hunkTitle(for: hunk))
-        titleLabel.font = .systemFont(ofSize: 11, weight: .medium)
-        titleLabel.textColor = .secondaryLabelColor
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-
-        // Diff content
-        let diffScrollView = NSTextView.scrollableTextView()
-        let diffTextView = diffScrollView.documentView as! NSTextView
-        diffTextView.isEditable = false
-        diffTextView.isSelectable = true
-        diffTextView.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
-        diffTextView.backgroundColor = NSColor.textBackgroundColor.withAlphaComponent(0.5)
-        diffTextView.textContainerInset = NSSize(width: 6, height: 4)
-        diffScrollView.translatesAutoresizingMaskIntoConstraints = false
-        diffScrollView.hasVerticalScroller = true
-        diffScrollView.borderType = .noBorder
-
-        diffTextView.textStorage?.setAttributedString(buildDiffAttributedString(for: hunk))
-
-        container.addSubview(titleLabel)
-        container.addSubview(diffScrollView)
-
-        NSLayoutConstraint.activate([
-            titleLabel.topAnchor.constraint(equalTo: container.topAnchor, constant: 8),
-            titleLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 10),
-            titleLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10),
-            diffScrollView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 6),
-            diffScrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            diffScrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            diffScrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-        ])
-
-        viewController.view = container
-        let oldLineCount = hunk.oldContent.isEmpty ? 0 : hunk.oldContent.components(separatedBy: "\n").count
-        let totalLines = max(oldLineCount + hunk.newCount, 1)
-        let height = min(CGFloat(totalLines) * 16 + 44, 300)
-        viewController.preferredContentSize = NSSize(width: 400, height: height)
-
         popover.contentViewController = viewController
 
         let anchorRect = NSRect(x: gutterWidth - 2, y: point.y - 4, width: 4, height: 8)
         popover.show(relativeTo: anchorRect, of: self, preferredEdge: .maxX)
     }
+}
 
-    private func hunkTitle(for hunk: GutterDiffHunk) -> String {
-        switch hunk.kind {
-        case .added:
-            "Added \(hunk.newCount) line\(hunk.newCount == 1 ? "" : "s")"
-        case .modified:
-            "Modified \(hunk.newCount) line\(hunk.newCount == 1 ? "" : "s")"
-        case .deleted:
-            "Deleted \(hunk.oldCount) line\(hunk.oldCount == 1 ? "" : "s")"
+// MARK: - Diff Popover Text View
+
+private struct DiffPopoverLine {
+    let content: String
+    let kind: GitDiffLineKind  // .added or .removed
+    let oldLineNumber: Int?
+    let newLineNumber: Int?
+}
+
+private enum DiffPopoverConstants {
+    static let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+    static let lineHeight: CGFloat = 17
+    static let gutterWidth: CGFloat = 72
+    static let lineNumFont = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular)
+}
+
+/// Draws diff lines with line number gutter and colored backgrounds, like HunkNSTextView.
+private final class DiffPopoverTextView: NSTextView {
+    private var lineData: [(kind: GitDiffLineKind, oldNum: Int?, newNum: Int?)] = []
+
+    func configure(lines: [DiffPopoverLine], fileExtension: String) {
+        let constants = DiffPopoverConstants.self
+
+        appearance = NSApp.effectiveAppearance
+
+        isEditable = false
+        isSelectable = true
+        isRichText = false
+        font = constants.font
+        backgroundColor = .windowBackgroundColor
+        drawsBackground = true
+        textColor = .labelColor
+        textContainerInset = NSSize(width: constants.gutterWidth, height: 0)
+        isVerticallyResizable = false
+        isHorizontallyResizable = false
+        textContainer?.widthTracksTextView = true
+        autoresizingMask = [.width]
+
+        lineData = lines.map { (kind: $0.kind, oldNum: $0.oldLineNumber, newNum: $0.newLineNumber) }
+
+        let source = lines.map(\.content).joined(separator: "\n")
+        let attributed = SyntaxHighlighter.highlight(source, fileExtension: fileExtension)
+        textStorage?.setAttributedString(attributed)
+
+        layoutManager?.ensureLayout(forCharacterRange: NSRange(location: 0, length: (source as NSString).length))
+        needsDisplay = true
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if let window {
+            appearance = window.effectiveAppearance
+            needsDisplay = true
         }
     }
 
-    private func buildDiffAttributedString(for hunk: GutterDiffHunk) -> NSAttributedString {
-        let result = NSMutableAttributedString()
-        let baseFont = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
-        let removedBg = NSColor.systemRed.withAlphaComponent(0.15)
-        let addedBg = NSColor.systemGreen.withAlphaComponent(0.15)
+    override func drawBackground(in rect: NSRect) {
+        super.drawBackground(in: rect)
 
-        if !hunk.oldContent.isEmpty {
-            for line in hunk.oldContent.components(separatedBy: "\n") {
-                result.append(NSAttributedString(
-                    string: "- " + line + "\n",
-                    attributes: [.font: baseFont, .foregroundColor: NSColor.systemRed, .backgroundColor: removedBg]
-                ))
+        guard let layoutManager, let textContainer else { return }
+
+        let constants = DiffPopoverConstants.self
+        let text = string as NSString
+        let containerOrigin = textContainerOrigin
+        let gw = constants.gutterWidth
+
+        // Gutter background
+        NSColor.controlBackgroundColor.withAlphaComponent(0.3).setFill()
+        NSRect(x: 0, y: rect.minY, width: gw, height: rect.height).fill()
+
+        // Gutter separator
+        NSColor.separatorColor.withAlphaComponent(0.15).setStroke()
+        NSBezierPath.strokeLine(
+            from: NSPoint(x: gw - 0.5, y: rect.minY),
+            to: NSPoint(x: gw - 0.5, y: rect.maxY)
+        )
+
+        guard text.length > 0 else { return }
+
+        let fullRange = layoutManager.glyphRange(forBoundingRect: rect, in: textContainer)
+        let charRange = layoutManager.characterRange(forGlyphRange: fullRange, actualGlyphRange: nil)
+
+        let lineNumAttrs: [NSAttributedString.Key: Any] = [
+            .font: constants.lineNumFont,
+            .foregroundColor: NSColor.secondaryLabelColor,
+        ]
+
+        let colWidth: CGFloat = (gw - 8) / 2
+
+        text.enumerateSubstrings(in: charRange, options: [.byLines, .substringNotRequired]) { _, substringRange, enclosingRange, _ in
+            let lineIdx = self.lineIndex(forCharacterIndex: substringRange.location)
+            guard lineIdx < self.lineData.count else { return }
+
+            let glyphRange = layoutManager.glyphRange(forCharacterRange: enclosingRange, actualCharacterRange: nil)
+            var lineRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+            lineRect.origin.y += containerOrigin.y
+
+            // Line background
+            let data = self.lineData[lineIdx]
+            let bgColor: NSColor = data.kind == .added
+                ? .systemGreen.withAlphaComponent(0.12)
+                : .systemRed.withAlphaComponent(0.12)
+            var fullLineRect = lineRect
+            fullLineRect.origin.x = gw
+            fullLineRect.size.width = self.bounds.width - gw
+            bgColor.setFill()
+            fullLineRect.fill()
+
+            let y = lineRect.minY
+
+            // Old line number
+            if let old = data.oldNum {
+                let str = "\(old)" as NSString
+                let size = str.size(withAttributes: lineNumAttrs)
+                str.draw(at: NSPoint(x: colWidth - size.width + 2, y: y), withAttributes: lineNumAttrs)
+            }
+
+            // New line number
+            if let new = data.newNum {
+                let str = "\(new)" as NSString
+                let size = str.size(withAttributes: lineNumAttrs)
+                str.draw(at: NSPoint(x: colWidth + 4 + (colWidth - size.width), y: y), withAttributes: lineNumAttrs)
             }
         }
+    }
 
-        if hunk.kind == .added || hunk.kind == .modified, hunk.newCount > 0 {
-            let currentLines = string.components(separatedBy: "\n")
-            let start = max(hunk.newStart - 1, 0)
-            let end = min(start + hunk.newCount, currentLines.count)
-            for i in start..<end {
-                result.append(NSAttributedString(
-                    string: "+ " + currentLines[i] + "\n",
-                    attributes: [.font: baseFont, .foregroundColor: NSColor.systemGreen, .backgroundColor: addedBg]
-                ))
-            }
+    private func lineIndex(forCharacterIndex index: Int) -> Int {
+        let text = string as NSString
+        var lineIdx = 0
+        var i = 0
+        while i < index && i < text.length {
+            if text.character(at: i) == 0x0A { lineIdx += 1 }
+            i += 1
         }
-
-        return result
+        return lineIdx
     }
 }
