@@ -3,40 +3,24 @@ import SwiftUI
 struct FileTreeView: View {
     let directoryURL: URL
 
-    @State private var items: [FileItem] = []
-    @State private var gitStatuses: [URL: GitChangeKind] = [:]
-    @State private var changedURLs: Set<URL>?
+    @State private var model = FileTreeModel()
     @State private var selectedItem: FileItem?
-    @State private var searchText = ""
-    @State private var showChangedOnly = false
     @State private var expandedIDs: Set<String> = []
     @State private var savedExpandedIDs: Set<String>?
-    @Environment(\.scenePhase) private var scenePhase
-
-    private let gitRepository = GitRepository()
-
-    private var isFiltering: Bool {
-        !searchText.isEmpty || showChangedOnly
-    }
-
-    private var displayItems: [FileItem] {
-        guard isFiltering else { return items }
-
-        return items.compactMap {
-            $0.filtered(searchText: searchText, changedURLs: changedURLs, showChangedOnly: showChangedOnly)
-        }
-    }
 
     var body: some View {
         VStack(spacing: 0) {
-            if displayItems.isEmpty {
+            if model.displayItems.isEmpty {
                 ContentUnavailableView {
-                    Label(isFiltering ? "No Results" : "No Files", systemImage: isFiltering ? "magnifyingglass" : "folder")
+                    Label(
+                        model.isFiltering ? "No Results" : "No Files",
+                        systemImage: model.isFiltering ? "magnifyingglass" : "folder"
+                    )
                 }
                 .frame(maxHeight: .infinity)
             } else {
                 List(selection: $selectedItem) {
-                    ForEach(displayItems) { item in
+                    ForEach(model.displayItems) { item in
                         FileNodeView(item: item, expandedIDs: $expandedIDs)
                             .tag(item)
                     }
@@ -47,28 +31,37 @@ struct FileTreeView: View {
             Divider()
 
             FileTreeFilterBar(
-                searchText: $searchText,
-                showChangedOnly: $showChangedOnly,
+                searchText: $model.searchText,
+                showChangedOnly: $model.showChangedOnly,
                 onToggleChanged: toggleChangedFilter
             )
         }
         .task(id: directoryURL) {
-            await loadTree()
-            await refreshGitStatuses()
+            model.load(directoryURL: directoryURL)
+            await model.refreshGit(directoryURL: directoryURL)
         }
-        .task(id: scenePhase) {
-            if scenePhase == .active { await refreshGitStatuses() }
+        .task(id: directoryURL, priority: .low) {
+            await pollGitStatus()
         }
     }
 
-    private func loadTree() async {
-        var tree = FileItem.buildTree(at: directoryURL)
-        if !gitStatuses.isEmpty {
-            for i in tree.indices {
-                tree[i].applyGitStatuses(gitStatuses)
-            }
+    private func pollGitStatus() async {
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled else { break }
+            await model.refreshGit(directoryURL: directoryURL)
         }
-        items = tree
+    }
+
+    private func toggleChangedFilter() {
+        if !model.showChangedOnly {
+            savedExpandedIDs = expandedIDs
+            expandAllFolders(in: model.displayItems)
+        } else if let saved = savedExpandedIDs {
+            expandedIDs = saved
+            savedExpandedIDs = nil
+        }
+        model.showChangedOnly.toggle()
     }
 
     private func expandAllFolders(in items: [FileItem]) {
@@ -79,34 +72,6 @@ struct FileTreeView: View {
                     expandAllFolders(in: children)
                 }
             }
-        }
-    }
-
-    private func toggleChangedFilter() {
-        if !showChangedOnly {
-            savedExpandedIDs = expandedIDs
-            expandAllFolders(in: displayItems)
-        } else if let saved = savedExpandedIDs {
-            expandedIDs = saved
-            savedExpandedIDs = nil
-        }
-        showChangedOnly.toggle()
-    }
-
-    private func refreshGitStatuses() async {
-        do {
-            let statuses = try await gitRepository.changedFileStatuses(in: directoryURL)
-            let urls = try await gitRepository.changedFileURLs(in: directoryURL)
-            gitStatuses = statuses
-            changedURLs = urls
-
-            var tree = FileItem.buildTree(at: directoryURL)
-            for i in tree.indices {
-                tree[i].applyGitStatuses(statuses)
-            }
-            items = tree
-        } catch {
-            // Git not available
         }
     }
 }
