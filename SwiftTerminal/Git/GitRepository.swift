@@ -1,6 +1,8 @@
 import Foundation
 
 actor GitRepository {
+    static let shared = GitRepository()
+
     private let executor = GitExecutor()
 
     func containsRepository(at directoryURL: URL) async -> Bool {

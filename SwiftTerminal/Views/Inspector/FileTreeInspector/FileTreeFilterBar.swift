@@ -7,28 +7,8 @@ struct FileTreeFilterBar: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-                .font(.caption)
-
-            TextField("Filter", text: $searchText)
-                .textFieldStyle(.plain)
-                .font(.caption)
-
-            if !searchText.isEmpty {
-                Button {
-                    searchText = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                        .font(.caption)
-                }
-                .buttonStyle(.plain)
-            }
-
-            Divider()
-                .frame(height: 14)
-
+            FilterField(text: $searchText)
+            
             Button {
                 onToggleChanged()
             } label: {

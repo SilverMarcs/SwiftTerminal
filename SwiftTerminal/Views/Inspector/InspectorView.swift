@@ -40,9 +40,9 @@ struct InspectorView: View {
         case .files:
             FileTreeView(directoryURL: directoryURL)
         case .git:
-            GitInspectorView()
+            GitInspectorView(directoryURL: directoryURL)
         case .search:
-            SearchInspectorView()
+            SearchInspectorView(directoryURL: directoryURL)
         }
     }
 }

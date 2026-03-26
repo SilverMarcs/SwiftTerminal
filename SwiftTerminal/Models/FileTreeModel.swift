@@ -24,8 +24,6 @@ final class FileTreeModel {
         }
     }
 
-    private let gitRepository = GitRepository()
-
     func load(directoryURL: URL) {
         var tree = FileItem.buildTree(at: directoryURL)
         applyStatuses(to: &tree)
@@ -33,7 +31,7 @@ final class FileTreeModel {
     }
 
     func refreshGit(directoryURL: URL) async {
-        guard let statuses = try? await gitRepository.changedFileStatuses(in: directoryURL)
+        guard let statuses = try? await GitRepository.shared.changedFileStatuses(in: directoryURL)
         else { return }
         gitStatuses = statuses
         var tree = FileItem.buildTree(at: directoryURL)

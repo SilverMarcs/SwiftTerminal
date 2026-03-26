@@ -10,11 +10,7 @@ struct FileItem: Identifiable, Hashable {
     var gitStatus: GitChangeKind?
 
     var icon: NSImage {
-        if isDirectory {
-            return NSWorkspace.shared.icon(for: .folder)
-        }
-        let type = UTType(filenameExtension: url.pathExtension.lowercased()) ?? .data
-        return NSWorkspace.shared.icon(for: type)
+        url.fileIcon
     }
 
     static func == (lhs: FileItem, rhs: FileItem) -> Bool {
@@ -91,12 +87,23 @@ struct FileItem: Identifiable, Hashable {
             }
     }
 
-    private static let ignoredNames: Set<String> = [
+    static let ignoredNames: Set<String> = [
         ".DS_Store", ".git", "node_modules", ".build", "DerivedData",
         "Pods", "__pycache__", ".venv", "venv", ".svn", ".hg",
     ]
 }
 
+
+extension URL {
+    var fileIcon: NSImage {
+        let values = try? resourceValues(forKeys: [.isDirectoryKey])
+        if values?.isDirectory == true {
+            return NSWorkspace.shared.icon(for: .folder)
+        }
+        let type = UTType(filenameExtension: pathExtension.lowercased()) ?? .data
+        return NSWorkspace.shared.icon(for: type)
+    }
+}
 
 extension GitChangeKind {
 
