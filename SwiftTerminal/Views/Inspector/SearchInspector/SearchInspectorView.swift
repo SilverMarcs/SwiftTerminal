@@ -3,9 +3,11 @@ import SwiftUI
 struct SearchInspectorView: View {
     let directoryURL: URL
 
+    @Environment(AppState.self) private var appState
     @State private var model = SearchInspectorModel()
     @State private var expandedIDs: Set<UUID> = []
     @State private var selectedMatch: SearchMatch.ID?
+    @FocusState private var isSearchFocused: Bool
 
     var body: some View {
         List(selection: $selectedMatch) {
@@ -27,8 +29,15 @@ struct SearchInspectorView: View {
                     expandedIDs = Set(model.results.map(\.id))
                 }
             }
+            .focused($isSearchFocused)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
+        }
+        .task(id: appState.searchFocusToken) {
+            guard appState.searchFocusToken != nil else { return }
+            try? await Task.sleep(for: .milliseconds(50))
+            isSearchFocused = true
+            appState.searchFocusToken = nil
         }
     }
     private func matchRow(_ match: SearchMatch) -> some View {

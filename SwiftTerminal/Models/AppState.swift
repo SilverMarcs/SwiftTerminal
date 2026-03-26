@@ -8,6 +8,11 @@ final class AppState {
     var tabToClose: TerminalTab?
     var showCloseConfirmation = false
 
+    // Inspector state
+    var showingInspector = true
+    var selectedInspectorTab: InspectorTab = .files
+    var searchFocusToken: UUID?
+
     let modelContext: ModelContext
 
     init(modelContext: ModelContext) {

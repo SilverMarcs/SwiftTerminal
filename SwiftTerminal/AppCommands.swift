@@ -31,6 +31,35 @@ struct AppCommands: Commands {
             .disabled(appState.selectedWorkspace?.selectedTab?.localProcessTerminalView == nil)
         }
 
+        CommandMenu("Inspector") {
+            Button("Files") {
+                appState.showingInspector = true
+                appState.selectedInspectorTab = .files
+            }
+            .keyboardShortcut("1", modifiers: .command)
+
+            Button("Git") {
+                appState.showingInspector = true
+                appState.selectedInspectorTab = .git
+            }
+            .keyboardShortcut("2", modifiers: .command)
+
+            Button("Search") {
+                appState.showingInspector = true
+                appState.selectedInspectorTab = .search
+            }
+            .keyboardShortcut("3", modifiers: .command)
+
+            Divider()
+
+            Button("Find in Files") {
+                appState.showingInspector = true
+                appState.selectedInspectorTab = .search
+                appState.searchFocusToken = UUID()
+            }
+            .keyboardShortcut("f", modifiers: [.command, .shift])
+        }
+
         CommandMenu("Terminal") {
             Button {
                 guard let terminalView = appState.selectedWorkspace?.selectedTab?.localProcessTerminalView else { return }

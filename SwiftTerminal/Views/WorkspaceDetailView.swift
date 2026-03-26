@@ -2,8 +2,8 @@ import SwiftUI
 
 struct WorkspaceDetailView: View {
     @Bindable var workspace: Workspace
+    @Environment(AppState.self) private var appState
     @FocusState private var isTerminalFocused: Bool
-    @State private var showingInspector = true
     @State private var editorPanel = EditorPanel()
     @AppStorage("editorPanelHeight") private var panelHeight: Double = 250
 
@@ -38,9 +38,9 @@ struct WorkspaceDetailView: View {
                 DocumentTabBar(workspace: workspace)
             }
         }
-        .inspector(isPresented: $showingInspector) {
+        .inspector(isPresented: Bindable(appState).showingInspector) {
             if let directory = workspace.directory {
-                InspectorView(directoryURL: URL(fileURLWithPath: directory), isPresented: $showingInspector)
+                InspectorView(directoryURL: URL(fileURLWithPath: directory))
                     .inspectorColumnWidth(min: 180, ideal: 220, max: 360)
             }
         }

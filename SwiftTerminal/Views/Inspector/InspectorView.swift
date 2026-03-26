@@ -2,16 +2,15 @@ import SwiftUI
 
 struct InspectorView: View {
     let directoryURL: URL
-    @Binding var isPresented: Bool
-    @State private var selectedTab: InspectorTab = .files
+    @Environment(AppState.self) private var appState
 
     var body: some View {
         tabContent
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .toolbar {
-                if isPresented {
+                if appState.showingInspector {
                     ToolbarItem(placement: .primaryAction) {
-                        Picker("Inspector", selection: $selectedTab) {
+                        Picker("Inspector", selection: Bindable(appState).selectedInspectorTab) {
                             ForEach(InspectorTab.allCases) { tab in
                                 Image(systemName: tab.icon)
                                     .help(tab.label)
@@ -21,12 +20,10 @@ struct InspectorView: View {
                         .pickerStyle(.segmented)
                     }
                 }
-                
-//                    ToolbarSpacer(.flexible, placement: .primaryAction)
-                
+
                 ToolbarItem(placement: .primaryAction) {
                     Button {
-                        isPresented.toggle()
+                        appState.showingInspector.toggle()
                     } label: {
                         Image(systemName: "sidebar.trailing")
                     }
@@ -36,7 +33,7 @@ struct InspectorView: View {
 
     @ViewBuilder
     private var tabContent: some View {
-        switch selectedTab {
+        switch appState.selectedInspectorTab {
         case .files:
             FileTreeView(directoryURL: directoryURL)
         case .git:
