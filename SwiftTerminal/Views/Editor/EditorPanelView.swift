@@ -3,17 +3,11 @@ import SwiftUI
 struct EditorPanelView: View {
     let directoryURL: URL
     @Environment(EditorPanel.self) private var panel
-    @Namespace private var panelNamespace
-
     var body: some View {
         VStack(spacing: 0) {
             header
-                .matchedGeometryEffect(id: "panelHeader", in: panelNamespace)
-            if panel.isOpen {
-                Divider()
-                content
-                    .matchedGeometryEffect(id: "panelContent", in: panelNamespace)
-            }
+            Divider()
+            content
         }
     }
 

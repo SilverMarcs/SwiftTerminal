@@ -44,7 +44,7 @@ struct WorkspaceDetailView: View {
                 EditorPanelView(
                     directoryURL: workspace.directory.map { URL(fileURLWithPath: $0) } ?? URL(fileURLWithPath: "/")
                 )
-                .frame(height: editorPanel.isOpen ? panelHeight : nil)
+                .frame(height: editorPanel.isOpen ? panelHeight : 30, alignment: .top)
             }
         }
         .navigationTitle(workspace.name)
@@ -56,6 +56,15 @@ struct WorkspaceDetailView: View {
         .safeAreaBar(edge: .top, spacing: 0) {
             if workspace.tabs.count > 1 {
                 DocumentTabBar(workspace: workspace)
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    appState.showingInspector.toggle()
+                } label: {
+                    Image(systemName: "sidebar.trailing")
+                }
             }
         }
         .inspector(isPresented: Bindable(appState).showingInspector) {
