@@ -58,15 +58,6 @@ struct WorkspaceDetailView: View {
                 DocumentTabBar(workspace: workspace)
             }
         }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    appState.showingInspector.toggle()
-                } label: {
-                    Image(systemName: "sidebar.trailing")
-                }
-            }
-        }
         .inspector(isPresented: Bindable(appState).showingInspector) {
             if let directory = workspace.directory {
                 InspectorView(directoryURL: URL(fileURLWithPath: directory))
