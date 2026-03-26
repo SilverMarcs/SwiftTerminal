@@ -439,7 +439,7 @@ final class EditorTextView: NSTextView {
 
         // Create the HunkNSTextView-style popover
         let popoverWidth: CGFloat = 560
-        let popoverHeight: CGFloat = 250
+        let maxPopoverHeight: CGFloat = 250
 
         let popoverTextView = DiffPopoverTextView()
         popoverTextView.configure(lines: popoverLines, fileExtension: fileExtension, width: popoverWidth)
@@ -449,10 +449,13 @@ final class EditorTextView: NSTextView {
         if let lm = popoverTextView.layoutManager, let tc = popoverTextView.textContainer {
             lm.ensureLayout(for: tc)
             let usedRect = lm.usedRect(for: tc)
-            contentHeight = usedRect.height + popoverTextView.textContainerInset.height * 2
+            contentHeight = usedRect.height + DiffPopoverConstants.verticalPadding * 2
         } else {
-            contentHeight = CGFloat(popoverLines.count) * 17
+            contentHeight = CGFloat(popoverLines.count) * 17 + DiffPopoverConstants.verticalPadding * 2
         }
+
+        // Fit content but cap at max height
+        let popoverHeight = min(contentHeight, maxPopoverHeight)
 
         let scrollView = NSScrollView()
         scrollView.documentView = popoverTextView
@@ -462,7 +465,7 @@ final class EditorTextView: NSTextView {
         scrollView.borderType = .noBorder
         scrollView.translatesAutoresizingMaskIntoConstraints = false
 
-        popoverTextView.frame = NSRect(x: 0, y: 0, width: popoverWidth, height: max(contentHeight, popoverHeight))
+        popoverTextView.frame = NSRect(x: 0, y: 0, width: popoverWidth, height: contentHeight)
         popoverTextView.isVerticallyResizable = false
 
         let viewController = NSViewController()
@@ -491,8 +494,9 @@ private struct DiffPopoverLine {
 private enum DiffPopoverConstants {
     static let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
     static let lineHeight: CGFloat = 17
-    static let gutterWidth: CGFloat = 72
+    static let gutterWidth: CGFloat = 48
     static let lineNumFont = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular)
+    static let verticalPadding: CGFloat = 4
 }
 
 /// Draws diff lines with line number gutter and colored backgrounds, like HunkNSTextView.
@@ -511,7 +515,7 @@ private final class DiffPopoverTextView: NSTextView {
         backgroundColor = .windowBackgroundColor
         drawsBackground = true
         textColor = .labelColor
-        textContainerInset = NSSize(width: constants.gutterWidth, height: 0)
+        textContainerInset = NSSize(width: constants.gutterWidth, height: constants.verticalPadding)
 
         // No line wrapping — horizontal scroll if needed
         isVerticallyResizable = true
@@ -571,7 +575,7 @@ private final class DiffPopoverTextView: NSTextView {
             .foregroundColor: NSColor.secondaryLabelColor,
         ]
 
-        let colWidth: CGFloat = (gw - 8) / 2
+        let colWidth: CGFloat = (gw - 6) / 2  // tight two-column layout
 
         text.enumerateSubstrings(in: charRange, options: [.byLines, .substringNotRequired]) { _, substringRange, enclosingRange, _ in
             let lineIdx = self.lineIndex(forCharacterIndex: substringRange.location)
@@ -594,18 +598,18 @@ private final class DiffPopoverTextView: NSTextView {
 
             let y = lineRect.minY
 
-            // Old line number
+            // Old line number (right-aligned in left column)
             if let old = data.oldNum {
                 let str = "\(old)" as NSString
                 let size = str.size(withAttributes: lineNumAttrs)
-                str.draw(at: NSPoint(x: colWidth - size.width + 2, y: y), withAttributes: lineNumAttrs)
+                str.draw(at: NSPoint(x: colWidth - size.width, y: y), withAttributes: lineNumAttrs)
             }
 
-            // New line number
+            // New line number (right-aligned in right column)
             if let new = data.newNum {
                 let str = "\(new)" as NSString
                 let size = str.size(withAttributes: lineNumAttrs)
-                str.draw(at: NSPoint(x: colWidth + 4 + (colWidth - size.width), y: y), withAttributes: lineNumAttrs)
+                str.draw(at: NSPoint(x: colWidth + 2 + (colWidth - size.width), y: y), withAttributes: lineNumAttrs)
             }
         }
     }
