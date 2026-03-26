@@ -22,15 +22,6 @@ struct WorkspaceDetailView: View {
         .task(id: workspace.selectedTab?.id) {
             focusTerminal()
         }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showingInspector.toggle()
-                } label: {
-                    Image(systemName: "sidebar.trailing")
-                }
-            }
-        }
         .safeAreaBar(edge: .top, spacing: 0) {
             if workspace.tabs.count > 1 {
                 DocumentTabBar(workspace: workspace)
@@ -38,7 +29,7 @@ struct WorkspaceDetailView: View {
         }
         .inspector(isPresented: $showingInspector) {
             if let directory = workspace.directory {
-                FileTreeView(directoryURL: URL(fileURLWithPath: directory))
+                InspectorView(directoryURL: URL(fileURLWithPath: directory), isPresented: $showingInspector)
                     .inspectorColumnWidth(min: 180, ideal: 220, max: 360)
             }
         }
