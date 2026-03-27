@@ -33,7 +33,7 @@ struct SearchInspectorView: View {
                 }
             }
             .focused($isSearchFocused)
-            .padding(.horizontal, 8)
+            .padding(.horizontal, 10)
             .padding(.vertical, 3)
             .padding(.top, 6)
         }

@@ -50,7 +50,7 @@ struct InspectorView: View {
                     )
                     .frame(maxWidth: .infinity)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal, 10)
                 }
         }
     }
