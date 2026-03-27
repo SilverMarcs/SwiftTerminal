@@ -38,11 +38,18 @@ actor GitRepository {
                 unstagedFiles.append(GitChangedFile(fileURL: fileURL, repositoryRelativePath: entry.path, kind: unstagedKind))
             }
 
+            let unpushedCommits = await self.fetchUnpushedCommits(at: repositoryRootURL)
+            let remoteAheadCount = (try? await self.executor.execute(GitRemoteAheadCountCommand(), at: repositoryRootURL)) ?? 0
+            let localBranches = (try? await self.executor.execute(GitLocalBranchesCommand(), at: repositoryRootURL)) ?? []
+
             snapshots.append(GitRepositoryStatusSnapshot(
                 repositoryRootURL: repositoryRootURL,
                 branchName: branchName,
+                localBranches: localBranches,
                 stagedFiles: stagedFiles,
-                unstagedFiles: unstagedFiles
+                unstagedFiles: unstagedFiles,
+                unpushedCommits: unpushedCommits,
+                remoteAheadCount: remoteAheadCount
             ))
         }
 
@@ -177,7 +184,66 @@ actor GitRepository {
         _ = try await self.executor.execute(GitCommitCommand(message: message), at: repositoryRootURL)
     }
 
+    func push(at repositoryRootURL: URL) async throws {
+        try await self.executor.execute(GitPushCommand(), at: repositoryRootURL)
+    }
+
+    func pull(at repositoryRootURL: URL) async throws {
+        try await self.executor.execute(GitPullCommand(), at: repositoryRootURL)
+    }
+
+    func fetch(at repositoryRootURL: URL) async throws {
+        try await self.executor.execute(GitFetchCommand(), at: repositoryRootURL)
+    }
+
+    func switchBranch(to branch: String, at repositoryRootURL: URL) async throws {
+        try await self.executor.execute(GitSwitchCommand(branch: branch), at: repositoryRootURL)
+    }
+
+    func createBranch(named name: String, at repositoryRootURL: URL) async throws {
+        try await self.executor.execute(GitCreateBranchCommand(name: name), at: repositoryRootURL)
+    }
+
+    func stashAll(at repositoryRootURL: URL) async throws {
+        try await self.executor.execute(GitStashCommand(), at: repositoryRootURL)
+    }
+
     // MARK: - Private
+
+    private func fetchUnpushedCommits(at repositoryRootURL: URL) async -> [GitUnpushedCommit] {
+        guard let commitEntries = try? await self.executor.execute(
+            GitUnpushedCommitListCommand(), at: repositoryRootURL
+        ) else { return [] }
+
+        var commits: [GitUnpushedCommit] = []
+        for entry in commitEntries {
+            let fileEntries = (try? await self.executor.execute(
+                GitCommitFilesCommand(hash: entry.hash), at: repositoryRootURL
+            )) ?? []
+
+            let files: [GitChangedFile] = fileEntries.compactMap { fileEntry in
+                guard let kind = Self.changeKindFromDiffTreeStatus(fileEntry.status) else { return nil }
+                let fileURL = repositoryRootURL.appending(path: fileEntry.path).standardizedFileURL
+                return GitChangedFile(fileURL: fileURL, repositoryRelativePath: fileEntry.path, kind: kind)
+            }
+
+            commits.append(GitUnpushedCommit(hash: entry.hash, message: entry.message, files: files))
+        }
+
+        return commits
+    }
+
+    private nonisolated static func changeKindFromDiffTreeStatus(_ status: Character) -> GitChangeKind? {
+        switch status {
+            case "A": .added
+            case "M": .modified
+            case "D": .deleted
+            case "R": .renamed
+            case "C": .copied
+            case "T": .typeChanged
+            default: nil
+        }
+    }
 
     private func repositoryRoots(in directoryURL: URL) async -> [URL] {
         let directoryURL = directoryURL.standardizedFileURL.resolvingSymlinksInPath()
@@ -276,8 +342,22 @@ private struct GitRepositoryRootCommand: GitCommand {
 struct GitRepositoryStatusSnapshot: Equatable {
     var repositoryRootURL: URL
     var branchName: String?
+    var localBranches: [String]
     var stagedFiles: [GitChangedFile]
     var unstagedFiles: [GitChangedFile]
+    var unpushedCommits: [GitUnpushedCommit]
+    var remoteAheadCount: Int
+
+    var isDirty: Bool {
+        !stagedFiles.isEmpty || !unstagedFiles.isEmpty
+    }
+}
+
+struct GitUnpushedCommit: Equatable, Identifiable {
+    var id: String { hash }
+    var hash: String
+    var message: String
+    var files: [GitChangedFile]
 }
 
 struct GitChangedFile: Equatable, Hashable {
@@ -441,6 +521,95 @@ struct GitCommitCommand: GitCommand {
     let message: String
     var arguments: [String] { ["commit", "-m", message] }
     func parse(output: String) throws -> String { output }
+}
+
+struct GitPushCommand: GitCommand {
+    var arguments: [String] { ["push"] }
+    func parse(output: String) throws { }
+}
+
+struct GitPullCommand: GitCommand {
+    var arguments: [String] { ["pull"] }
+    func parse(output: String) throws { }
+}
+
+struct GitFetchCommand: GitCommand {
+    var arguments: [String] { ["fetch", "--all"] }
+    func parse(output: String) throws { }
+}
+
+private struct GitLocalBranchesCommand: GitCommand {
+    var arguments: [String] {
+        ["branch", "--format=%(refname:short)"]
+    }
+
+    func parse(output: String) throws -> [String] {
+        output.split(separator: "\n", omittingEmptySubsequences: true)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
+}
+
+private struct GitSwitchCommand: GitCommand {
+    let branch: String
+    var arguments: [String] { ["switch", branch] }
+    func parse(output: String) throws { }
+}
+
+private struct GitCreateBranchCommand: GitCommand {
+    let name: String
+    var arguments: [String] { ["switch", "-c", name] }
+    func parse(output: String) throws { }
+}
+
+private struct GitStashCommand: GitCommand {
+    var arguments: [String] { ["stash", "--include-untracked"] }
+    func parse(output: String) throws { }
+}
+
+private struct GitRemoteAheadCountCommand: GitCommand {
+    var arguments: [String] {
+        ["rev-list", "HEAD..@{u}", "--count"]
+    }
+
+    func parse(output: String) throws -> Int {
+        Int(output.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+    }
+}
+
+private struct GitUnpushedCommitListCommand: GitCommand {
+    var arguments: [String] {
+        ["log", "@{u}..HEAD", "--pretty=format:%H%x00%s"]
+    }
+
+    func parse(output: String) throws -> [(hash: String, message: String)] {
+        let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        return trimmed.split(separator: "\n", omittingEmptySubsequences: true).compactMap { line in
+            let parts = line.split(separator: "\0", maxSplits: 1)
+            guard parts.count == 2 else { return nil }
+            return (hash: String(parts[0]), message: String(parts[1]))
+        }
+    }
+}
+
+private struct GitCommitFilesCommand: GitCommand {
+    let hash: String
+
+    var arguments: [String] {
+        ["diff-tree", "--no-commit-id", "-r", "--name-status", hash]
+    }
+
+    func parse(output: String) throws -> [(status: Character, path: String)] {
+        let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        return trimmed.split(separator: "\n", omittingEmptySubsequences: true).compactMap { line in
+            let parts = line.split(separator: "\t")
+            guard parts.count >= 2, let status = parts[0].first else { return nil }
+            let path = String(parts.last!)
+            return (status: status, path: path)
+        }
+    }
 }
 
 // MARK: - Status Parser

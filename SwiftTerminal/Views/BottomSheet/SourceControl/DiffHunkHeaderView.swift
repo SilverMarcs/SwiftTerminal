@@ -14,7 +14,8 @@ struct DiffHunkHeaderView: View {
 
             Spacer()
 
-            if reference.stage == .unstaged {
+            switch reference.stage {
+            case .unstaged:
                 Button("Discard", role: .destructive) {
                     Task { await applyHunk(reverse: true, cached: false) }
                 }
@@ -24,11 +25,13 @@ struct DiffHunkHeaderView: View {
                     Task { await applyHunk(reverse: false, cached: true) }
                 }
                 .controlSize(.small)
-            } else {
+            case .staged:
                 Button("Unstage") {
                     Task { await applyHunk(reverse: true, cached: true) }
                 }
                 .controlSize(.small)
+            case .commit:
+                EmptyView()
             }
         }
         .padding(.horizontal, 8)

@@ -82,7 +82,7 @@ struct BottomSheetView: View {
                 .font(.subheadline.weight(.medium))
                 .lineLimit(1)
                 .truncationMode(.middle)
-            GitStatusBadge(kind: ref.kind, staged: ref.stage == .staged)
+            GitStatusBadge(kind: ref.kind, staged: ref.stage != .unstaged)
         case .none:
             EmptyView()
         }

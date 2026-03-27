@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 // MARK: - Action Enum
@@ -11,6 +12,7 @@ enum GitAction {
     case discardAll(GitRepositoryStatusSnapshot)
     case commit
     case openFile(URL)
+    case push(GitRepositoryStatusSnapshot)
 }
 
 // MARK: - Context Menus
@@ -41,6 +43,27 @@ struct GitRepoContextMenu: View {
             Label("Commit...", systemImage: "checkmark.circle")
         }
         .disabled(snapshot.stagedFiles.isEmpty)
+    }
+}
+
+struct GitCommitContextMenu: View {
+    let commit: GitUnpushedCommit
+    let snapshot: GitRepositoryStatusSnapshot
+    let onAction: (GitAction) -> Void
+
+    var body: some View {
+        Button {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(commit.hash, forType: .string)
+        } label: {
+            Label("Copy Commit Hash", systemImage: "doc.on.doc")
+        }
+
+        Divider()
+
+        Button { onAction(.push(snapshot)) } label: {
+            Label("Push to Remote", systemImage: "arrow.up")
+        }
     }
 }
 

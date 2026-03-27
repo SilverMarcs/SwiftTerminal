@@ -4,11 +4,13 @@ import Foundation
 enum GitDiffStage: Hashable {
     case staged
     case unstaged
+    case commit(hash: String)
 
     var displayName: String {
         switch self {
             case .staged: "Staged Changes"
             case .unstaged: "Changes"
+            case .commit(let hash): "Commit \(String(hash.prefix(7)))"
         }
     }
 }
@@ -408,12 +410,14 @@ struct GitDiffCommand: GitCommand {
     let reference: GitDiffReference
 
     var arguments: [String] {
-        var arguments = ["diff", "--no-color", "--no-ext-diff"]
-        if reference.stage == .staged {
-            arguments.append("--cached")
+        switch reference.stage {
+            case .staged:
+                ["diff", "--no-color", "--no-ext-diff", "--cached", "--", reference.repositoryRelativePath]
+            case .unstaged:
+                ["diff", "--no-color", "--no-ext-diff", "--", reference.repositoryRelativePath]
+            case .commit(let hash):
+                ["show", "--format=", "--no-color", "--no-ext-diff", hash, "--", reference.repositoryRelativePath]
         }
-        arguments += ["--", reference.repositoryRelativePath]
-        return arguments
     }
 
     func parse(output: String) throws -> String { output }

@@ -61,4 +61,29 @@ final class GitInspectorModel {
     func commit(message: String, snapshot: GitRepositoryStatusSnapshot) async {
         try? await GitRepository.shared.commit(message: message, at: snapshot.repositoryRootURL)
     }
+
+    func push(snapshot: GitRepositoryStatusSnapshot) async {
+        try? await GitRepository.shared.push(at: snapshot.repositoryRootURL)
+    }
+
+    func pull(snapshot: GitRepositoryStatusSnapshot) async {
+        try? await GitRepository.shared.pull(at: snapshot.repositoryRootURL)
+    }
+
+    func fetch(snapshot: GitRepositoryStatusSnapshot) async {
+        try? await GitRepository.shared.fetch(at: snapshot.repositoryRootURL)
+    }
+
+    func switchBranch(to branch: String, snapshot: GitRepositoryStatusSnapshot) async {
+        try? await GitRepository.shared.switchBranch(to: branch, at: snapshot.repositoryRootURL)
+    }
+
+    func createBranch(named name: String, snapshot: GitRepositoryStatusSnapshot) async {
+        try? await GitRepository.shared.createBranch(named: name, at: snapshot.repositoryRootURL)
+    }
+
+    func stashAndSwitch(to branch: String, snapshot: GitRepositoryStatusSnapshot) async {
+        try? await GitRepository.shared.stashAll(at: snapshot.repositoryRootURL)
+        try? await GitRepository.shared.switchBranch(to: branch, at: snapshot.repositoryRootURL)
+    }
 }
