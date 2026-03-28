@@ -4,7 +4,6 @@ import SwiftData
 struct WorkspaceRow: View {
     @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Workspace.sortOrder) private var workspaces: [Workspace]
 
     let workspace: Workspace
 
@@ -30,7 +29,7 @@ struct WorkspaceRow: View {
         .contextMenu {
             Button {
                 let session = workspace.newSession()
-                appState.sidebarSelection = .session(workspaceID: workspace.id, sessionID: session.id)
+                appState.selectedSession = session
             } label: {
                 Label("New Session", systemImage: "plus.bubble")
             }
@@ -38,20 +37,14 @@ struct WorkspaceRow: View {
             RenameButton()
             Divider()
             Button(role: .destructive) {
-                removeWorkspace()
+                modelContext.delete(workspace)
+                appState.selectedSession = nil
             } label: {
                 Label("Delete", systemImage: "trash")
             }
         }
         .renameAction {
             isRenaming = true
-        }
-    }
-
-    private func removeWorkspace() {
-        modelContext.delete(workspace)
-        if appState.sidebarSelection?.workspaceID == workspace.id {
-            appState.sidebarSelection = workspaces.first(where: { $0.id != workspace.id }).map { .workspace($0.id) }
         }
     }
 }

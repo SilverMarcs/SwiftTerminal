@@ -23,7 +23,7 @@ final class ClaudeService {
 
     let workspace: Workspace
     let claudeSession: ClaudeSession?
-    var workingDirectory: String { workspace.directory ?? NSHomeDirectory() }
+    var workingDirectory: String { workspace.directory }
     private var process: ClaudeProcess?
     private var readerTask: Task<Void, Never>?
     private var bridgeReady = false

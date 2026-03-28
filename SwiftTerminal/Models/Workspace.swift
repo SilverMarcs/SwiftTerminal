@@ -5,8 +5,12 @@ import SwiftData
 final class Workspace {
     var id = UUID()
     var name: String = ""
-    var directory: String?
     var sortOrder: Int = 0
+    
+    var directory: String = ""
+    var url: URL {
+        URL(fileURLWithPath: directory)
+    }
 
     @Relationship(deleteRule: .cascade)
     var unsortedSessions: [ClaudeSession] = []
@@ -14,7 +18,7 @@ final class Workspace {
         unsortedSessions.sorted { $0.createdAt < $1.createdAt }
     }
 
-    init(name: String, directory: String? = nil, sortOrder: Int = 0) {
+    init(name: String, directory: String, sortOrder: Int = 0) {
         self.name = name
         self.directory = directory
         self.sortOrder = sortOrder

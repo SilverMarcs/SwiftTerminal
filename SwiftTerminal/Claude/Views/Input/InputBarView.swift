@@ -44,7 +44,7 @@ struct InputBarView: View {
                 .disabled(!service.isStreaming && trimmedInput.isEmpty)
                 .offset(y: -2)
             }
-            .padding(12)
+            .padding(10)
         }
         .task { isFocused = true }
     }

@@ -9,44 +9,44 @@ struct InspectorView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            tabContent
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .onGeometryChange(for: CGFloat.self) { proxy in
-                    proxy.size.width
-                } action: { width in
-                    appState.inspectorWidth = width
-                }
-                .toolbar {
+        tabContent
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.size.width
+            } action: { width in
+                appState.inspectorWidth = width
+            }
+            .toolbar {
+                if appState.showingInspector {
                     ToolbarItem(placement: .automatic) {
                         Color.clear
                             .frame(width: spacerWidth, height: 0)
                     }
                     .sharedBackgroundVisibility(.hidden)
+                }
 
-                    ToolbarItem(placement: .primaryAction) {
-                        Button {
-                            appState.showingInspector.toggle()
-                        } label: {
-                            Image(systemName: "sidebar.trailing")
-                        }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        appState.showingInspector.toggle()
+                    } label: {
+                        Image(systemName: "sidebar.trailing")
                     }
                 }
-                .safeAreaBar(edge: .top) {
-                    Picker("Inspector", selection: Bindable(appState).selectedInspectorTab) {
-                        ForEach(InspectorTab.allCases) { tab in
-                            Image(systemName: tab.icon)
-                                .help(tab.label)
-                                .tag(tab)
-                        }
+            }
+            .safeAreaBar(edge: .top) {
+                Picker("Inspector", selection: Bindable(appState).selectedInspectorTab) {
+                    ForEach(InspectorTab.allCases) { tab in
+                        Image(systemName: tab.icon)
+                            .help(tab.label)
+                            .tag(tab)
                     }
-                    .pickerStyle(.segmented)
-                    .controlSize(.large)
-                    .buttonSizing(.flexible)
-                    .labelsHidden()
-                    .padding(.horizontal, 10)
                 }
-        }
+                .pickerStyle(.segmented)
+                .controlSize(.large)
+                .buttonSizing(.flexible)
+                .labelsHidden()
+                .padding(.horizontal, 10)
+            }
     }
 
     @ViewBuilder

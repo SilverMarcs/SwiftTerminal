@@ -6,38 +6,32 @@ struct BottomSheetView: View {
     @AppStorage("editorPanelHeight") private var panelHeight: Double = 250
 
     var body: some View {
-        VStack(spacing: 0) {
-            dragHandle
-            header
-            Rectangle()
-                .fill(Color(nsColor: .gridColor))
-                .frame(height: 1)
-            content
+        if panel.isOpen {
+            VStack(spacing: 0) {
+                dragBorder
+                header
+                Rectangle()
+                    .fill(Color(nsColor: .gridColor))
+                    .frame(height: 1)
+                content
+            }
+            .frame(height: panelHeight, alignment: .top)
         }
-        .frame(height: panel.isOpen ? panelHeight : 30, alignment: .top)
     }
 
-    // MARK: - Drag Handle
+    // MARK: - Drag Border
 
-    private var dragHandle: some View {
+    private var dragBorder: some View {
         Rectangle()
             .fill(Color(nsColor: .gridColor))
             .frame(height: 1)
             .overlay {
-                if panel.isOpen {
-                    Rectangle()
-                        .fill(.clear)
-                        .frame(height: 20)
-                        .contentShape(Rectangle())
-                        .cursor(.resizeUpDown)
-                        .gesture(
-                            DragGesture(minimumDistance: 1)
-                                .onChanged { value in
-                                    let delta = -value.translation.height
-                                    panelHeight = max(100, panelHeight + delta)
-                                }
-                        )
-                }
+                Rectangle()
+                    .fill(.clear)
+                    .frame(height: 8)
+                    .contentShape(Rectangle())
+                    .cursor(.resizeUpDown)
+                    .gesture(resizeGesture)
             }
     }
 
@@ -83,6 +77,16 @@ struct BottomSheetView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
         .background(.background.secondary)
+        .cursor(.resizeUpDown)
+        .gesture(resizeGesture)
+    }
+
+    private var resizeGesture: some Gesture {
+        DragGesture(minimumDistance: 1)
+            .onChanged { value in
+                let delta = -value.translation.height
+                panelHeight = max(100, panelHeight + delta)
+            }
     }
 
     @ViewBuilder
