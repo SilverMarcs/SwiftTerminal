@@ -21,9 +21,7 @@ enum SidebarSelection: Hashable {
 final class AppState {
     var workspaces: [Workspace] = []
     var sidebarSelection: SidebarSelection?
-    var tabToClose: TerminalTab?
-    var showCloseConfirmation = false
-
+    
     // Inspector state
     var showingInspector = true
     var selectedInspectorTab: InspectorTab = .files
@@ -59,7 +57,7 @@ final class AppState {
               let workspace = workspaces.first(where: { $0.id == workspaceID }) else {
             return nil
         }
-        return workspace.claudeSessions.first { $0.id == sessionID }
+        return workspace.unsortedSessions.first { $0.id == sessionID }
     }
 
     // MARK: - Workspace Management
@@ -69,14 +67,12 @@ final class AppState {
         let resolvedName = name ?? directory.flatMap { URL(fileURLWithPath: $0).lastPathComponent } ?? "Workspace \(workspaces.count + 1)"
         let workspace = Workspace(name: resolvedName, directory: directory, sortOrder: workspaces.count)
         modelContext.insert(workspace)
-        workspace.addTab(currentDirectory: directory)
         workspaces.append(workspace)
         sidebarSelection = .workspace(workspace.id)
         return workspace
     }
 
     func removeWorkspace(_ workspace: Workspace) {
-        workspace.terminateAll()
         workspaces.removeAll { $0.id == workspace.id }
         modelContext.delete(workspace)
         if sidebarSelection?.workspaceID == workspace.id {

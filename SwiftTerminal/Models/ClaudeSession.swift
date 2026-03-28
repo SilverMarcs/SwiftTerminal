@@ -7,7 +7,7 @@ final class ClaudeSession {
     var sdkSessionID: String?
     var createdAt: Date = Date()
 
-    @Relationship(inverse: \Workspace.claudeSessions)
+    @Relationship(inverse: \Workspace.unsortedSessions)
     var workspace: Workspace?
 
     @Transient var service: ClaudeService?

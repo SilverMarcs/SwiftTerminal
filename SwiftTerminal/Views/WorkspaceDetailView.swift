@@ -7,7 +7,8 @@ struct WorkspaceDetailView: View {
 
     var body: some View {
         Group {
-            if let service = workspace.activeSession {
+            if let session = appState.selectedClaudeSession {
+                let service = session.resolveService()
                 ClaudeChatView(service: service)
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         if editorPanel.content != nil {
@@ -41,16 +42,6 @@ struct WorkspaceDetailView: View {
         .onChange(of: appState.panelToggleToken) {
             withAnimation(.easeInOut(duration: 0.2)) {
                 editorPanel.toggle()
-            }
-        }
-        .onChange(of: appState.sidebarSelection) { _, selection in
-            switch selection {
-            case .session(_, let sessionID):
-                workspace.selectedSessionID = sessionID
-            case .workspace:
-                workspace.selectedSessionID = nil
-            case nil:
-                break
             }
         }
     }

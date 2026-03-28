@@ -10,7 +10,6 @@ struct SidebarItem: Identifiable, Hashable {
 
 struct WorkspaceList: View {
     @Environment(AppState.self) private var appState
-    @State private var renamingWorkspace: Workspace?
     @State private var searchText = ""
 
     private var filteredWorkspaces: [Workspace] {
@@ -22,7 +21,7 @@ struct WorkspaceList: View {
 
     private var sidebarItems: [SidebarItem] {
         filteredWorkspaces.map { workspace in
-            let sessionChildren = workspace.sortedSessions.map { cs in
+            let sessionChildren = workspace.sessions.map { cs in
                 let label = if let sid = cs.sdkSessionID {
                     String(sid.prefix(8))
                 } else {
@@ -68,19 +67,15 @@ struct WorkspaceList: View {
         switch item.id {
         case .workspace(let id):
             if let workspace = appState.workspaces.first(where: { $0.id == id }) {
-                WorkspaceRow(
-                    workspace: workspace,
-                    renamingWorkspace: $renamingWorkspace
-                )
+                WorkspaceRow(workspace: workspace)
             }
         case .session(let workspaceID, let sessionID):
             if let workspace = appState.workspaces.first(where: { $0.id == workspaceID }),
-               let cs = workspace.claudeSessions.first(where: { $0.id == sessionID }) {
+               let cs = workspace.unsortedSessions.first(where: { $0.id == sessionID }) {
                 Label(
                     cs.sdkSessionID.map { String($0.prefix(8)) } ?? "New Session",
                     systemImage: "bubble.left"
                 )
-                .font(.subheadline)
                 .contextMenu {
                     Button(role: .destructive) {
                         workspace.removeSession(cs)

@@ -88,12 +88,7 @@ struct TerminalContainerRepresentable: NSViewRepresentable {
                     if !isVisible {
                         tab.hasBellNotification = true
                     }
-                    AppDelegate.bounceDockIcon()
-                    AppDelegate.updateBadge(count: 1)
-                    AppDelegate.sendNotification(
-                        workspaceID: tab.workspace?.id ?? UUID(),
-                        tabID: tab.id
-                    )
+                    NSApplication.shared.requestUserAttention(.criticalRequest)
                 }
             }
             

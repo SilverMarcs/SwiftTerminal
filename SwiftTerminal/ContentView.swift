@@ -21,18 +21,5 @@ struct ContentView: View {
                 )
             }
         }
-        .alert("Close Tab?", isPresented: $appState.showCloseConfirmation) {
-            Button("Cancel", role: .cancel) {
-                appState.tabToClose = nil
-            }
-            Button("Close", role: .confirm) {
-                if let tab = appState.tabToClose {
-                    appState.selectedWorkspace?.closeTab(tab)
-                }
-                appState.tabToClose = nil
-            }
-        } message: {
-            Text("This tab has an active process. Are you sure you want to close it?")
-        }
     }
 }
