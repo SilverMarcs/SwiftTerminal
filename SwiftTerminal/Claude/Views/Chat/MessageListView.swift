@@ -112,7 +112,11 @@ struct AssistantTurnView: View {
                 ForEach(groupedContent) { group in
                     switch group {
                     case .text(let info):
-                        MarkdownTextView(text: info.content)
+                        MacMarkdownRepresentable(
+                            text: info.content,
+                            fontSize: 13,
+                            isStreaming: isStreaming
+                        )
 
                     case .toolGroup(let tools):
                         ToolGroupView(

@@ -46,8 +46,6 @@ struct ToolbarContentView: ToolbarContent {
             ToolbarItem(placement: .primaryAction) {
                 permissionMenu
             }
-
-            ToolbarSpacer(.fixed)
         }
     }
 

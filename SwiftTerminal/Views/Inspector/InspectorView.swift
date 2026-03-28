@@ -5,7 +5,7 @@ struct InspectorView: View {
     @Environment(AppState.self) private var appState
 
     private var spacerWidth: CGFloat {
-        max(appState.inspectorWidth - 40, 0)
+        max(appState.inspectorWidth - 50, 0)
     }
 
     var body: some View {
@@ -18,30 +18,6 @@ struct InspectorView: View {
                     appState.inspectorWidth = width
                 }
                 .toolbar {
-                    //                if appState.showingInspector {
-                    //                    ToolbarItem(placement: .primaryAction) {
-                    //                        Picker("Inspector", selection: Bindable(appState).selectedInspectorTab) {
-                    //                            ForEach(InspectorTab.allCases) { tab in
-                    //                                Image(systemName: tab.icon)
-                    //                                    .help(tab.label)
-                    //                                    .tag(tab)
-                    //                            }
-                    //                        }
-                    //                        .pickerStyle(.segmented)
-                    //                    }
-                    //                }
-                    
-//                    if appState.showingInspector {
-//                        ToolbarItem(placement: .destructiveAction) {
-//                            Button {
-//                                changeWorkspaceDirectory()
-//                            } label: {
-//                                Image(systemName: "folder.badge.plus")
-//                            }
-//                            .help("Change Workspace Directory")
-//                        }
-//                    }
-                    
                     ToolbarItem(placement: .automatic) {
                         Color.clear
                             .frame(width: spacerWidth, height: 0)
