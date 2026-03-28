@@ -6,14 +6,8 @@ struct ClaudeChatView: View {
 
     var body: some View {
         List {
-            if service.messages.isEmpty {
-                EmptyStateView(onContinue: service.session.sessionID == nil ? {
-                    service.continueLastSession()
-                } : nil)
-            } else {
-                MessageListView(service: service)
-            }
-
+            MessageListView(service: service)
+            
             if let approval = service.pendingApproval {
                 ApprovalPanelView(
                     approval: approval,
@@ -32,6 +26,11 @@ struct ClaudeChatView: View {
             if !service.promptSuggestions.isEmpty && !service.isStreaming {
                 promptSuggestionsBar
                     .listRowSeparator(.hidden)
+            }
+        }
+        .overlay {
+            if service.messages.isEmpty {
+                EmptyStateView()
             }
         }
         .overlay(alignment: .bottom) {

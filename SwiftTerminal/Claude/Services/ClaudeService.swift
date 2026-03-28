@@ -251,43 +251,6 @@ final class ClaudeService {
         }
     }
 
-    /// Continue the most recent session in this workspace.
-    func continueLastSession() {
-        guard !isStreaming else { return }
-        clearSession()
-
-        Task { [weak self] in
-            guard let self else { return }
-            await self.ensureBridgeStarted()
-
-            // List sessions to find the most recent one
-            self.process?.sendCommand("list_sessions", params: [
-                "cwd": self.workingDirectory,
-                "limit": 1
-            ])
-
-            let listResp = await self.waitForBridgeResponse("list_sessions")
-            if let sessions = listResp?.sessions,
-               let first = sessions.first,
-               let sessionID = first["sessionId"] as? String {
-
-                // Load the session history
-                self.process?.sendCommand("get_session_messages", params: [
-                    "sessionId": sessionID,
-                    "cwd": self.workingDirectory
-                ])
-
-                let msgResp = await self.waitForBridgeResponse("get_session_messages")
-                if let rawMessages = msgResp?.messages {
-                    self.restoreMessages(from: rawMessages)
-                }
-            }
-
-            // Set the flag so next send uses { continue: true }
-            self._continueLastOnNextSend = true
-        }
-    }
-
     @ObservationIgnored private var _continueLastOnNextSend = false
 
     private func restoreMessages(from rawMessages: [[String: Any]]) {
