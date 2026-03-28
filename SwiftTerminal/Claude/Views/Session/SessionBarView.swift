@@ -1,27 +1,13 @@
 import SwiftUI
 
 struct SessionBarView: View {
-    let session: SessionInfo
-    let isStreaming: Bool
-    let selectedModel: ModelOption
-    let selectedEffort: EffortLevel
-    let selectedContextWindow: ContextWindow
-    let availableSessions: [SessionSummary]
-    let onClear: () -> Void
-    let onContinueLast: () -> Void
-    let onListSessions: () -> Void
-    let onResume: (String) -> Void
-    let onModelChange: (ModelOption) -> Void
-    let onEffortChange: (EffortLevel) -> Void
-    let onContextWindowChange: (ContextWindow) -> Void
-    let onPermissionModeChange: (PermissionModeOption) -> Void
+    let service: ClaudeService
 
     @State private var showingSessions = false
-    @State private var showingSettings = false
 
     var body: some View {
         HStack(spacing: 8) {
-            if isStreaming {
+            if service.isStreaming {
                 ProgressView()
                     .scaleEffect(0.4)
                     .frame(width: 12, height: 12)
@@ -33,20 +19,20 @@ struct SessionBarView: View {
 
             contextWindowPicker
 
-            if session.turnCount > 0 {
-                Text("\(session.turnCount) turns")
+            if service.session.turnCount > 0 {
+                Text("\(service.session.turnCount) turns")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
 
-            if session.totalCost > 0 {
-                Text(formatCost(session.totalCost))
+            if service.session.totalCost > 0 {
+                Text(formatCost(service.session.totalCost))
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .fontDesign(.monospaced)
             }
 
-            if session.isCompacting {
+            if service.session.isCompacting {
                 HStack(spacing: 4) {
                     ProgressView()
                         .scaleEffect(0.35)
@@ -63,7 +49,7 @@ struct SessionBarView: View {
 
             Button {
                 showingSessions = true
-                onListSessions()
+                Task { await service.listSessions() }
             } label: {
                 Image(systemName: "clock.arrow.circlepath")
                     .font(.caption2)
@@ -72,23 +58,23 @@ struct SessionBarView: View {
             .foregroundStyle(.secondary)
             .popover(isPresented: $showingSessions) {
                 SessionListView(
-                    sessions: availableSessions,
+                    sessions: service.availableSessions,
                     onResume: { id in
                         showingSessions = false
-                        onResume(id)
+                        service.resumeSession(id)
                     }
                 )
             }
 
-            if session.sessionID == nil {
-                Button("Continue", action: onContinueLast)
+            if service.session.sessionID == nil {
+                Button("Continue") { service.continueLastSession() }
                     .font(.caption2)
                     .buttonStyle(.plain)
                     .foregroundStyle(.blue)
             }
 
-            if session.sessionID != nil {
-                Button("New", action: onClear)
+            if service.session.sessionID != nil {
+                Button("New") { service.clearSession() }
                     .font(.caption2)
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
@@ -96,26 +82,24 @@ struct SessionBarView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 4)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .overlay(alignment: .bottom) { Divider() }
     }
 
     private var modelButton: some View {
         Menu {
             ForEach(ModelOption.allCases, id: \.self) { model in
                 Button {
-                    onModelChange(model)
+                    service.setModel(model)
                 } label: {
                     HStack {
                         Text(model.label)
-                        if model == selectedModel {
+                        if model == service.selectedModel {
                             Image(systemName: "checkmark")
                         }
                     }
                 }
             }
         } label: {
-            Text(formatModel(session.model, fallback: selectedModel))
+            Text(formatModel(service.session.model, fallback: service.selectedModel))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .fontDesign(.monospaced)
@@ -128,18 +112,18 @@ struct SessionBarView: View {
         Menu {
             ForEach(EffortLevel.allCases, id: \.self) { effort in
                 Button {
-                    onEffortChange(effort)
+                    service.selectedEffort = effort
                 } label: {
                     HStack {
                         Text(effort.label)
-                        if effort == selectedEffort {
+                        if effort == service.selectedEffort {
                             Image(systemName: "checkmark")
                         }
                     }
                 }
             }
         } label: {
-            Text(selectedEffort.label)
+            Text(service.selectedEffort.label)
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
@@ -151,20 +135,19 @@ struct SessionBarView: View {
         Menu {
             ForEach(ContextWindow.allCases, id: \.self) { window in
                 Button {
-                    onContextWindowChange(window)
+                    service.setContextWindow(window)
                 } label: {
                     HStack {
                         Text(window.label)
-                        if window == selectedContextWindow {
+                        if window == service.selectedContextWindow {
                             Image(systemName: "checkmark")
                         }
                     }
                 }
             }
         } label: {
-            Text(selectedContextWindow.label)
+            Text(service.selectedContextWindow.label)
                 .font(.caption2)
-//                .foregroundStyle(selectedContextWindow == .extended ? .blue : .tertiary)
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
@@ -174,12 +157,12 @@ struct SessionBarView: View {
         Menu {
             ForEach(PermissionModeOption.allCases, id: \.self) { mode in
                 Button {
-                    onPermissionModeChange(mode)
+                    service.setPermissionMode(mode)
                 } label: {
                     VStack(alignment: .leading) {
                         HStack {
                             Text(mode.label)
-                            if mode == session.permissionMode {
+                            if mode == service.session.permissionMode {
                                 Image(systemName: "checkmark")
                             }
                         }
@@ -196,7 +179,7 @@ struct SessionBarView: View {
     }
 
     private var permissionIcon: String {
-        switch session.permissionMode {
+        switch service.session.permissionMode {
         case .default: "shield.lefthalf.filled"
         case .acceptEdits: "shield.checkered"
         case .plan: "doc.text.magnifyingglass"
@@ -205,7 +188,7 @@ struct SessionBarView: View {
     }
 
     private var permissionColor: Color {
-        switch session.permissionMode {
+        switch service.session.permissionMode {
         case .default: .secondary
         case .acceptEdits: .orange
         case .plan: .blue

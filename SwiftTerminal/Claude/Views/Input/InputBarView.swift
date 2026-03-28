@@ -2,10 +2,8 @@ import SwiftUI
 
 struct InputBarView: View {
     @Binding var input: String
-    let isStreaming: Bool
-    let hasApproval: Bool
+    let service: ClaudeService
     let onSend: () -> Void
-    let onStop: () -> Void
     @FocusState private var isFocused: Bool
 
     var body: some View {
@@ -15,10 +13,10 @@ struct InputBarView: View {
                 .lineLimit(1...8)
                 .focused($isFocused)
                 .onSubmit { onSend() }
-                .disabled(hasApproval)
+                .disabled(service.pendingApproval != nil)
 
-            if isStreaming {
-                Button(action: onStop) {
+            if service.isStreaming {
+                Button { service.stop() } label: {
                     Image(systemName: "stop.circle.fill")
                         .font(.title3)
                 }
@@ -31,12 +29,10 @@ struct InputBarView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(trimmedInput.isEmpty ? .secondary : .primary)
-                .disabled(trimmedInput.isEmpty || hasApproval)
+                .disabled(trimmedInput.isEmpty || service.pendingApproval != nil)
             }
         }
         .padding(12)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .overlay(alignment: .top) { Divider() }
         .onAppear { isFocused = true }
     }
 

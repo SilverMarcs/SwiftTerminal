@@ -8,10 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		08BEFC282F74722D009C370D /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 08BEFC272F74722D009C370D /* SwiftTerm */; };
+		AABB00112F64900000000001 /* node_modules in Resources */ = {isa = PBXBuildFile; fileRef = AABB00112F64900000000002 /* node_modules */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		08D10C4A2F64897100754649 /* SwiftTerminal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwiftTerminal.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AABB00112F64900000000002 /* node_modules */ = {isa = PBXFileReference; lastKnownFileType = folder; path = node_modules; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -38,6 +40,7 @@
 			isa = PBXGroup;
 			children = (
 				08D10C4C2F64897100754649 /* SwiftTerminal */,
+				AABB00112F64900000000002 /* node_modules */,
 				08D10C4B2F64897100754649 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -118,6 +121,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AABB00112F64900000000001 /* node_modules in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

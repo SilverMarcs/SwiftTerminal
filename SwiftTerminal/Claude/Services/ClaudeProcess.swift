@@ -10,37 +10,15 @@ final class ClaudeProcess {
 
     var isRunning: Bool { process?.isRunning ?? false }
 
-    /// Resolves the source project root from the Xcode build environment.
-    private static var projectRoot: String {
-        // Method 1: Check for SRCROOT set at build time (via Info.plist)
-        if let srcRoot = Bundle.main.object(forInfoDictionaryKey: "SOURCE_ROOT") as? String,
-           FileManager.default.fileExists(atPath: srcRoot + "/SwiftTerminal/Claude/Bridge/claude-bridge.mjs") {
-            return srcRoot
-        }
-
-        // Method 2: Known development path
-        let knownPath = NSHomeDirectory() + "/Developer/Xcode/SwiftTerminal"
-        if FileManager.default.fileExists(atPath: knownPath + "/SwiftTerminal/Claude/Bridge/claude-bridge.mjs") {
-            return knownPath
-        }
-
-        // Method 3: Search common locations
-        let searchPaths = [
-            NSHomeDirectory() + "/Projects/SwiftTerminal",
-            NSHomeDirectory() + "/Desktop/SwiftTerminal",
-        ]
-        for path in searchPaths {
-            if FileManager.default.fileExists(atPath: path + "/SwiftTerminal/Claude/Bridge/claude-bridge.mjs") {
-                return path
-            }
-        }
-
-        return knownPath
+    /// Bridge script is bundled in the app's Resources.
+    private static var bridgeScriptPath: String {
+        Bundle.main.path(forResource: "claude-bridge", ofType: "mjs")!
     }
 
     /// Start the bridge process.
-    /// Returns an async stream of JSON lines from stdout.
-    func start() throws -> AsyncStream<String> {
+    /// - Parameter workingDirectory: The user's project directory to run in.
+    /// - Returns: An async stream of JSON lines from stdout.
+    func start(workingDirectory: String) throws -> AsyncStream<String> {
         let proc = Process()
 
         // Find node executable
@@ -51,19 +29,14 @@ final class ClaudeProcess {
             }
         }
 
-        let root = Self.projectRoot
-        let bridgeScript = root + "/SwiftTerminal/Claude/Bridge/claude-bridge.mjs"
-
-        guard FileManager.default.fileExists(atPath: bridgeScript) else {
-            throw NSError(domain: "ClaudeProcess", code: 1,
-                          userInfo: [NSLocalizedDescriptionKey: "Bridge script not found at \(bridgeScript)"])
-        }
+        let bridgeScript = Self.bridgeScriptPath
+        let resourcesDir = Bundle.main.resourceURL!.path
 
         proc.arguments = [bridgeScript]
 
-        // Environment: ensure node_modules and system paths are available
+        // Environment: node_modules is bundled in Resources
         var env = ProcessInfo.processInfo.environment
-        env["NODE_PATH"] = root + "/node_modules"
+        env["NODE_PATH"] = resourcesDir + "/node_modules"
         let extraPaths = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
         if let existingPath = env["PATH"] {
             env["PATH"] = extraPaths + ":" + existingPath
@@ -73,7 +46,7 @@ final class ClaudeProcess {
         env["TERM"] = "xterm-256color"
         env["HOME"] = env["HOME"] ?? NSHomeDirectory()
         proc.environment = env
-        proc.currentDirectoryURL = URL(filePath: root)
+        proc.currentDirectoryURL = URL(filePath: workingDirectory)
 
         let stdinPipe = Pipe()
         let stdoutPipe = Pipe()

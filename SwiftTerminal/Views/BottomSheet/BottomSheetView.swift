@@ -3,14 +3,42 @@ import SwiftUI
 struct BottomSheetView: View {
     let directoryURL: URL
     @Environment(EditorPanel.self) private var panel
+    @AppStorage("editorPanelHeight") private var panelHeight: Double = 250
+
     var body: some View {
         VStack(spacing: 0) {
+            dragHandle
             header
             Rectangle()
                 .fill(Color(nsColor: .gridColor))
                 .frame(height: 1)
             content
         }
+        .frame(height: panel.isOpen ? panelHeight : 30, alignment: .top)
+    }
+
+    // MARK: - Drag Handle
+
+    private var dragHandle: some View {
+        Rectangle()
+            .fill(Color(nsColor: .gridColor))
+            .frame(height: 1)
+            .overlay {
+                if panel.isOpen {
+                    Rectangle()
+                        .fill(.clear)
+                        .frame(height: 20)
+                        .contentShape(Rectangle())
+                        .cursor(.resizeUpDown)
+                        .gesture(
+                            DragGesture(minimumDistance: 1)
+                                .onChanged { value in
+                                    let delta = -value.translation.height
+                                    panelHeight = max(100, panelHeight + delta)
+                                }
+                        )
+                }
+            }
     }
 
     // MARK: - Header
@@ -121,6 +149,14 @@ struct BottomSheetView: View {
             DiffPanel(reference: ref)
         case .none:
             EmptyView()
+        }
+    }
+}
+
+private extension View {
+    func cursor(_ cursor: NSCursor) -> some View {
+        onHover { inside in
+            if inside { cursor.push() } else { NSCursor.pop() }
         }
     }
 }

@@ -10,7 +10,7 @@ final class SessionInfo {
     var totalCost: Double = 0
     var turnCount: Int = 0
     var isInitialized = false
-    var permissionMode: PermissionModeOption = .default
+    var permissionMode: PermissionModeOption = .bypassPermissions
     var state: SessionState = .idle
     var isCompacting = false
     var rateLimitStatus: String?

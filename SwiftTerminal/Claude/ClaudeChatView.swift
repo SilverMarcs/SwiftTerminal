@@ -5,45 +5,11 @@ struct ClaudeChatView: View {
     @State private var input = ""
 
     var body: some View {
-        VStack(spacing: 0) {
-            SessionBarView(
-                session: service.session,
-                isStreaming: service.isStreaming,
-                selectedModel: service.selectedModel,
-                selectedEffort: service.selectedEffort,
-                selectedContextWindow: service.selectedContextWindow,
-                availableSessions: service.availableSessions,
-                onClear: { service.clearSession() },
-                onContinueLast: { service.continueLastSession() },
-                onListSessions: {
-                    Task { await service.listSessions() }
-                },
-                onResume: { sessionID in
-                    service.resumeSession(sessionID)
-                },
-                onModelChange: { model in
-                    service.setModel(model)
-                },
-                onEffortChange: { effort in
-                    service.selectedEffort = effort
-                },
-                onContextWindowChange: { window in
-                    service.setContextWindow(window)
-                },
-                onPermissionModeChange: { mode in
-                    service.setPermissionMode(mode)
-                }
-            )
-
+        List {
             if service.messages.isEmpty {
                 EmptyStateView()
             } else {
-                MessageListView(
-                    messages: service.messages,
-                    isStreaming: service.isStreaming,
-                    activeTasks: service.activeTasks,
-                    onStopTask: { taskID in service.stopTask(taskID) }
-                )
+                MessageListView(service: service)
             }
 
             if let approval = service.pendingApproval {
@@ -74,16 +40,13 @@ struct ClaudeChatView: View {
             if !service.promptSuggestions.isEmpty && !service.isStreaming {
                 promptSuggestionsBar
             }
-
-            InputBarView(
-                input: $input,
-                isStreaming: service.isStreaming,
-                hasApproval: service.pendingApproval != nil,
-                onSend: sendMessage,
-                onStop: { service.stop() }
-            )
         }
-        .background(Color(nsColor: .textBackgroundColor))
+        .safeAreaBar(edge: .top) {
+            SessionBarView(service: service)
+        }
+        .safeAreaBar(edge: .bottom) {
+            InputBarView(input: $input, service: service, onSend: sendMessage)
+        }
     }
 
     private func sendMessage() {

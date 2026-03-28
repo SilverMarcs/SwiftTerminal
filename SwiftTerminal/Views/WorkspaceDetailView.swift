@@ -4,45 +4,22 @@ struct WorkspaceDetailView: View {
     @Bindable var workspace: Workspace
     @Environment(AppState.self) private var appState
     @State private var editorPanel = EditorPanel()
-    @AppStorage("editorPanelHeight") private var panelHeight: Double = 250
 
     private var service: ClaudeService {
         appState.claudeService(for: workspace)
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            ClaudeChatView(service: service)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            if editorPanel.content != nil {
-                Rectangle()
-                    .fill(Color(nsColor: .gridColor))
-                    .frame(height: 1)
-                    .overlay {
-                        if editorPanel.isOpen {
-                            Rectangle()
-                                .fill(.clear)
-                                .frame(height: 20)
-                                .contentShape(Rectangle())
-                                .cursor(.resizeUpDown)
-                                .gesture(
-                                    DragGesture(minimumDistance: 1)
-                                        .onChanged { value in
-                                            let delta = -value.translation.height
-                                            panelHeight = max(100, panelHeight + delta)
-                                        }
-                                )
-                        }
-                    }
-                BottomSheetView(
-                    directoryURL: workspace.directory.map { URL(fileURLWithPath: $0) } ?? URL(fileURLWithPath: "/")
-                )
-                .frame(height: editorPanel.isOpen ? panelHeight : 30, alignment: .top)
+        ClaudeChatView(service: service)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if editorPanel.content != nil {
+                    BottomSheetView(
+                        directoryURL: workspace.directory.map { URL(fileURLWithPath: $0) } ?? URL(fileURLWithPath: "/")
+                    )
+                }
             }
-        }
-        .navigationTitle(workspace.name)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .navigationTitle(workspace.name)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         .navigationSubtitle(workspace.directory ?? "")
         .inspector(isPresented: Bindable(appState).showingInspector) {
             if let directory = workspace.directory {
@@ -81,12 +58,4 @@ struct WorkspaceDetailView: View {
 //            isTerminalFocused = true
 //        }
 //    }
-}
-
-private extension View {
-    func cursor(_ cursor: NSCursor) -> some View {
-        onHover { inside in
-            if inside { cursor.push() } else { NSCursor.pop() }
-        }
-    }
 }

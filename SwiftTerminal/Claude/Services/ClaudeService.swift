@@ -13,9 +13,9 @@ final class ClaudeService {
     var pendingApproval: ApprovalRequest?
     var pendingElicitation: ElicitationRequest?
     var promptSuggestions: [String] = []
-    var selectedModel: ModelOption = .sonnet
-    var selectedEffort: EffortLevel = .high
-    var selectedContextWindow: ContextWindow = .standard
+    var selectedModel: ModelOption = .opus
+    var selectedEffort: EffortLevel = .medium
+    var selectedContextWindow: ContextWindow = .extended
     var activeTasks: [String: TaskEvent] = [:]
 
     // MARK: - Private
@@ -361,7 +361,7 @@ final class ClaudeService {
         process = proc
 
         do {
-            let lineStream = try proc.start()
+            let lineStream = try proc.start(workingDirectory: workingDirectory)
             startReader(lineStream)
 
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
