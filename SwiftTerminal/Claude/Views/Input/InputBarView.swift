@@ -9,17 +9,6 @@ struct InputBarView: View {
     var body: some View {
         GlassEffectContainer {
             HStack(alignment: .bottom) {
-                Button {
-                    // Placeholder action
-                } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .foregroundStyle(.secondary, .clear)
-                        .font(.largeTitle).fontWeight(.semibold)
-                        .glassEffect()
-                }
-                .buttonStyle(.plain)
-                .offset(y: -1)
-
                 ZStack(alignment: .leading) {
                     if input.isEmpty {
                         Text("Message Claude...")

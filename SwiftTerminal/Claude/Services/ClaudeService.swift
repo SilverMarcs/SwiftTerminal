@@ -20,7 +20,9 @@ final class ClaudeService {
 
     // MARK: - Private
 
+    let workspaceID: UUID
     let workingDirectory: String
+    let serviceKey = UUID().uuidString
     private var process: ClaudeProcess?
     private var readerTask: Task<Void, Never>?
     private var bridgeReady = false
@@ -33,7 +35,8 @@ final class ClaudeService {
     @ObservationIgnored private var responseContinuations: [String: CheckedContinuation<BridgeResponse?, Never>] = [:]
     @ObservationIgnored private var userMessageUUIDs: [String: String] = [:]
 
-    init(workingDirectory: String) {
+    init(workspaceID: UUID, workingDirectory: String) {
+        self.workspaceID = workspaceID
         self.workingDirectory = workingDirectory
     }
 
@@ -99,13 +102,12 @@ final class ClaudeService {
     }
 
     func clearSession() {
-        process?.sendCommand("stop")
-        process?.terminate()
-        process = nil
-        readerTask?.cancel()
-        readerTask = nil
-        bridgeReady = false
+        // Stop current query but keep the bridge process alive for reuse
+        if queryActive {
+            process?.sendCommand("stop")
+        }
         queryActive = false
+        isStreaming = false
 
         messages.removeAll()
         session = SessionInfo()
@@ -121,8 +123,6 @@ final class ClaudeService {
 
         turnContinuation?.resume()
         turnContinuation = nil
-        for c in bridgeReadyContinuations { c.resume() }
-        bridgeReadyContinuations.removeAll()
     }
 
     // MARK: - Approval Flow
@@ -463,11 +463,6 @@ final class ClaudeService {
 
         case .taskCompleted(let task):
             activeTasks[task.taskID] = task
-            let taskID = task.taskID
-            Task { [weak self] in
-                try? await Task.sleep(for: .seconds(3))
-                self?.activeTasks.removeValue(forKey: taskID)
-            }
 
         case .elicitationRequest(let request):
             pendingElicitation = request

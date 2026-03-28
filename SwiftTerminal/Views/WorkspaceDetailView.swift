@@ -35,15 +35,15 @@ struct WorkspaceDetailView: View {
             .onChange(of: service.session.sessionID) { _, newID in
                 if let newID {
                     workspace.addClaudeSession(newID)
+                    appState.registerSDKSession(newID, serviceKey: service.serviceKey)
                 }
             }
             .onChange(of: appState.selectedSessionID) { _, sessionID in
                 if let sessionID, sessionID != service.session.sessionID {
-                    service.resumeSession(sessionID)
+                    appState.activateSession(sessionID, for: workspace)
                 }
             }
             .task {
-                // Auto-resume the most recent session if service is fresh
                 if service.messages.isEmpty, let lastSessionID = workspace.claudeSessionIDs.last {
                     service.resumeSession(lastSessionID)
                 }

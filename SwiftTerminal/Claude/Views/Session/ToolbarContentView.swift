@@ -2,9 +2,9 @@ import SwiftUI
 
 struct ToolbarContentView: ToolbarContent {
     let service: ClaudeService
+    @Environment(AppState.self) private var appState
 
     @State private var showToolbarItems = false
-    @State private var showingSessions = false
 
     var body: some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
@@ -59,46 +59,13 @@ struct ToolbarContentView: ToolbarContent {
 
             ToolbarItem(placement: .primaryAction) {
                 Button {
-                    showingSessions = true
-                    Task { await service.listSessions() }
-                } label: {
-                    Label("Sessions", systemImage: "clock.arrow.circlepath")
-                }
-                .popover(isPresented: $showingSessions) {
-                    SessionListView(
-                        sessions: service.availableSessions,
-                        onResume: { id in
-                            showingSessions = false
-                            service.resumeSession(id)
-                        }
-                    )
-                }
-            }
-
-            if service.session.sessionID != nil {
-                ToolbarSpacer(.fixed)
-
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        service.clearSession()
-                    } label: {
-                        Label("New Session", systemImage: "plus")
+                    if let workspace = appState.workspaces.first(where: { $0.id == service.workspaceID }) {
+                        appState.newSession(for: workspace)
                     }
+                } label: {
+                    Label("New Session", systemImage: "plus")
                 }
             }
-
-//            if service.session.isCompacting {
-//                ToolbarItem(placement: .primaryAction) {
-//                    HStack(spacing: 4) {
-//                        ProgressView()
-//                            .scaleEffect(0.4)
-//                            .frame(width: 12, height: 12)
-//                        Text("Compacting...")
-//                            .font(.caption2)
-//                            .foregroundStyle(.orange)
-//                    }
-//                }
-//            }
         }
     }
 

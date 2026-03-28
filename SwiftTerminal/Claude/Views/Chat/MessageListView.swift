@@ -4,53 +4,190 @@ struct MessageListView: View {
     let service: ClaudeService
 
     var body: some View {
-//        ScrollViewReader { proxy in
-//            ScrollView {
-//                LazyVStack(alignment: .leading, spacing: 16) {
-                    ForEach(service.messages) { message in
-                        MessageView(
-                            message: message,
-                            isStreaming: service.isStreaming
-                                && message.id == service.messages.last?.id
-                                && message.role == .assistant
-                        )
-                        .id(message.id)
-                    }
+        ForEach(turns) { turn in
+            switch turn.kind {
+            case .user(let message):
+                UserMessageView(message: message)
+                    .id(turn.id)
+                    .listRowSeparator(.hidden)
 
-                    if !service.activeTasks.isEmpty {
-                        TaskProgressView(
-                            tasks: service.activeTasks,
-                            onStopTask: { service.stopTask($0) }
-                        )
-                        .id("active-tasks")
-                    }
-//                }
-//                .padding()
-//            }
-//            .onChange(of: service.messages.count) {
-//                scrollToBottom(proxy: proxy)
-//            }
-//            .onChange(of: service.messages.last?.blocks.count) {
-//                scrollToBottom(proxy: proxy)
-//            }
-//            .onChange(of: service.messages.last?.text) {
-//                scrollToBottom(proxy: proxy)
-//            }
-//            .onChange(of: service.activeTasks.count) {
-//                scrollToBottom(proxy: proxy)
-//            }
-//        }
+            case .assistant(let messages):
+                AssistantTurnView(
+                    messages: messages,
+                    isStreaming: service.isStreaming && turn.isLast,
+                    activeTasks: service.activeTasks,
+                    onStopTask: { service.stopTask($0) }
+                )
+                .id(turn.id)
+                .listRowSeparator(.hidden)
+            }
+        }
     }
 
-//    private func scrollToBottom(proxy: ScrollViewProxy) {
-//        if !service.activeTasks.isEmpty {
-//            withAnimation(.easeOut(duration: 0.15)) {
-//                proxy.scrollTo("active-tasks", anchor: .bottom)
-//            }
-//        } else if let last = service.messages.last {
-//            withAnimation(.easeOut(duration: 0.15)) {
-//                proxy.scrollTo(last.id, anchor: .bottom)
-//            }
-//        }
-//    }
+    /// Groups all consecutive assistant messages between user messages into a single turn.
+    private var turns: [Turn] {
+        var result: [Turn] = []
+        let lastID = service.messages.last?.id
+
+        for message in service.messages {
+            switch message.role {
+            case .user:
+                result.append(Turn(
+                    kind: .user(message),
+                    isLast: message.id == lastID
+                ))
+
+            case .assistant:
+                if case .assistant(let existing) = result.last?.kind {
+                    var msgs = existing
+                    msgs.append(message)
+                    result[result.count - 1] = Turn(
+                        kind: .assistant(msgs),
+                        isLast: message.id == lastID
+                    )
+                } else {
+                    result.append(Turn(
+                        kind: .assistant([message]),
+                        isLast: message.id == lastID
+                    ))
+                }
+
+            case .system:
+                break
+            }
+        }
+        return result
+    }
+}
+
+// MARK: - Turn
+
+struct Turn: Identifiable {
+    let kind: Kind
+    var isLast: Bool
+
+    enum Kind {
+        case user(ChatMessage)
+        case assistant([ChatMessage])
+    }
+
+    var id: String {
+        switch kind {
+        case .user(let m): m.id
+        case .assistant(let ms): ms.first?.id ?? UUID().uuidString
+        }
+    }
+}
+
+// MARK: - User Message
+
+struct UserMessageView: View {
+    let message: ChatMessage
+
+    var body: some View {
+        VStack(alignment: .trailing) {
+            ExpandableText(text: message.text)
+                .padding(12)
+                .background(.background.secondary)
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+        }
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .padding(.leading, 160)
+    }
+}
+
+// MARK: - Assistant Turn (single Claude label for all consecutive messages)
+
+struct AssistantTurnView: View {
+    let messages: [ChatMessage]
+    let isStreaming: Bool
+    let activeTasks: [String: TaskEvent]
+    let onStopTask: (String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ClaudeLabel()
+
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(groupedContent) { group in
+                    switch group {
+                    case .text(let info):
+                        MarkdownTextView(text: info.content)
+
+                    case .toolGroup(let tools):
+                        ToolGroupView(
+                            tools: tools,
+                            activeTasks: tasksForTools(tools),
+                            onStopTask: onStopTask
+                        )
+                    }
+                }
+
+                if isStreaming && allBlocks.isEmpty {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            }
+            .padding(.leading, 25)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.leading, 5)
+        .padding(.trailing, 30)
+    }
+
+    private var allBlocks: [MessageBlock] {
+        messages.flatMap(\.blocks)
+    }
+
+    private func tasksForTools(_ tools: [ToolUseInfo]) -> [String: TaskEvent] {
+        let toolIDs = Set(tools.map(\.id))
+        return activeTasks.filter { _, task in
+            if let tuID = task.toolUseID { return toolIDs.contains(tuID) }
+            return false
+        }
+    }
+
+    private var groupedContent: [ContentGroup] {
+        var groups: [ContentGroup] = []
+        var pendingTools: [ToolUseInfo] = []
+
+        for block in allBlocks {
+            switch block {
+            case .text(let info):
+                if !pendingTools.isEmpty {
+                    groups.append(.toolGroup(pendingTools))
+                    pendingTools = []
+                }
+                if !info.content.isEmpty {
+                    groups.append(.text(info))
+                }
+
+            case .toolUse(let info):
+                pendingTools.append(info)
+
+            case .thinking, .toolResult:
+                break
+            }
+        }
+
+        if !pendingTools.isEmpty {
+            groups.append(.toolGroup(pendingTools))
+        }
+
+        return groups
+    }
+}
+
+// MARK: - Content Grouping
+
+private enum ContentGroup: Identifiable {
+    case text(TextInfo)
+    case toolGroup([ToolUseInfo])
+
+    var id: String {
+        switch self {
+        case .text(let info): "text-\(info.id)"
+        case .toolGroup(let tools): "tools-\(tools.map(\.id).joined(separator: "-"))"
+        }
+    }
 }

@@ -21,8 +21,20 @@ struct ClaudeChatView: View {
                     onAllowForSession: { service.respondToApproval(allow: true, forSession: true) },
                     onDeny: { service.respondToApproval(allow: false) }
                 )
+                .listRowSeparator(.hidden)
             }
 
+            if let error = service.error {
+                errorBar(error)
+                    .listRowSeparator(.hidden)
+            }
+
+            if !service.promptSuggestions.isEmpty && !service.isStreaming {
+                promptSuggestionsBar
+                    .listRowSeparator(.hidden)
+            }
+        }
+        .overlay(alignment: .bottom) {
             if let elicitation = service.pendingElicitation {
                 ElicitationPanelView(
                     elicitation: elicitation,
@@ -33,16 +45,10 @@ struct ClaudeChatView: View {
                         service.respondToElicitation(action: "decline")
                     }
                 )
-            }
-
-            if let error = service.error {
-                errorBar(error)
-            }
-
-            if !service.promptSuggestions.isEmpty && !service.isStreaming {
-                promptSuggestionsBar
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: service.pendingElicitation != nil)
         .toolbar {
             ToolbarContentView(service: service)
         }
