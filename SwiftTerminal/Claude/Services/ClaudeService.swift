@@ -22,6 +22,7 @@ final class ClaudeService {
     // MARK: - Private
 
     let workspace: Workspace
+    let claudeSession: ClaudeSession?
     var workingDirectory: String { workspace.directory ?? NSHomeDirectory() }
     private var process: ClaudeProcess?
     private var readerTask: Task<Void, Never>?
@@ -35,8 +36,12 @@ final class ClaudeService {
     @ObservationIgnored private var responseContinuations: [String: CheckedContinuation<BridgeResponse?, Never>] = [:]
     @ObservationIgnored private var userMessageUUIDs: [String: String] = [:]
 
-    init(workspace: Workspace) {
+    init(workspace: Workspace, claudeSession: ClaudeSession? = nil) {
         self.workspace = workspace
+        self.claudeSession = claudeSession
+        if let sdkID = claudeSession?.sdkSessionID {
+            self.session.sessionID = sdkID
+        }
     }
 
     deinit {
@@ -387,6 +392,7 @@ final class ClaudeService {
 
         case .system(let e):
             session.update(from: e)
+            syncSessionID(session.sessionID)
             // Sync model selection with what the SDK reports
             if let detected = ModelOption.from(modelString: e.model) {
                 selectedModel = detected
@@ -413,6 +419,7 @@ final class ClaudeService {
         case .sessionStateChanged(let stateEvent):
             session.state = stateEvent.state
             session.sessionID = stateEvent.sessionID
+            syncSessionID(stateEvent.sessionID)
 
         case .statusUpdate(let statusEvent):
             session.isCompacting = statusEvent.status == "compacting"
@@ -549,6 +556,7 @@ final class ClaudeService {
 
         if let sid = event.sessionID {
             session.sessionID = sid
+            syncSessionID(sid)
         }
     }
 
@@ -583,6 +591,7 @@ final class ClaudeService {
 
     private func handleResult(_ event: ResultEvent) {
         session.update(from: event)
+        syncSessionID(session.sessionID)
 
         let msgIdx = currentAssistantIndex
         if let resultText = event.result,
@@ -711,6 +720,12 @@ final class ClaudeService {
             return [:]
         }
         return dict
+    }
+
+    /// Sync SDK session ID back to the persisted ClaudeSession model.
+    private func syncSessionID(_ id: String?) {
+        guard let id, claudeSession?.sdkSessionID != id else { return }
+        claudeSession?.sdkSessionID = id
     }
 
     private func formatDict(_ dict: [String: Any]) -> String {

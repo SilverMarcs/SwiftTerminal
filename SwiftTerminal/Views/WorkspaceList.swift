@@ -22,14 +22,14 @@ struct WorkspaceList: View {
 
     private var sidebarItems: [SidebarItem] {
         filteredWorkspaces.map { workspace in
-            let sessionChildren = workspace.sessions.map { service in
-                let label = if let sid = service.session.sessionID {
+            let sessionChildren = workspace.sortedSessions.map { cs in
+                let label = if let sid = cs.sdkSessionID {
                     String(sid.prefix(8))
                 } else {
                     "New Session"
                 }
                 return SidebarItem(
-                    id: .session(workspaceID: workspace.id, serviceID: service.id),
+                    id: .session(workspaceID: workspace.id, sessionID: cs.id),
                     label: label,
                     icon: "bubble.left"
                 )
@@ -73,18 +73,18 @@ struct WorkspaceList: View {
                     renamingWorkspace: $renamingWorkspace
                 )
             }
-        case .session(let workspaceID, let serviceID):
+        case .session(let workspaceID, let sessionID):
             if let workspace = appState.workspaces.first(where: { $0.id == workspaceID }),
-               let service = workspace.sessions.first(where: { $0.id == serviceID }) {
+               let cs = workspace.claudeSessions.first(where: { $0.id == sessionID }) {
                 Label(
-                    service.session.sessionID.map { String($0.prefix(8)) } ?? "New Session",
+                    cs.sdkSessionID.map { String($0.prefix(8)) } ?? "New Session",
                     systemImage: "bubble.left"
                 )
                 .font(.subheadline)
                 .contextMenu {
                     Button(role: .destructive) {
-                        workspace.removeSession(service)
-                        if appState.sidebarSelection == .session(workspaceID: workspaceID, serviceID: serviceID) {
+                        workspace.removeSession(cs)
+                        if appState.sidebarSelection == .session(workspaceID: workspaceID, sessionID: sessionID) {
                             appState.sidebarSelection = .workspace(workspaceID)
                         }
                     } label: {

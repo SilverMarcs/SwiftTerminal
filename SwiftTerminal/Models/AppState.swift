@@ -5,7 +5,7 @@ import SwiftData
 
 enum SidebarSelection: Hashable {
     case workspace(UUID)
-    case session(workspaceID: UUID, serviceID: UUID)
+    case session(workspaceID: UUID, sessionID: UUID)
 
     var workspaceID: UUID {
         switch self {
@@ -39,9 +39,6 @@ final class AppState {
         self.modelContext = modelContext
         let descriptor = FetchDescriptor<Workspace>(sortBy: [SortDescriptor(\.sortOrder)])
         workspaces = (try? modelContext.fetch(descriptor)) ?? []
-        for workspace in workspaces {
-            workspace.hydrateSessions()
-        }
         sidebarSelection = workspaces.first.map { .workspace($0.id) }
     }
 
@@ -57,12 +54,12 @@ final class AppState {
         }
     }
 
-    var selectedService: ClaudeService? {
-        guard case .session(let workspaceID, let serviceID) = sidebarSelection,
+    var selectedClaudeSession: ClaudeSession? {
+        guard case .session(let workspaceID, let sessionID) = sidebarSelection,
               let workspace = workspaces.first(where: { $0.id == workspaceID }) else {
             return nil
         }
-        return workspace.sessions.first { $0.id == serviceID }
+        return workspace.claudeSessions.first { $0.id == sessionID }
     }
 
     // MARK: - Workspace Management

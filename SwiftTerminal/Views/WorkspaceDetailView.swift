@@ -16,11 +16,6 @@ struct WorkspaceDetailView: View {
                             )
                         }
                     }
-                    .onChange(of: service.session.sessionID) { _, newID in
-                        if let newID {
-                            workspace.persistSession(newID)
-                        }
-                    }
                     .task {
                         if service.messages.isEmpty, let sessionID = service.session.sessionID {
                             service.resumeSession(sessionID)
@@ -50,10 +45,10 @@ struct WorkspaceDetailView: View {
         }
         .onChange(of: appState.sidebarSelection) { _, selection in
             switch selection {
-            case .session:
-                workspace.selectedSession = appState.selectedService
+            case .session(_, let sessionID):
+                workspace.selectedSessionID = sessionID
             case .workspace:
-                workspace.selectedSession = nil
+                workspace.selectedSessionID = nil
             case nil:
                 break
             }
