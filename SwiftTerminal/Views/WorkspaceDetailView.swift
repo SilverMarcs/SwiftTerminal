@@ -5,9 +5,14 @@ struct WorkspaceDetailView: View {
     @Environment(AppState.self) private var appState
     @State private var editorPanel = EditorPanel()
 
+    private var selectedSession: ClaudeSession? {
+        guard case .session(_, let sessionID) = appState.sidebarSelection else { return nil }
+        return workspace.unsortedSessions.first { $0.id == sessionID }
+    }
+
     var body: some View {
         Group {
-            if let session = appState.selectedClaudeSession {
+            if let session = selectedSession {
                 let service = session.resolveService()
                 ClaudeChatView(service: service)
                     .safeAreaInset(edge: .bottom, spacing: 0) {

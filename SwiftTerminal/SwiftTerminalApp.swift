@@ -6,12 +6,10 @@ struct SwiftTerminalApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     let container: ModelContainer
-    @State private var appState: AppState
+    @State private var appState = AppState()
 
     init() {
-        let container = try! ModelContainer(for: Workspace.self)
-        self.container = container
-        self._appState = State(initialValue: AppState(modelContext: container.mainContext))
+        self.container = try! ModelContainer(for: Workspace.self)
     }
 
     var body: some Scene {

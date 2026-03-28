@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import AppKit
 
 struct SidebarItem: Identifiable, Hashable {
@@ -10,11 +11,13 @@ struct SidebarItem: Identifiable, Hashable {
 
 struct WorkspaceList: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Workspace.sortOrder) private var workspaces: [Workspace]
     @State private var searchText = ""
 
     private var filteredWorkspaces: [Workspace] {
-        guard !searchText.isEmpty else { return appState.workspaces }
-        return appState.workspaces.filter {
+        guard !searchText.isEmpty else { return workspaces }
+        return workspaces.filter {
             $0.name.localizedCaseInsensitiveContains(searchText)
         }
     }
@@ -60,17 +63,22 @@ struct WorkspaceList: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
         }
+        .onAppear {
+            if appState.sidebarSelection == nil {
+                appState.sidebarSelection = workspaces.first.map { .workspace($0.id) }
+            }
+        }
     }
 
     @ViewBuilder
     private func sidebarRow(for item: SidebarItem) -> some View {
         switch item.id {
         case .workspace(let id):
-            if let workspace = appState.workspaces.first(where: { $0.id == id }) {
+            if let workspace = workspaces.first(where: { $0.id == id }) {
                 WorkspaceRow(workspace: workspace)
             }
         case .session(let workspaceID, let sessionID):
-            if let workspace = appState.workspaces.first(where: { $0.id == workspaceID }),
+            if let workspace = workspaces.first(where: { $0.id == workspaceID }),
                let cs = workspace.unsortedSessions.first(where: { $0.id == sessionID }) {
                 Label(
                     cs.sdkSessionID.map { String($0.prefix(8)) } ?? "New Session",
@@ -99,6 +107,13 @@ struct WorkspaceList: View {
         panel.prompt = "Select"
 
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        appState.addWorkspace(directory: url.path)
+        addWorkspace(directory: url.path)
+    }
+
+    private func addWorkspace(directory: String) {
+        let name = URL(fileURLWithPath: directory).lastPathComponent
+        let workspace = Workspace(name: name, directory: directory, sortOrder: workspaces.count)
+        modelContext.insert(workspace)
+        appState.sidebarSelection = .workspace(workspace.id)
     }
 }

@@ -1,7 +1,10 @@
 import SwiftUI
+import SwiftData
 
 struct WorkspaceRow: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Workspace.sortOrder) private var workspaces: [Workspace]
 
     let workspace: Workspace
 
@@ -35,14 +38,20 @@ struct WorkspaceRow: View {
             RenameButton()
             Divider()
             Button(role: .destructive) {
-                appState.removeWorkspace(workspace)
+                removeWorkspace()
             } label: {
                 Label("Delete", systemImage: "trash")
             }
         }
         .renameAction {
-            appState.selectedWorkspace = workspace
             isRenaming = true
+        }
+    }
+
+    private func removeWorkspace() {
+        modelContext.delete(workspace)
+        if appState.sidebarSelection?.workspaceID == workspace.id {
+            appState.sidebarSelection = workspaces.first(where: { $0.id != workspace.id }).map { .workspace($0.id) }
         }
     }
 }

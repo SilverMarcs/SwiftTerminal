@@ -63,17 +63,4 @@ struct InspectorView: View {
         }
     }
 
-    private func changeWorkspaceDirectory() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = false
-        panel.message = "Choose a new workspace directory"
-        panel.prompt = "Select"
-
-        if panel.runModal() == .OK, let url = panel.url {
-            appState.selectedWorkspace?.directory = url.path
-            appState.selectedWorkspace?.name = url.lastPathComponent
-        }
-    }
 }
