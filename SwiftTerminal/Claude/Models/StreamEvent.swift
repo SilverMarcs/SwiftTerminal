@@ -239,6 +239,12 @@ struct UserEvent: Decodable {
     let sessionID: String?
     let toolUseResult: ToolUseResult?
 
+    init(message: UserMessage, sessionID: String?, toolUseResult: ToolUseResult?) {
+        self.message = message
+        self.sessionID = sessionID
+        self.toolUseResult = toolUseResult
+    }
+
     enum CodingKeys: String, CodingKey {
         case message
         case sessionID = "session_id"
@@ -256,6 +262,12 @@ struct ToolResultContent: Decodable {
     let type: String
     let content: AnyCodable?
 
+    init(toolUseID: String?, type: String, content: AnyCodable?) {
+        self.toolUseID = toolUseID
+        self.type = type
+        self.content = content
+    }
+
     enum CodingKeys: String, CodingKey {
         case toolUseID = "tool_use_id"
         case type, content
@@ -265,11 +277,21 @@ struct ToolResultContent: Decodable {
 struct ToolUseResult: Decodable {
     let type: String?
     let file: ToolResultFile?
+
+    init(type: String?, file: ToolResultFile?) {
+        self.type = type
+        self.file = file
+    }
 }
 
 struct ToolResultFile: Decodable {
     let filePath: String?
     let numLines: Int?
+
+    init(filePath: String?, numLines: Int?) {
+        self.filePath = filePath
+        self.numLines = numLines
+    }
 }
 
 // MARK: - Result
@@ -295,8 +317,11 @@ struct ResultEvent: Decodable {
 
 // MARK: - AnyCodable Helper
 
-struct AnyCodable: Decodable {
+struct AnyCodable: Decodable, ExpressibleByStringLiteral {
     let value: Any
+
+    init(value: Any) { self.value = value }
+    init(stringLiteral value: String) { self.value = value }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()

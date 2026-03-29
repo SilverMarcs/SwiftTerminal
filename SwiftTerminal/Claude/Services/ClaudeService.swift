@@ -607,8 +607,8 @@ final class ClaudeService {
                 selectedModel = detected
             }
 
-        case .streamEvent(let delta):
-            handleStreamDelta(delta)
+        case .streamEvent:
+            break // Not used with includePartialMessages: false
 
         case .assistant(let e):
             handleAssistantEvent(e)
@@ -660,122 +660,41 @@ final class ClaudeService {
         }
     }
 
-    // MARK: - Stream Delta Handling
-
-    private func handleStreamDelta(_ delta: StreamDelta) {
-        let msgIdx = currentAssistantIndex
-
-        switch delta.eventType {
-        case "content_block_start":
-            guard let cb = delta.contentBlock, let index = delta.index else { return }
-            switch cb.type {
-            case "text":
-                state.blockTexts[index] = ""
-            case "tool_use":
-                if let id = cb.id, let name = cb.name {
-                    state.blockToolIDs[index] = id
-                    state.blockToolNames[index] = name
-                    if toolUseIndex[id] == nil {
-                        let info = ToolUseInfo(id: id, name: name, input: [:])
-                        let blockIdx = appendToolUseBlock(at: msgIdx, info: info)
-                        toolUseIndex[id] = BlockLocation(messageIndex: msgIdx, blockIndex: blockIdx)
-                    }
-                }
-            case "thinking":
-                state.blockTexts[index] = ""
-                state.thinkingBlockIndices.insert(index)
-            default:
-                break
-            }
-
-        case "content_block_delta":
-            guard let d = delta.delta, let index = delta.index else { return }
-            if d.type == "text_delta", let text = d.text {
-                state.blockTexts[index, default: ""] += text
-                updateTextBlock(at: msgIdx, text: state.blockTexts[index]!)
-            } else if d.type == "input_json_delta", let json = d.partialJSON {
-                state.toolInputJSON[index, default: ""] += json
-            } else if d.type == "thinking_delta", let text = d.text {
-                state.blockTexts[index, default: ""] += text
-                updateThinkingBlock(at: msgIdx, text: state.blockTexts[index]!)
-            }
-
-        case "content_block_stop":
-            guard let index = delta.index else { return }
-            if let toolID = state.blockToolIDs[index],
-               let jsonStr = state.toolInputJSON[index],
-               let location = toolUseIndex[toolID] {
-                let parsedInput = parseToolInput(jsonStr)
-                updateToolUseInput(at: location, input: parsedInput)
-
-            }
-            if state.thinkingBlockIndices.contains(index),
-               let text = state.blockTexts[index], !text.isEmpty,
-               !state.hasAddedThinking {
-                appendThinkingBlock(at: msgIdx, text: text)
-                state.hasAddedThinking = true
-            }
-
-        default:
-            break
-        }
-    }
-
     // MARK: - Assistant Event Handling
 
     private func handleAssistantEvent(_ event: AssistantEvent) {
         let msg = event.message
         let msgID = msg.id
 
-        // Track message boundaries — create new ChatMessage for each API message
+        // New API message → new ChatMessage
         if let msgID, msgID != state.lastMessageID {
             if state.lastMessageID != nil {
                 messages.append(ChatMessage(role: .assistant))
-                state.resetBlocks()
             }
             state.lastMessageID = msgID
         }
 
-        // During active streaming, stream_events already handle all content
-        // display (text, tools, thinking). Skip redundant content processing
-        // from assistant partial messages to prevent duplication — the dedup
-        // flags (hasStreamedText, hasAddedThinking) reset on message boundaries
-        // while toolUseIndex persists, causing inconsistent dedup behavior.
-        if !queryActive {
-            for block in msg.content {
-                switch block {
-                case .toolUse(let toolBlock):
-                    let id = toolBlock.id
-                    let input = toolBlock.input.mapValues(\.value)
-                    if toolUseIndex[id] == nil {
-                        let info = ToolUseInfo(
-                            id: id,
-                            name: toolBlock.name,
-                            input: input
-                        )
-                        let blockIdx = appendToolUseBlock(at: currentAssistantIndex, info: info)
-                        toolUseIndex[id] = BlockLocation(messageIndex: currentAssistantIndex, blockIndex: blockIdx)
-                    } else if let location = toolUseIndex[id] {
-                        if !input.isEmpty {
-                            updateToolUseInput(at: location, input: input)
-                        }
-                    }
+        let msgIdx = currentAssistantIndex
 
-
-                case .thinking(let thinkBlock):
-                    if !state.hasAddedThinking {
-                        appendThinkingBlock(at: currentAssistantIndex, text: thinkBlock.thinking)
-                        state.hasAddedThinking = true
-                    }
-
-                case .text(let textBlock):
-                    if !state.hasStreamedText {
-                        updateTextBlock(at: currentAssistantIndex, text: textBlock.text)
-                    }
-
-                case .unknown:
-                    break
+        for block in msg.content {
+            switch block {
+            case .toolUse(let toolBlock):
+                let id = toolBlock.id
+                let input = toolBlock.input.mapValues(\.value)
+                if toolUseIndex[id] == nil {
+                    let info = ToolUseInfo(id: id, name: toolBlock.name, input: input)
+                    let blockIdx = appendToolUseBlock(at: msgIdx, info: info)
+                    toolUseIndex[id] = BlockLocation(messageIndex: msgIdx, blockIndex: blockIdx)
                 }
+
+            case .thinking(let thinkBlock):
+                appendThinkingBlock(at: msgIdx, text: thinkBlock.thinking)
+
+            case .text(let textBlock):
+                updateTextBlock(at: msgIdx, text: textBlock.text)
+
+            case .unknown:
+                break
             }
         }
 
@@ -783,8 +702,6 @@ final class ClaudeService {
             session.sessionID = sid
             syncSessionID(sid)
         }
-
-        // Track assistant SDK UUID for resumeSessionAt
         if let uuid = event.uuid {
             lastAssistantSDKUUID = uuid
         }
@@ -826,7 +743,6 @@ final class ClaudeService {
         let msgIdx = currentAssistantIndex
         if let resultText = event.result,
            !resultText.isEmpty,
-           !state.hasStreamedText,
            messages[safe: msgIdx]?.text.isEmpty == true {
             updateTextBlock(at: msgIdx, text: resultText)
         }
@@ -899,21 +815,6 @@ final class ClaudeService {
         messages[messageIndex].blocks.append(.thinking(ThinkingInfo(text: text)))
     }
 
-    private func updateThinkingBlock(at messageIndex: Int, text: String) {
-        guard messageIndex < messages.count else { return }
-        if let idx = messages[messageIndex].blocks.lastIndex(where: {
-            if case .thinking = $0 { return true }; return false
-        }) {
-            if case .thinking(var info) = messages[messageIndex].blocks[idx] {
-                info.text = text
-                messages[messageIndex].blocks[idx] = .thinking(info)
-            }
-        } else if !state.hasAddedThinking {
-            messages[messageIndex].blocks.append(.thinking(ThinkingInfo(text: text)))
-            state.hasAddedThinking = true
-        }
-    }
-
     private func updateToolUseInput(at location: BlockLocation, input: [String: Any]) {
         guard location.messageIndex < messages.count,
               location.blockIndex < messages[location.messageIndex].blocks.count else { return }
@@ -939,14 +840,6 @@ final class ClaudeService {
         if let lastIdx = messages.indices.last, messages[lastIdx].role == .assistant {
             messages[lastIdx].blocks = [.text(TextInfo(content: text))]
         }
-    }
-
-    private func parseToolInput(_ jsonString: String) -> [String: Any] {
-        guard let data = jsonString.data(using: .utf8),
-              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return [:]
-        }
-        return dict
     }
 
     /// Sync SDK session ID back to the persisted ClaudeSession model.
@@ -1034,27 +927,9 @@ private struct BlockLocation {
 
 private struct StreamState {
     var lastMessageID: String?
-    var hasAddedThinking = false
-    var thinkingBlockIndices: Set<Int> = []
-    var hasStreamedText: Bool { !blockTexts.values.filter({ !$0.isEmpty }).isEmpty }
-
-    var blockTexts: [Int: String] = [:]
-    var blockToolIDs: [Int: String] = [:]
-    var blockToolNames: [Int: String] = [:]
-    var toolInputJSON: [Int: String] = [:]
 
     mutating func reset() {
         lastMessageID = nil
-        resetBlocks()
-    }
-
-    mutating func resetBlocks() {
-        hasAddedThinking = false
-        thinkingBlockIndices.removeAll()
-        blockTexts.removeAll()
-        blockToolIDs.removeAll()
-        blockToolNames.removeAll()
-        toolInputJSON.removeAll()
     }
 }
 

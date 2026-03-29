@@ -135,9 +135,7 @@ enum StreamParser {
             return .assistant(event)
 
         case "user":
-            guard let data = try? JSONSerialization.data(withJSONObject: raw),
-                  let event = try? JSONDecoder().decode(UserEvent.self, from: data) else { return nil }
-            return .user(event)
+            return parseUserMessage(raw)
 
         case "result":
             guard let data = try? JSONSerialization.data(withJSONObject: raw),
@@ -189,6 +187,63 @@ enum StreamParser {
                   let event = try? JSONDecoder().decode(SystemEvent.self, from: data) else { return nil }
             return .system(event)
         }
+    }
+
+    // MARK: - User Messages
+
+    /// Manual JSON parsing for user events — avoids JSONDecoder which silently
+    /// drops the entire event when any tool result has an unexpected content
+    /// format (array vs string vs dict). This ensures isComplete is set for
+    /// every tool result, preventing stuck spinners.
+    private static func parseUserMessage(_ raw: [String: Any]) -> StreamEvent? {
+        guard let message = raw["message"] as? [String: Any],
+              let contentArray = message["content"] as? [[String: Any]] else { return nil }
+
+        let sessionID = raw["session_id"] as? String
+
+        var resultContents: [ToolResultContent] = []
+        for block in contentArray {
+            let type = block["type"] as? String ?? ""
+            let toolUseID = block["tool_use_id"] as? String
+
+            // Robustly extract content regardless of format (string, array, dict, null)
+            let content: AnyCodable?
+            if let str = block["content"] as? String {
+                content = AnyCodable(stringLiteral: str)
+            } else if let obj = block["content"], JSONSerialization.isValidJSONObject(obj),
+                      let data = try? JSONSerialization.data(withJSONObject: obj),
+                      let decoded = try? JSONDecoder().decode(AnyCodable.self, from: data) {
+                content = decoded
+            } else {
+                content = nil
+            }
+
+            resultContents.append(ToolResultContent(
+                toolUseID: toolUseID,
+                type: type,
+                content: content
+            ))
+        }
+
+        // Parse top-level tool_use_result metadata if present
+        var toolUseResult: ToolUseResult?
+        if let tur = raw["tool_use_result"] as? [String: Any] {
+            var file: ToolResultFile?
+            if let f = tur["file"] as? [String: Any] {
+                file = ToolResultFile(
+                    filePath: f["filePath"] as? String ?? f["file_path"] as? String,
+                    numLines: f["numLines"] as? Int ?? f["num_lines"] as? Int
+                )
+            }
+            toolUseResult = ToolUseResult(type: tur["type"] as? String, file: file)
+        }
+
+        let event = UserEvent(
+            message: UserMessage(role: "user", content: resultContents),
+            sessionID: sessionID,
+            toolUseResult: toolUseResult
+        )
+        return .user(event)
     }
 
     // MARK: - Stream Events

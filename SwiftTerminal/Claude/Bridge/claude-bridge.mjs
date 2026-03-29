@@ -249,7 +249,7 @@ async function handleStartSession(params) {
       cwd: params.cwd || process.cwd(),
       permissionMode: permMode,
       enableFileCheckpointing: true,
-      includePartialMessages: true,
+      includePartialMessages: false,
       canUseTool: createCanUseTool(permMode),
       onElicitation: createOnElicitation(),
       promptSuggestions: params.promptSuggestions ?? false,
@@ -502,7 +502,7 @@ async function handleActivateSession(params) {
       cwd: params.cwd || process.cwd(),
       resume: params.sessionId,
       enableFileCheckpointing: true,
-      includePartialMessages: true,
+      includePartialMessages: false,
       permissionMode: params.permissionMode || "default",
     };
 

@@ -165,7 +165,7 @@ struct AssistantTurnView: View {
                     }
                 }
 
-                if isStreaming && allBlocks.isEmpty {
+                if isStreaming {
                     ProgressView()
                         .controlSize(.small)
                 }
