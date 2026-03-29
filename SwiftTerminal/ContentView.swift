@@ -11,7 +11,7 @@ struct ContentView: View {
                 .navigationSplitViewColumnWidth(min: 160, ideal: 200, max: 300)
         } detail: {
             if let session = appState.selectedSession {
-                SessionDetailView(session: session)
+                WorkspaceView(session: session)
                     .id(session.id)
             } else {
                 ContentUnavailableView(
