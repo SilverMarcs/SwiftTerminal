@@ -10,6 +10,10 @@ struct WorkspaceRow: View {
     @State private var isRenaming = false
     @FocusState private var isNameFieldFocused: Bool
 
+    private var activeSessionCount: Int {
+        workspace.sessions.filter { $0.service?.queryActive == true }.count
+    }
+
     var body: some View {
         HStack(spacing: 8) {
             if workspace.projectType != .unknown {
@@ -33,6 +37,7 @@ struct WorkspaceRow: View {
                     .lineLimit(1)
             }
         }
+        .badge(activeSessionCount > 0 ? activeSessionCount : 0)
         .tag(SidebarSelection.workspace(workspace))
         .contextMenu {
             Button {

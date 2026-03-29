@@ -80,7 +80,7 @@ struct SessionRow: View {
     private func forkSession() {
         let service = session.resolveService()
         Task {
-            guard let forked = await service.forkSession() else { return }
+            guard let forked = await service.forkSession(in: workspace) else { return }
             await MainActor.run {
                 appState.selectedItem = .session(forked)
             }

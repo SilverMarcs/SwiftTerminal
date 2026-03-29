@@ -15,6 +15,8 @@ final class ClaudeSession {
 
     @Transient var service: ClaudeService?
 
+    var workingDirectory: String { workspace!.directory }
+
     init(workspace: Workspace? = nil) {
         self.workspace = workspace
     }
@@ -22,7 +24,7 @@ final class ClaudeSession {
     /// Returns the existing service or creates one on first access.
     func resolveService() -> ClaudeService {
         if let service { return service }
-        let s = ClaudeService(workspace: workspace!, claudeSession: self)
+        let s = ClaudeService(claudeSession: self)
         service = s
         return s
     }

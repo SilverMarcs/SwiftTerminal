@@ -58,10 +58,9 @@ final class ClaudeService {
 
     // MARK: - Private
 
-    let workspace: Workspace
-    let claudeSession: ClaudeSession?
+    let claudeSession: ClaudeSession
     weak var appState: AppState?
-    var workingDirectory: String { workspace.directory }
+    var workingDirectory: String { claudeSession.workingDirectory }
     private var process: ClaudeProcess?
     private var readerTask: Task<Void, Never>?
     private var bridgeReady = false
@@ -83,10 +82,9 @@ final class ClaudeService {
     /// When set, next send() will pass resumeSessionAt to truncate conversation
     @ObservationIgnored private var pendingResumeAt: String?
 
-    init(workspace: Workspace, claudeSession: ClaudeSession? = nil) {
-        self.workspace = workspace
+    init(claudeSession: ClaudeSession) {
         self.claudeSession = claudeSession
-        if let sdkID = claudeSession?.sdkSessionID {
+        if let sdkID = claudeSession.sdkSessionID {
             self.session.sessionID = sdkID
         }
     }
@@ -410,7 +408,7 @@ final class ClaudeService {
     /// Fork the current session (or fork up to a specific message).
     /// Creates a new ClaudeSession on the same workspace and returns it.
     @discardableResult
-    func forkSession(upToMessageID localMessageID: String? = nil) async -> ClaudeSession? {
+    func forkSession(in workspace: Workspace? = nil, upToMessageID localMessageID: String? = nil) async -> ClaudeSession? {
         guard let sourceSessionID = session.sessionID else {
             error = "Cannot fork: no active session"
             return nil
@@ -451,7 +449,11 @@ final class ClaudeService {
             return nil
         }
 
-        let forked = workspace.newSession()
+        guard let ws = workspace ?? claudeSession.workspace else {
+            self.error = "Fork failed: no workspace"
+            return nil
+        }
+        let forked = ws.newSession()
         forked.sdkSessionID = forkedID
         return forked
     }
@@ -467,7 +469,7 @@ final class ClaudeService {
         ])
         let response = await waitForBridgeResponse("rename_session")
         if response?.success == true {
-            claudeSession?.name = newName
+            claudeSession.name = newName
         }
     }
 
@@ -646,7 +648,7 @@ final class ClaudeService {
             handleResult(e)
             fetchContextUsage()
             postSessionNotification(
-                title: claudeSession?.name ?? "Claude",
+                title: claudeSession.name ?? "Claude",
                 subtitle: "Task complete",
                 category: "taskComplete"
             )
@@ -654,7 +656,7 @@ final class ClaudeService {
         case .approvalRequest(let request):
             pendingApproval = request
             postSessionNotification(
-                title: claudeSession?.name ?? "Claude",
+                title: claudeSession.name ?? "Claude",
                 subtitle: "Permission required: \(request.displayName ?? request.toolName)",
                 category: "approvalRequest"
             )
@@ -662,7 +664,7 @@ final class ClaudeService {
         case .questionRequest(let request):
             pendingQuestion = UserQuestion(request: request)
             postSessionNotification(
-                title: claudeSession?.name ?? "Claude",
+                title: claudeSession.name ?? "Claude",
                 subtitle: "Claude is asking a question",
                 category: "approvalRequest"
             )
@@ -874,8 +876,8 @@ final class ClaudeService {
 
     /// Sync SDK session ID back to the persisted ClaudeSession model.
     private func syncSessionID(_ id: String?) {
-        guard let id, claudeSession?.sdkSessionID != id else { return }
-        claudeSession?.sdkSessionID = id
+        guard let id, claudeSession.sdkSessionID != id else { return }
+        claudeSession.sdkSessionID = id
     }
 
     /// Fetches the session title from the SDK and persists it on the ClaudeSession model.
@@ -890,7 +892,7 @@ final class ClaudeService {
             let response = await self.waitForBridgeResponse("get_session_info")
             if let result = response?.result,
                let summary = result["summary"] as? String, !summary.isEmpty {
-                self.claudeSession?.name = summary
+                self.claudeSession.name = summary
             }
         }
     }
@@ -912,13 +914,12 @@ final class ClaudeService {
     // MARK: - Notifications
 
     private func postSessionNotification(title: String, subtitle: String, category: String) {
-        guard let session = claudeSession else { return }
-        let sessionIDString = session.id.uuidString
+        let sessionIDString = claudeSession.id.uuidString
 
         Task { @MainActor in
-            let isSelected = self.appState?.selectedSession === session
+            let isSelected = self.appState?.selectedSession === self.claudeSession
             if !isSelected {
-                session.hasNotification = true
+                self.claudeSession.hasNotification = true
             }
 
             let content = UNMutableNotificationContent()

@@ -49,12 +49,9 @@ final class EditorTextView: NSTextView {
         let containerOrigin = textContainerOrigin
         let text = string as NSString
 
-        // Draw gutter separator
-        NSColor.separatorColor.withAlphaComponent(0.15).setStroke()
-        NSBezierPath.strokeLine(
-            from: NSPoint(x: gutterWidth - 0.5, y: rect.minY),
-            to: NSPoint(x: gutterWidth - 0.5, y: rect.maxY)
-        )
+        // Draw gutter background
+        NSColor.separatorColor.withAlphaComponent(0.08).setFill()
+        NSRect(x: 0, y: rect.minY, width: gutterWidth, height: rect.height).fill()
 
         guard text.length > 0 else { return }
 
