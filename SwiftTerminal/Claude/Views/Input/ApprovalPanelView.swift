@@ -5,7 +5,7 @@ struct ApprovalPanelView: View {
     let approval: ApprovalRequest
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 Image(systemName: "shield.lefthalf.filled")
                     .font(.caption)
@@ -16,28 +16,19 @@ struct ApprovalPanelView: View {
                     .fontWeight(.medium)
                     .foregroundStyle(.orange)
             }
-
+            
             if let title = approval.title {
                 Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.primary)
+                    .font(.callout)
             } else {
                 Text("Claude wants to use **\(approval.toolName)**")
-                    .font(.caption)
-                    .foregroundStyle(.primary)
+                    .font(.callout)
             }
 
             if let desc = approval.description {
                 Text(desc)
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
-            }
-
-            if let reason = approval.decisionReason {
-                Text(reason)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .italic()
             }
 
             if !approval.input.isEmpty {
@@ -45,47 +36,23 @@ struct ApprovalPanelView: View {
             }
 
             HStack(spacing: 8) {
-                Button {
+                Button("Allow") {
                     service.respondToApproval(allow: true)
-                } label: {
-                    Text("Allow")
-                        .font(.caption)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
-                .controlSize(.small)
                 .keyboardShortcut(.return, modifiers: [])
 
-                Button {
+                Button("Always Allow") {
                     service.respondToApproval(allow: true, forSession: true)
-                } label: {
-                    Text("Always Allow")
-                        .font(.caption)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .keyboardShortcut(.return, modifiers: .shift)
 
-                Button {
+                Button("Deny", role: .destructive) {
                     service.respondToApproval(allow: false)
-                } label: {
-                    Text("Deny")
-                        .font(.caption)
                 }
-                .buttonStyle(.bordered)
                 .tint(.red)
-                .controlSize(.small)
-                .keyboardShortcut(.escape, modifiers: [])
-
-                Spacer()
-
-                Text("Enter / Shift+Enter / Esc")
-                    .font(.caption2)
-                    .foregroundStyle(.quaternary)
             }
+            .controlSize(.small)
         }
         .padding(12)
-        .background(Color.orange.opacity(0.05))
         .overlay(alignment: .top) { Divider() }
     }
 
@@ -99,7 +66,7 @@ struct ApprovalPanelView: View {
                 .lineLimit(8)
                 .padding(6)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(nsColor: .controlBackgroundColor))
+                .background(.background.secondary)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
         }
     }

@@ -104,10 +104,20 @@ const FILE_TOOLS = new Set([
   "Read", "Write", "Edit", "Glob", "Grep", "NotebookEdit",
 ]);
 
+// Tools that should always be auto-allowed (user interaction handled in Swift UI)
+const AUTO_ALLOW_TOOLS = new Set([
+  "AskUserQuestion",
+]);
+
 function createCanUseTool(permissionMode) {
   if (permissionMode === "bypassPermissions") return undefined;
 
   return async (toolName, input, opts) => {
+    // Auto-allow tools that are handled by the Swift UI layer
+    if (AUTO_ALLOW_TOOLS.has(toolName)) {
+      return { behavior: "allow" };
+    }
+
     // In acceptEdits mode, auto-allow file operations
     if (permissionMode === "acceptEdits" && FILE_TOOLS.has(toolName)) {
       return { behavior: "allow" };

@@ -40,6 +40,7 @@ struct ToolGroupView: View {
                 }
 
                 Text(summary)
+                    .font(.caption)
                     .lineLimit(1)
 
                 if hasRunningTool {

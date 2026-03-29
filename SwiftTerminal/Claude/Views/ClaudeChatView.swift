@@ -7,11 +7,6 @@ struct ClaudeChatView: View {
         List {
             MessageListView(service: service)
 
-            if let approval = service.pendingApproval {
-                ApprovalPanelView(service: service, approval: approval)
-                    .listRowSeparator(.hidden)
-            }
-
             ErrorBarView(service: service)
                 .listRowSeparator(.hidden)
         }
@@ -29,7 +24,12 @@ struct ClaudeChatView: View {
             ToolbarContentView(service: service)
         }
         .safeAreaBar(edge: .bottom) {
-            InputBarView(service: service)
+            VStack(spacing: 0) {
+                if let approval = service.pendingApproval {
+                    ApprovalPanelView(service: service, approval: approval)
+                }
+                InputBarView(service: service)
+            }
         }
     }
 }
