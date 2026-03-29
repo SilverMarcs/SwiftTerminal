@@ -12,7 +12,14 @@ struct WorkspaceRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: "folder")
+            if workspace.projectType != .unknown {
+                Image(workspace.projectType.iconName)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 16, height: 16)
+            } else {
+                Image(systemName: "folder")
+            }
 
             if isRenaming {
                 TextField("Workspace Name", text: Bindable(workspace).name)

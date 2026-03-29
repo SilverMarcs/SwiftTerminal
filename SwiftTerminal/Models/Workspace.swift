@@ -8,8 +8,19 @@ final class Workspace {
     var sortOrder: Int = 0
     
     var directory: String = ""
+    var projectTypeRaw: String = ProjectType.unknown.rawValue
+
     var url: URL {
         URL(fileURLWithPath: directory)
+    }
+
+    var projectType: ProjectType {
+        get { ProjectType(rawValue: projectTypeRaw) ?? .unknown }
+        set { projectTypeRaw = newValue.rawValue }
+    }
+
+    func detectProjectType() {
+        projectType = ProjectType.detect(at: url)
     }
 
     @Relationship(deleteRule: .cascade)

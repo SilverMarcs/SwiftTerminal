@@ -37,6 +37,11 @@ struct WorkspaceListView: View {
                 }
             }
         }
+        .task {
+            for workspace in workspaces where workspace.projectType == .unknown {
+                workspace.detectProjectType()
+            }
+        }
         .searchable(text: $searchText, placement: .sidebar, prompt: "Filter workspaces")
         .onChange(of: appState.selectedItem) { _, newValue in
             guard case .workspace(let workspace) = newValue else { return }
@@ -73,6 +78,7 @@ struct WorkspaceListView: View {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         let name = URL(fileURLWithPath: url.path).lastPathComponent
         let workspace = Workspace(name: name, directory: url.path, sortOrder: workspaces.count)
+        workspace.detectProjectType()
         modelContext.insert(workspace)
     }
 }
