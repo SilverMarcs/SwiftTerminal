@@ -51,7 +51,7 @@ struct InlineEditDiffView: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
-            .background(.quaternary.opacity(0.5))
+            .background(.fill.tertiary)
 
             // Diff content
             if let hunk {

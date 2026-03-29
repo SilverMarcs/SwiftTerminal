@@ -12,6 +12,32 @@ final class EditorTextView: NSTextView {
     var fileExtension: String = ""
 
     private let lineNumberFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+    private let indentUnit = "    " // 4 spaces
+
+    // MARK: - Smart Editing
+
+    override func insertNewline(_ sender: Any?) {
+        let text = string as NSString
+        let loc = selectedRange().location
+
+        // Find current line and its leading whitespace
+        let lineRange = text.lineRange(for: NSRange(location: loc, length: 0))
+        let line = text.substring(with: lineRange)
+        let leadingWhitespace = String(line.prefix(while: { $0 == " " || $0 == "\t" }))
+
+        // Check if the character before the cursor is an opening brace
+        let trimmed = text.substring(with: NSRange(location: lineRange.location, length: loc - lineRange.location))
+            .trimmingCharacters(in: .whitespaces)
+        let extraIndent = trimmed.hasSuffix("{") ? indentUnit : ""
+
+        super.insertNewline(sender)
+        insertText(leadingWhitespace + extraIndent, replacementRange: selectedRange())
+    }
+
+    override func insertTab(_ sender: Any?) {
+        insertText(indentUnit, replacementRange: selectedRange())
+    }
+
 
     override func drawBackground(in rect: NSRect) {
         super.drawBackground(in: rect)
