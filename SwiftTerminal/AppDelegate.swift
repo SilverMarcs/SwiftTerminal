@@ -1,6 +1,10 @@
 import AppKit
 import UserNotifications
 
+extension Notification.Name {
+    static let navigateToSession = Notification.Name("navigateToSession")
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let center = UNUserNotificationCenter.current()
@@ -19,6 +23,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         completionHandler([.banner, .sound])
+    }
+
+    // Handle notification click — navigate to the session that triggered it
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let userInfo = response.notification.request.content.userInfo
+        if let sessionIDString = userInfo["sessionID"] as? String {
+            NotificationCenter.default.post(
+                name: .navigateToSession,
+                object: nil,
+                userInfo: ["sessionID": sessionIDString]
+            )
+        }
+        NSApplication.shared.dockTile.badgeLabel = nil
+        completionHandler()
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {

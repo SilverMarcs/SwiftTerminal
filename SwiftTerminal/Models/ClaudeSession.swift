@@ -11,6 +11,8 @@ final class ClaudeSession {
     @Relationship(inverse: \Workspace.unsortedSessions)
     var workspace: Workspace?
 
+    @Attribute(.ephemeral) var hasNotification = false
+
     @Transient var service: ClaudeService?
 
     init(workspace: Workspace? = nil) {

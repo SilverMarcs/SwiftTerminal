@@ -1,4 +1,6 @@
+import AppKit
 import Foundation
+import UserNotifications
 
 /// A pending image attachment to send with the next message.
 struct ImageAttachment: Identifiable {
@@ -35,6 +37,7 @@ final class ClaudeService {
 
     let workspace: Workspace
     let claudeSession: ClaudeSession?
+    weak var appState: AppState?
     var workingDirectory: String { workspace.directory }
     private var process: ClaudeProcess?
     private var readerTask: Task<Void, Never>?
@@ -598,9 +601,19 @@ final class ClaudeService {
         case .result(let e):
             handleResult(e)
             fetchContextUsage()
+            postSessionNotification(
+                title: claudeSession?.name ?? "Claude",
+                subtitle: "Task complete",
+                category: "taskComplete"
+            )
 
         case .approvalRequest(let request):
             pendingApproval = request
+            postSessionNotification(
+                title: claudeSession?.name ?? "Claude",
+                subtitle: "Permission required: \(request.displayName ?? request.toolName)",
+                category: "approvalRequest"
+            )
 
         case .toolProgress(let progress):
             handleToolProgress(progress)
@@ -932,6 +945,36 @@ final class ClaudeService {
                 self.session.contextMaxTokens = result["maxTokens"] as? Int ?? 0
                 self.session.contextPercentage = result["percentage"] as? Double ?? 0
             }
+        }
+    }
+
+    // MARK: - Notifications
+
+    private func postSessionNotification(title: String, subtitle: String, category: String) {
+        guard let session = claudeSession else { return }
+        let sessionIDString = session.id.uuidString
+
+        Task { @MainActor in
+            let isSelected = self.appState?.selectedSession === session
+            if !isSelected {
+                session.hasNotification = true
+            }
+
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.subtitle = subtitle
+            content.sound = .default
+            content.userInfo = ["sessionID": sessionIDString]
+
+            let request = UNNotificationRequest(
+                identifier: "\(sessionIDString)-\(category)-\(Date.now.timeIntervalSince1970)",
+                content: content,
+                trigger: nil
+            )
+            try? await UNUserNotificationCenter.current().add(request)
+
+            NSApplication.shared.requestUserAttention(.informationalRequest)
+            NSApplication.shared.dockTile.badgeLabel = "!"
         }
     }
 

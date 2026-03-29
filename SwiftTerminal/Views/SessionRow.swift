@@ -29,6 +29,8 @@ struct SessionRow: View {
                     .lineLimit(1)
             }
         }
+        .badge(session.hasNotification ? Text("!") : nil)
+        .badgeProminence(.increased)
         .tag(session)
         .contextMenu {
             Button("Fork Session", systemImage: "arrow.triangle.branch") {

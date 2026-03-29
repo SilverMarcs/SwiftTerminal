@@ -21,5 +21,15 @@ struct ContentView: View {
                 )
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToSession)) { notification in
+            guard let idString = notification.userInfo?["sessionID"] as? String,
+                  let sessionID = UUID(uuidString: idString) else { return }
+            for workspace in workspaces {
+                if let session = workspace.sessions.first(where: { $0.id == sessionID }) {
+                    appState.selectedSession = session
+                    break
+                }
+            }
+        }
     }
 }
