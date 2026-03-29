@@ -3,24 +3,21 @@ import SwiftUI
 struct InspectorView: View {
     let directoryURL: URL
     @Environment(AppState.self) private var appState
-
-    private var spacerWidth: CGFloat {
-        max(appState.inspectorWidth - 50, 0)
-    }
-
+    @State private var inspectorWidth: CGFloat = 0
+    
     var body: some View {
         tabContent
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onGeometryChange(for: CGFloat.self) { proxy in
                 proxy.size.width
             } action: { width in
-                appState.inspectorWidth = width
+                inspectorWidth = width
             }
             .toolbar {
                 if appState.showingInspector {
                     ToolbarItem(placement: .automatic) {
                         Color.clear
-                            .frame(width: spacerWidth, height: 0)
+                            .frame(width: max(inspectorWidth - 50, 0), height: 0)
                     }
                     .sharedBackgroundVisibility(.hidden)
                 }
