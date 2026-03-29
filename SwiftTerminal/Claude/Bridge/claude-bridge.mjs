@@ -104,17 +104,31 @@ const FILE_TOOLS = new Set([
   "Read", "Write", "Edit", "Glob", "Grep", "NotebookEdit",
 ]);
 
-// Tools that should always be auto-allowed (user interaction handled in Swift UI)
-const AUTO_ALLOW_TOOLS = new Set([
-  "AskUserQuestion",
-]);
+// Pending question requests: requestId -> resolve callback
+const pendingQuestions = new Map();
 
 function createCanUseTool(permissionMode) {
-  if (permissionMode === "bypassPermissions") return undefined;
-
+  // Always provide a handler so we can intercept AskUserQuestion in all modes.
   return async (toolName, input, opts) => {
-    // Auto-allow tools that are handled by the Swift UI layer
-    if (AUTO_ALLOW_TOOLS.has(toolName)) {
+    // AskUserQuestion: hold until user answers, then deny with the answer as message
+    if (toolName === "AskUserQuestion") {
+      const requestId = opts.toolUseID || `question_${Date.now()}`;
+
+      send({
+        type: "question_request",
+        requestId,
+        toolName,
+        questions: input.questions || [],
+        toolUseID: opts.toolUseID,
+      });
+
+      return new Promise((resolve) => {
+        pendingQuestions.set(requestId, resolve);
+      });
+    }
+
+    // In bypassPermissions mode, auto-allow everything except AskUserQuestion
+    if (permissionMode === "bypassPermissions") {
       return { behavior: "allow" };
     }
 
@@ -183,6 +197,11 @@ function denyAllPending(message) {
   }
   pendingApprovals.clear();
 
+  for (const [, resolve] of pendingQuestions) {
+    resolve({ behavior: "deny", message });
+  }
+  pendingQuestions.clear();
+
   for (const [, resolve] of pendingElicitations) {
     resolve({ action: "cancel" });
   }
@@ -225,14 +244,13 @@ async function handleStartSession(params) {
     });
 
     const permMode = params.permissionMode || "default";
-    const needsApprovals = permMode === "default" || permMode === "acceptEdits";
 
     const options = {
       cwd: params.cwd || process.cwd(),
       permissionMode: permMode,
       enableFileCheckpointing: true,
       includePartialMessages: true,
-      canUseTool: needsApprovals ? createCanUseTool(permMode) : undefined,
+      canUseTool: createCanUseTool(permMode),
       onElicitation: createOnElicitation(),
       promptSuggestions: params.promptSuggestions ?? false,
       ...(permMode === "bypassPermissions" ? { allowDangerouslySkipPermissions: true } : {}),
@@ -313,6 +331,25 @@ async function handleRespondToApproval(params) {
   }
 
   send({ type: "bridge_response", command: "respond_to_approval", success: true });
+}
+
+async function handleRespondToQuestion(params) {
+  const resolve = pendingQuestions.get(params.requestId);
+  if (!resolve) {
+    send({ type: "bridge_error", command: "respond_to_question", error: "No pending question for " + params.requestId });
+    return;
+  }
+
+  pendingQuestions.delete(params.requestId);
+
+  // Deny the tool with the user's answer as the message.
+  // The AI receives this as the tool result and processes the answer.
+  resolve({
+    behavior: "deny",
+    message: params.answer || "No answer provided",
+  });
+
+  send({ type: "bridge_response", command: "respond_to_question", success: true });
 }
 
 async function handleRespondToElicitation(params) {
@@ -596,6 +633,7 @@ async function processCommand(line) {
     case "start_session":           await handleStartSession(params); break;
     case "send_message":            await handleSendMessage(params); break;
     case "respond_to_approval":     await handleRespondToApproval(params); break;
+    case "respond_to_question":     await handleRespondToQuestion(params); break;
     case "respond_to_elicitation":  await handleRespondToElicitation(params); break;
     case "interrupt":               await handleInterrupt(); break;
     case "rewind":                  await handleRewind(params); break;

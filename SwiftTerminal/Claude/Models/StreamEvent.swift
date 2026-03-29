@@ -10,6 +10,7 @@ enum StreamEvent {
     case result(ResultEvent)
     case streamEvent(StreamDelta)
     case approvalRequest(ApprovalRequest)
+    case questionRequest(QuestionRequest)
     case toolProgress(ToolProgressEvent)
     case sessionStateChanged(SessionStateEvent)
     case statusUpdate(StatusEvent)
@@ -71,6 +72,34 @@ struct ApprovalRequest: Identifiable {
         self.description = description
         self.decisionReason = decisionReason
     }
+}
+
+// MARK: - Question Request
+
+struct QuestionRequest: Identifiable {
+    let id: String
+    let requestId: String
+    let toolUseID: String
+    let questions: [QuestionItem]
+
+    init(requestId: String, toolUseID: String, questions: [QuestionItem]) {
+        self.id = requestId
+        self.requestId = requestId
+        self.toolUseID = toolUseID
+        self.questions = questions
+    }
+}
+
+struct QuestionItem {
+    let question: String
+    let header: String
+    let options: [QuestionOption]
+    let multiSelect: Bool
+}
+
+struct QuestionOption {
+    let label: String
+    let description: String
 }
 
 // MARK: - Tool Progress

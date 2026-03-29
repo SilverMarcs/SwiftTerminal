@@ -29,6 +29,7 @@ final class ClaudeService {
     var error: String?
     var availableSessions: [SessionSummary] = []
     var pendingApproval: ApprovalRequest?
+    var pendingQuestion: UserQuestion?
     var selectedModel: ModelOption = .opus
     var selectedEffort: EffortLevel = .medium
     var selectedContextWindow: ContextWindow = .extended
@@ -153,6 +154,7 @@ final class ClaudeService {
         process?.sendCommand("interrupt")
         isStreaming = false
         pendingApproval = nil
+        pendingQuestion = nil
         turnContinuation?.resume()
         turnContinuation = nil
     }
@@ -171,6 +173,7 @@ final class ClaudeService {
         queryActive = false
         isStreaming = false
         pendingApproval = nil
+        pendingQuestion = nil
         turnContinuation?.resume()
         turnContinuation = nil
         for c in bridgeReadyContinuations { c.resume() }
@@ -197,6 +200,7 @@ final class ClaudeService {
         pendingUserMessageLocalID = nil
         pendingResumeAt = nil
         pendingApproval = nil
+        pendingQuestion = nil
         _continueLastOnNextSend = false
         error = nil
 
@@ -223,6 +227,18 @@ final class ClaudeService {
         }
 
         process?.sendCommand("respond_to_approval", params: params)
+    }
+
+    // MARK: - Question Flow
+
+    func respondToQuestion(_ answer: String) {
+        guard let question = pendingQuestion else { return }
+        pendingQuestion = nil
+
+        process?.sendCommand("respond_to_question", params: [
+            "requestId": question.requestId,
+            "answer": answer,
+        ])
     }
 
     // MARK: - Model & Settings
@@ -316,6 +332,7 @@ final class ClaudeService {
         // 5. Reset streaming state
         isStreaming = false
         pendingApproval = nil
+        pendingQuestion = nil
         state.reset()
         turnContinuation?.resume()
         turnContinuation = nil
@@ -536,6 +553,7 @@ final class ClaudeService {
             self.process = nil
             self.bridgeReady = false
             self.pendingApproval = nil
+            self.pendingQuestion = nil
             self.turnContinuation?.resume()
             self.turnContinuation = nil
             for c in self.bridgeReadyContinuations { c.resume() }
@@ -615,6 +633,14 @@ final class ClaudeService {
                 category: "approvalRequest"
             )
 
+        case .questionRequest(let request):
+            pendingQuestion = UserQuestion(request: request)
+            postSessionNotification(
+                title: claudeSession?.name ?? "Claude",
+                subtitle: "Claude is asking a question",
+                category: "approvalRequest"
+            )
+
         case .toolProgress(let progress):
             handleToolProgress(progress)
 
@@ -648,6 +674,7 @@ final class ClaudeService {
             case "tool_use":
                 if let id = cb.id, let name = cb.name {
                     state.blockToolIDs[index] = id
+                    state.blockToolNames[index] = name
                     if toolUseIndex[id] == nil {
                         let info = ToolUseInfo(id: id, name: name, input: [:])
                         let blockIdx = appendToolUseBlock(at: msgIdx, info: info)
@@ -678,7 +705,9 @@ final class ClaudeService {
             if let toolID = state.blockToolIDs[index],
                let jsonStr = state.toolInputJSON[index],
                let location = toolUseIndex[toolID] {
-                updateToolUseInput(at: location, input: parseToolInput(jsonStr))
+                let parsedInput = parseToolInput(jsonStr)
+                updateToolUseInput(at: location, input: parsedInput)
+
             }
             if state.thinkingBlockIndices.contains(index),
                let text = state.blockTexts[index], !text.isEmpty,
@@ -698,6 +727,7 @@ final class ClaudeService {
         let msg = event.message
         let msgID = msg.id
 
+        // Track message boundaries — create new ChatMessage for each API message
         if let msgID, msgID != state.lastMessageID {
             if state.lastMessageID != nil {
                 messages.append(ChatMessage(role: .assistant))
@@ -706,38 +736,46 @@ final class ClaudeService {
             state.lastMessageID = msgID
         }
 
-        for block in msg.content {
-            switch block {
-            case .toolUse(let toolBlock):
-                let id = toolBlock.id
-                if toolUseIndex[id] == nil {
-                    let info = ToolUseInfo(
-                        id: id,
-                        name: toolBlock.name,
-                        input: toolBlock.input.mapValues(\.value)
-                    )
-                    let blockIdx = appendToolUseBlock(at: currentAssistantIndex, info: info)
-                    toolUseIndex[id] = BlockLocation(messageIndex: currentAssistantIndex, blockIndex: blockIdx)
-                } else if let location = toolUseIndex[id] {
+        // During active streaming, stream_events already handle all content
+        // display (text, tools, thinking). Skip redundant content processing
+        // from assistant partial messages to prevent duplication — the dedup
+        // flags (hasStreamedText, hasAddedThinking) reset on message boundaries
+        // while toolUseIndex persists, causing inconsistent dedup behavior.
+        if !queryActive {
+            for block in msg.content {
+                switch block {
+                case .toolUse(let toolBlock):
+                    let id = toolBlock.id
                     let input = toolBlock.input.mapValues(\.value)
-                    if !input.isEmpty {
-                        updateToolUseInput(at: location, input: input)
+                    if toolUseIndex[id] == nil {
+                        let info = ToolUseInfo(
+                            id: id,
+                            name: toolBlock.name,
+                            input: input
+                        )
+                        let blockIdx = appendToolUseBlock(at: currentAssistantIndex, info: info)
+                        toolUseIndex[id] = BlockLocation(messageIndex: currentAssistantIndex, blockIndex: blockIdx)
+                    } else if let location = toolUseIndex[id] {
+                        if !input.isEmpty {
+                            updateToolUseInput(at: location, input: input)
+                        }
                     }
-                }
 
-            case .thinking(let thinkBlock):
-                if !state.hasAddedThinking {
-                    appendThinkingBlock(at: currentAssistantIndex, text: thinkBlock.thinking)
-                    state.hasAddedThinking = true
-                }
 
-            case .text(let textBlock):
-                if !state.hasStreamedText {
-                    updateTextBlock(at: currentAssistantIndex, text: textBlock.text)
-                }
+                case .thinking(let thinkBlock):
+                    if !state.hasAddedThinking {
+                        appendThinkingBlock(at: currentAssistantIndex, text: thinkBlock.thinking)
+                        state.hasAddedThinking = true
+                    }
 
-            case .unknown:
-                break
+                case .text(let textBlock):
+                    if !state.hasStreamedText {
+                        updateTextBlock(at: currentAssistantIndex, text: textBlock.text)
+                    }
+
+                case .unknown:
+                    break
+                }
             }
         }
 
@@ -974,7 +1012,7 @@ final class ClaudeService {
             try? await UNUserNotificationCenter.current().add(request)
 
             NSApplication.shared.requestUserAttention(.informationalRequest)
-            NSApplication.shared.dockTile.badgeLabel = "!"
+//            NSApplication.shared.dockTile.badgeLabel = "!"
         }
     }
 
@@ -1002,6 +1040,7 @@ private struct StreamState {
 
     var blockTexts: [Int: String] = [:]
     var blockToolIDs: [Int: String] = [:]
+    var blockToolNames: [Int: String] = [:]
     var toolInputJSON: [Int: String] = [:]
 
     mutating func reset() {
@@ -1014,7 +1053,22 @@ private struct StreamState {
         thinkingBlockIndices.removeAll()
         blockTexts.removeAll()
         blockToolIDs.removeAll()
+        blockToolNames.removeAll()
         toolInputJSON.removeAll()
+    }
+}
+
+// MARK: - User Question
+
+struct UserQuestion: Identifiable {
+    let id: String
+    let requestId: String
+    let questions: [QuestionItem]
+
+    init(request: QuestionRequest) {
+        self.id = request.requestId
+        self.requestId = request.requestId
+        self.questions = request.questions
     }
 }
 

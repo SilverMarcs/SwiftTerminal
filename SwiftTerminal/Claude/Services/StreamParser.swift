@@ -44,6 +44,10 @@ enum StreamParser {
         case "approval_request":
             return parseApprovalRequest(raw)
 
+        // Question request (AskUserQuestion tool intercepted in bridge)
+        case "question_request":
+            return parseQuestionRequest(raw)
+
         // SDK messages (unwrap the wrapper)
         case "sdk_message":
             guard let message = raw["message"] as? [String: Any],
@@ -77,6 +81,45 @@ enum StreamParser {
             decisionReason: raw["decisionReason"] as? String
         )
         return .approvalRequest(request)
+    }
+
+    // MARK: - Question Request
+
+    private static func parseQuestionRequest(_ raw: [String: Any]) -> StreamEvent? {
+        guard let requestId = raw["requestId"] as? String else { return nil }
+
+        var items: [QuestionItem] = []
+        if let rawQuestions = raw["questions"] as? [[String: Any]] {
+            for q in rawQuestions {
+                let question = q["question"] as? String ?? ""
+                let header = q["header"] as? String ?? ""
+                let multiSelect = q["multiSelect"] as? Bool ?? false
+
+                var options: [QuestionOption] = []
+                if let rawOptions = q["options"] as? [[String: Any]] {
+                    for opt in rawOptions {
+                        options.append(QuestionOption(
+                            label: opt["label"] as? String ?? "",
+                            description: opt["description"] as? String ?? ""
+                        ))
+                    }
+                }
+
+                items.append(QuestionItem(
+                    question: question,
+                    header: header,
+                    options: options,
+                    multiSelect: multiSelect
+                ))
+            }
+        }
+
+        let request = QuestionRequest(
+            requestId: requestId,
+            toolUseID: raw["toolUseID"] as? String ?? requestId,
+            questions: items
+        )
+        return .questionRequest(request)
     }
 
     // MARK: - SDK Message Parsing
