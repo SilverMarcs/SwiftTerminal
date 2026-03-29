@@ -17,7 +17,11 @@ struct ClaudeChatView: View {
         }
         .overlay {
             if service.messages.isEmpty {
-                EmptyStateView()
+                ContentUnavailableView {
+                    Label("Claude Code", image: "claude.symbols")
+                } description: {
+                    Text("Do anything about this workspace")
+                }
             }
         }
         .animation(.easeInOut(duration: 0.2), value: service.pendingApproval != nil)
