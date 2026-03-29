@@ -23,11 +23,6 @@ final class EditorTextView: NSTextView {
         let containerOrigin = textContainerOrigin
         let text = string as NSString
 
-        // Draw gutter background TODO: not doing anything rn
-        let gutterRect = NSRect(x: 0, y: rect.minY, width: gutterWidth, height: rect.height)
-        NSColor.controlBackgroundColor.withAlphaComponent(0.5).setFill()
-        gutterRect.fill()
-
         // Draw gutter separator
         NSColor.separatorColor.withAlphaComponent(0.15).setStroke()
         NSBezierPath.strokeLine(
@@ -42,7 +37,7 @@ final class EditorTextView: NSTextView {
 
         let lineNumAttrs: [NSAttributedString.Key: Any] = [
             .font: lineNumberFont,
-            .foregroundColor: NSColor.tertiaryLabelColor,
+            .foregroundColor: NSColor.secondaryLabelColor,
         ]
 
         // Count lines before visible range
@@ -290,8 +285,8 @@ final class DiffPopoverTextView: NSTextView {
         isSelectable = true
         isRichText = false
         font = constants.font
-        backgroundColor = .windowBackgroundColor
-        drawsBackground = true
+        backgroundColor = .clear
+        drawsBackground = false
         textColor = .labelColor
         textContainerInset = NSSize(width: constants.gutterWidth, height: constants.verticalPadding)
 
@@ -331,10 +326,6 @@ final class DiffPopoverTextView: NSTextView {
         let text = string as NSString
         let containerOrigin = textContainerOrigin
         let gw = constants.gutterWidth
-
-        // Gutter background
-        NSColor.controlBackgroundColor.withAlphaComponent(0.3).setFill()
-        NSRect(x: 0, y: rect.minY, width: gw, height: rect.height).fill()
 
         // Gutter separator
         NSColor.separatorColor.withAlphaComponent(0.15).setStroke()

@@ -3,6 +3,7 @@ import SwiftUI
 struct BottomSheetView: View {
     let directoryURL: URL
     @Environment(EditorPanel.self) private var panel
+    @Environment(\.colorScheme) var colorScheme
     @AppStorage("editorPanelHeight") private var panelHeight: Double = 250
 
     var body: some View {
@@ -16,7 +17,7 @@ struct BottomSheetView: View {
                 content
             }
             .frame(height: panelHeight, alignment: .top)
-            .background(.background)
+            .background(colorScheme == .dark ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.bar))
         }
     }
 
@@ -56,7 +57,6 @@ struct BottomSheetView: View {
 
             Divider()
                 .frame(height: 15)
-                .padding(.horizontal, 3)
 
             contentTitle
 

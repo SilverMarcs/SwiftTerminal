@@ -15,6 +15,8 @@ struct HighlightedTextEditor: NSViewRepresentable {
         scrollView.hasHorizontalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
+        scrollView.contentView.drawsBackground = false
 
         let contentSize = scrollView.contentSize
         let textContainer = NSTextContainer(containerSize: NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
@@ -40,8 +42,8 @@ struct HighlightedTextEditor: NSViewRepresentable {
         textView.isRichText = false
         textView.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
         textView.textColor = .labelColor
-        textView.backgroundColor = .textBackgroundColor
-        textView.drawsBackground = true
+        textView.backgroundColor = .clear
+        textView.drawsBackground = false
         textView.textContainerInset = NSSize(width: EditorTextViewConstants.gutterWidth, height: 4)
         textView.delegate = context.coordinator
 

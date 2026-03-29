@@ -50,8 +50,8 @@ final class HunkNSTextView: NSTextView {
         isSelectable = true
         isRichText = false
         font = constants.font
-        backgroundColor = .windowBackgroundColor
-        drawsBackground = true
+        backgroundColor = .clear
+        drawsBackground = false
         textColor = .labelColor
         textContainerInset = NSSize(width: constants.gutterWidth, height: 0)
         isVerticallyResizable = true
@@ -98,11 +98,6 @@ final class HunkNSTextView: NSTextView {
         let text = self.string as NSString
         let containerOrigin = self.textContainerOrigin
         let gutterWidth = constants.gutterWidth
-
-        // Draw gutter background
-        let gutterRect = NSRect(x: 0, y: rect.minY, width: gutterWidth, height: rect.height)
-        NSColor.controlBackgroundColor.withAlphaComponent(0.3).setFill()
-        gutterRect.fill()
 
         // Draw gutter separator
         NSColor.separatorColor.withAlphaComponent(0.15).setStroke()
