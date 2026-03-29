@@ -13,7 +13,7 @@ final class EditorTextView: NSTextView {
     var fileExtension: String = ""
     let foldingManager = FoldingManager()
 
-    private let lineNumberFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+    private let lineNumberFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
     private let indentUnit = "    " // 4 spaces
 
     // MARK: - Folding
@@ -107,10 +107,6 @@ final class EditorTextView: NSTextView {
         let foldColWidth = EditorTextViewConstants.foldColumnWidth
         let containerOrigin = textContainerOrigin
         let text = string as NSString
-
-        // Draw gutter background
-        NSColor.separatorColor.withAlphaComponent(0.08).setFill()
-        NSRect(x: 0, y: rect.minY, width: gutterWidth, height: rect.height).fill()
 
         guard text.length > 0 else { return }
 

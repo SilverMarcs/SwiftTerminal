@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 
-enum GitDiffStage: Hashable {
+enum GitDiffStage: Hashable, Codable {
     case staged
     case unstaged
     case commit(hash: String)
@@ -32,7 +32,7 @@ struct GitDiffLineNumbers: Hashable {
     var new: Int?
 }
 
-struct GitDiffReference: Hashable {
+struct GitDiffReference: Hashable, Codable {
     var repositoryRootURL: URL
     var fileURL: URL
     var repositoryRelativePath: String

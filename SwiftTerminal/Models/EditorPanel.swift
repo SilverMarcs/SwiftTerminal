@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// What the bottom editor panel should display.
-enum EditorPanelContent: Equatable {
+enum EditorPanelContent: Hashable, Codable {
     case file(URL)
     case diff(GitDiffReference)
 }
@@ -166,10 +166,4 @@ final class EditorPanel {
         content = next
         isOpen = true
     }
-}
-
-// MARK: - FocusedValue
-
-extension FocusedValues {
-    @Entry var editorPanel: EditorPanel?
 }

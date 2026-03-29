@@ -23,5 +23,13 @@ struct SwiftTerminalApp: App {
         .commands {
             AppCommands(appState: appState)
         }
+
+        WindowGroup("Editor", for: EditorPanelContent.self) { $content in
+            if let content {
+                DetachedEditorView(content: content)
+                    .frame(minWidth: 400, minHeight: 300)
+            }
+        }
+        .defaultSize(width: 700, height: 500)
     }
 }

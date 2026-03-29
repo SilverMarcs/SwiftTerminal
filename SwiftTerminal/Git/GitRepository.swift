@@ -381,7 +381,7 @@ struct GitChangedFile: Equatable, Hashable {
     var kind: GitChangeKind
 }
 
-enum GitChangeKind: String, Equatable, Hashable {
+enum GitChangeKind: String, Equatable, Hashable, Codable {
     case added
     case modified
     case deleted
