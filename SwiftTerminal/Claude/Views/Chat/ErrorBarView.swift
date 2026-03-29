@@ -13,12 +13,14 @@ struct ErrorBarView: View {
                     .font(.caption)
                     .foregroundStyle(.red)
                     .lineLimit(2)
+                    .textSelection(.enabled)
                 Spacer()
                 Button {
                     service.error = nil
                 } label: {
                     Image(systemName: "xmark")
                         .font(.caption2)
+                        .foregroundStyle(.red)
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)

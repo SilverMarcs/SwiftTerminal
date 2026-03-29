@@ -556,6 +556,8 @@ final class ClaudeService {
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
                 bridgeReadyContinuations.append(continuation)
             }
+        } catch is SDKNotInstalledError {
+            appendError("Claude Agent SDK not found. Please run:\nnpm install -g @anthropic-ai/claude-agent-sdk")
         } catch {
             appendError("Failed to start bridge: \(error.localizedDescription)")
         }
@@ -865,9 +867,9 @@ final class ClaudeService {
 
     private func appendError(_ text: String) {
         error = text
-        if let lastIdx = messages.indices.last, messages[lastIdx].role == .assistant {
-            messages[lastIdx].blocks = [.text(TextInfo(content: text))]
-        }
+//        if let lastIdx = messages.indices.last, messages[lastIdx].role == .assistant {
+//            messages[lastIdx].blocks = [.text(TextInfo(content: text))]
+//        }
     }
 
     /// Sync SDK session ID back to the persisted ClaudeSession model.
