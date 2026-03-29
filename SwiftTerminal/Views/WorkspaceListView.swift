@@ -20,35 +20,7 @@ struct WorkspaceListView: View {
             ForEach(filteredWorkspaces) { workspace in
                 DisclosureGroup {
                     ForEach(workspace.sessions) { session in
-                        Label(
-                            session.name ?? "New Session",
-                            systemImage: session.service?.queryActive == true ? "bubble.left.fill" : "bubble.left"
-                        )
-                        .tag(session)
-                        .contextMenu {
-                            Button("Fork Session", systemImage: "arrow.triangle.branch") {
-                                forkSession(session)
-                            }
-                            .disabled(session.sdkSessionID == nil)
-                            Divider()
-                            Button("Delete Session", systemImage: "trash", role: .destructive) {
-                                if appState.selectedSession == session {
-                                    appState.selectedSession = nil
-                                }
-                                workspace.removeSession(session)
-                            }
-                        }
-                        .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) {
-                                if appState.selectedSession == session {
-                                    appState.selectedSession = nil
-                                }
-                                workspace.removeSession(session)
-                            } label: {
-                                Label("Delete Session", systemImage: "trash")
-                                    .labelStyle(.iconOnly)
-                            }
-                        }
+                        SessionRow(session: session, workspace: workspace)
                     }
                 } label: {
                     WorkspaceRow(workspace: workspace)
@@ -66,16 +38,6 @@ struct WorkspaceListView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
-        }
-    }
-
-    private func forkSession(_ session: ClaudeSession) {
-        let service = session.resolveService()
-        Task {
-            guard let forked = await service.forkSession() else { return }
-            await MainActor.run {
-                appState.selectedSession = forked
-            }
         }
     }
 

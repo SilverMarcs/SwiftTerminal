@@ -5,6 +5,7 @@ import SwiftData
 final class ClaudeSession {
     var id = UUID()
     var sdkSessionID: String?
+    var name: String?
     var createdAt: Date = Date()
 
     @Relationship(inverse: \Workspace.unsortedSessions)

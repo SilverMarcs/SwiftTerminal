@@ -4,7 +4,7 @@
 // Communicates with Swift via stdin/stdout JSON lines.
 // Persistent SDK query runtime for multi-turn sessions.
 
-import { query, listSessions, getSessionMessages, renameSession, forkSession } from "@anthropic-ai/claude-agent-sdk";
+import { query, listSessions, getSessionInfo, getSessionMessages, renameSession, forkSession } from "@anthropic-ai/claude-agent-sdk";
 import { randomUUID } from "crypto";
 
 // --- State ---
@@ -418,6 +418,15 @@ async function handleGetSessionMessages(params) {
   }
 }
 
+async function handleGetSessionInfo(params) {
+  try {
+    const info = await getSessionInfo(params.sessionId, { dir: params.cwd });
+    send({ type: "bridge_response", command: "get_session_info", success: true, result: info || null });
+  } catch (err) {
+    send({ type: "bridge_error", command: "get_session_info", error: err.message });
+  }
+}
+
 async function handleRenameSession(params) {
   try {
     await renameSession(params.sessionId, params.title, { dir: params.cwd });
@@ -585,6 +594,7 @@ async function processCommand(line) {
     case "supported_models":        await handleSupportedModels(); break;
     case "list_sessions":           await handleListSessions(params); break;
     case "get_session_messages":    await handleGetSessionMessages(params); break;
+    case "get_session_info":        await handleGetSessionInfo(params); break;
     case "rename_session":          await handleRenameSession(params); break;
     case "activate_session":        await handleActivateSession(params); break;
     case "stop":                    await handleStop(); break;

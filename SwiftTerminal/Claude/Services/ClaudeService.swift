@@ -333,9 +333,9 @@ final class ClaudeService {
                 guard let id = dict["sessionId"] as? String else { return nil }
                 return SessionSummary(
                     id: id,
-                    title: dict["title"] as? String,
-                    lastActive: dict["lastActive"] as? String,
-                    messageCount: dict["messageCount"] as? Int ?? 0
+                    title: dict["summary"] as? String ?? dict["customTitle"] as? String,
+                    lastActive: (dict["lastModified"] as? Double).map { String(Int($0)) },
+                    messageCount: 0
                 )
             }
         }
@@ -410,6 +410,21 @@ final class ClaudeService {
         let forked = workspace.newSession()
         forked.sdkSessionID = forkedID
         return forked
+    }
+
+    /// Rename the current session in the SDK and update the local model.
+    func renameSession(to newName: String) async {
+        guard let sessionID = session.sessionID else { return }
+        await ensureBridgeStarted()
+        process?.sendCommand("rename_session", params: [
+            "sessionId": sessionID,
+            "title": newName,
+            "cwd": workingDirectory
+        ])
+        let response = await waitForBridgeResponse("rename_session")
+        if response?.success == true {
+            claudeSession?.name = newName
+        }
     }
 
     @ObservationIgnored private var _continueLastOnNextSend = false
@@ -771,6 +786,7 @@ final class ClaudeService {
         isStreaming = false
         pendingApproval = nil
         session.isCompacting = false
+        syncSessionName()
         turnContinuation?.resume()
         turnContinuation = nil
     }
@@ -885,6 +901,23 @@ final class ClaudeService {
     private func syncSessionID(_ id: String?) {
         guard let id, claudeSession?.sdkSessionID != id else { return }
         claudeSession?.sdkSessionID = id
+    }
+
+    /// Fetches the session title from the SDK and persists it on the ClaudeSession model.
+    private func syncSessionName() {
+        guard let sessionID = session.sessionID else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            self.process?.sendCommand("get_session_info", params: [
+                "sessionId": sessionID,
+                "cwd": self.workingDirectory
+            ])
+            let response = await self.waitForBridgeResponse("get_session_info")
+            if let result = response?.result,
+               let summary = result["summary"] as? String, !summary.isEmpty {
+                self.claudeSession?.name = summary
+            }
+        }
     }
 
     private func formatDict(_ dict: [String: Any]) -> String {

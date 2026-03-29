@@ -1,0 +1,89 @@
+import SwiftUI
+
+struct SessionRow: View {
+    @Environment(AppState.self) private var appState
+
+    let session: ClaudeSession
+    let workspace: Workspace
+
+    @State private var isRenaming = false
+    @State private var renameText = ""
+    @FocusState private var isNameFieldFocused: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: session.service?.queryActive == true ? "bubble.left.fill" : "bubble.left")
+
+            if isRenaming {
+                TextField("Session Name", text: $renameText)
+                    .textFieldStyle(.plain)
+                    .focused($isNameFieldFocused)
+                    .onSubmit { commitRename() }
+                    .onExitCommand { isRenaming = false }
+                    .onAppear {
+                        renameText = session.name ?? ""
+                        isNameFieldFocused = true
+                    }
+            } else {
+                Text(session.name ?? "New Session")
+                    .lineLimit(1)
+            }
+        }
+        .tag(session)
+        .contextMenu {
+            Button("Fork Session", systemImage: "arrow.triangle.branch") {
+                forkSession()
+            }
+            .disabled(session.sdkSessionID == nil)
+
+            Divider()
+
+            RenameButton()
+                .disabled(session.sdkSessionID == nil)
+
+            Divider()
+
+            Button("Delete Session", systemImage: "trash", role: .destructive) {
+                deleteSession()
+            }
+        }
+        .renameAction {
+            isRenaming = true
+        }
+        .swipeActions(edge: .trailing) {
+            Button(role: .destructive) {
+                deleteSession()
+            } label: {
+                Label("Delete", systemImage: "trash")
+                    .labelStyle(.iconOnly)
+            }
+        }
+    }
+
+    private func commitRename() {
+        isRenaming = false
+        let trimmed = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != session.name else { return }
+        let service = session.resolveService()
+        Task {
+            await service.renameSession(to: trimmed)
+        }
+    }
+
+    private func forkSession() {
+        let service = session.resolveService()
+        Task {
+            guard let forked = await service.forkSession() else { return }
+            await MainActor.run {
+                appState.selectedSession = forked
+            }
+        }
+    }
+
+    private func deleteSession() {
+        if appState.selectedSession == session {
+            appState.selectedSession = nil
+        }
+        workspace.removeSession(session)
+    }
+}
