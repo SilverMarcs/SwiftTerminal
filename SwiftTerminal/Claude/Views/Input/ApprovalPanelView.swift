@@ -1,10 +1,8 @@
 import SwiftUI
 
 struct ApprovalPanelView: View {
+    let service: ClaudeService
     let approval: ApprovalRequest
-    let onAllow: () -> Void
-    let onAllowForSession: () -> Void
-    let onDeny: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -47,7 +45,9 @@ struct ApprovalPanelView: View {
             }
 
             HStack(spacing: 8) {
-                Button(action: onAllow) {
+                Button {
+                    service.respondToApproval(allow: true)
+                } label: {
                     Text("Allow")
                         .font(.caption)
                 }
@@ -56,7 +56,9 @@ struct ApprovalPanelView: View {
                 .controlSize(.small)
                 .keyboardShortcut(.return, modifiers: [])
 
-                Button(action: onAllowForSession) {
+                Button {
+                    service.respondToApproval(allow: true, forSession: true)
+                } label: {
                     Text("Always Allow")
                         .font(.caption)
                 }
@@ -64,7 +66,9 @@ struct ApprovalPanelView: View {
                 .controlSize(.small)
                 .keyboardShortcut(.return, modifiers: .shift)
 
-                Button(action: onDeny) {
+                Button {
+                    service.respondToApproval(allow: false)
+                } label: {
                     Text("Deny")
                         .font(.caption)
                 }

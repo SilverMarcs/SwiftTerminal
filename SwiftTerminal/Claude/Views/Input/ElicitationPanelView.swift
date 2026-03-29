@@ -1,9 +1,8 @@
 import SwiftUI
 
 struct ElicitationPanelView: View {
+    let service: ClaudeService
     let elicitation: ElicitationRequest
-    let onAccept: ([String: Any]?) -> Void
-    let onDecline: () -> Void
 
     @State private var formValues: [String: String] = [:]
 
@@ -79,14 +78,14 @@ struct ElicitationPanelView: View {
             Spacer()
 
             Button("Decline") {
-                onDecline()
+                service.respondToElicitation(action: "decline")
             }
             .keyboardShortcut(.escape, modifiers: [])
             .foregroundStyle(.red)
 
             Button("Submit") {
                 let content = formValues.isEmpty ? nil : formValues as [String: Any]
-                onAccept(content)
+                service.respondToElicitation(action: "accept", content: content)
             }
             .keyboardShortcut(.return, modifiers: [])
             .buttonStyle(.borderedProminent)

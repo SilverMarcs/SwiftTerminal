@@ -6,6 +6,7 @@ final class ClaudeService {
     // MARK: - Public State
 
     let id = UUID()
+    var prompt = ""
     var messages: [ChatMessage] = []
     var isStreaming = false
     var session = SessionInfo()
@@ -50,6 +51,13 @@ final class ClaudeService {
     }
 
     // MARK: - Public API
+
+    func sendMessage() {
+        let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !isStreaming else { return }
+        prompt = ""
+        send(trimmed)
+    }
 
     func send(_ text: String) {
         guard !isStreaming else { return }
@@ -113,6 +121,7 @@ final class ClaudeService {
         queryActive = false
         isStreaming = false
 
+        prompt = ""
         messages.removeAll()
         session = SessionInfo()
         toolUseIndex.removeAll()

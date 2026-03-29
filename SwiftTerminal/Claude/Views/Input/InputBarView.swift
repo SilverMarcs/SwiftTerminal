@@ -1,22 +1,20 @@
 import SwiftUI
 
 struct InputBarView: View {
-    @Binding var input: String
     let service: ClaudeService
-    let onSend: () -> Void
     @FocusState private var isFocused: Bool
 
     var body: some View {
         GlassEffectContainer {
             HStack(alignment: .bottom) {
                 ZStack(alignment: .leading) {
-                    if input.isEmpty {
-                        Text("Message Claude...")
+                    if service.prompt.isEmpty {
+                        Text("Make Claude do anything...")
                             .padding(.leading, 1)
                             .foregroundStyle(.placeholder)
                     }
 
-                    TextEditor(text: $input)
+                    TextEditor(text: Bindable(service).prompt)
                         .padding(.leading, -4)
                         .frame(maxHeight: 350)
                         .fixedSize(horizontal: false, vertical: true)
@@ -31,7 +29,7 @@ struct InputBarView: View {
                 .glassEffect(in: .rect(cornerRadius: 16))
 
                 Button {
-                    service.isStreaming ? service.stop() : onSend()
+                    service.isStreaming ? service.stop() : service.sendMessage()
                 } label: {
                     Image(systemName: service.isStreaming ? "stop.fill" : "arrow.up")
                         .font(.system(size: 15)).fontWeight(.bold)
@@ -41,15 +39,16 @@ struct InputBarView: View {
                 .tint(service.isStreaming ? .red : .accent)
                 .buttonStyle(.borderedProminent)
                 .buttonBorderShape(.circle)
-                .disabled(!service.isStreaming && trimmedInput.isEmpty)
+                .disabled(!service.isStreaming && trimmedPrompt.isEmpty)
                 .offset(y: -2)
+                .keyboardShortcut(.return)
             }
             .padding(10)
         }
         .task { isFocused = true }
     }
 
-    private var trimmedInput: String {
-        input.trimmingCharacters(in: .whitespacesAndNewlines)
+    private var trimmedPrompt: String {
+        service.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
