@@ -14,6 +14,7 @@ struct MessageListView: View {
             case .assistant(let messages):
                 AssistantTurnView(
                     messages: messages,
+                    service: service,
                     isStreaming: service.isStreaming && turn.isLast
                 )
                 .id(turn.id)
@@ -119,6 +120,10 @@ struct UserMessageView: View {
                 NSPasteboard.general.setString(message.text, forType: .string)
             }
             Divider()
+            Button("Fork", systemImage: "arrow.triangle.branch") {
+                Task { await service.forkSession(upToMessageID: message.id) }
+            }
+            .disabled(service.isStreaming || service.session.sessionID == nil)
             Button("Rewind", systemImage: "arrow.counterclockwise") {
                 Task {
                     await service.rewind(toMessageID: message.id)
@@ -135,6 +140,7 @@ struct UserMessageView: View {
 
 struct AssistantTurnView: View {
     let messages: [ChatMessage]
+    let service: ClaudeService
     let isStreaming: Bool
 
     var body: some View {
@@ -169,6 +175,14 @@ struct AssistantTurnView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.leading, 5)
         .padding(.trailing, 30)
+        .contextMenu {
+            if let lastMessage = messages.last {
+                Button("Fork", systemImage: "arrow.triangle.branch") {
+                    Task { await service.forkSession(upToMessageID: lastMessage.id) }
+                }
+                .disabled(isStreaming || service.session.sessionID == nil)
+            }
+        }
     }
 
     private var allBlocks: [MessageBlock] {

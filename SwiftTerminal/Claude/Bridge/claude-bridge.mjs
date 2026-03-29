@@ -4,7 +4,7 @@
 // Communicates with Swift via stdin/stdout JSON lines.
 // Persistent SDK query runtime for multi-turn sessions.
 
-import { query, listSessions, getSessionMessages, renameSession } from "@anthropic-ai/claude-agent-sdk";
+import { query, listSessions, getSessionMessages, renameSession, forkSession } from "@anthropic-ai/claude-agent-sdk";
 import { randomUUID } from "crypto";
 
 // --- State ---
@@ -502,6 +502,20 @@ async function handleSetModel(params) {
   }
 }
 
+async function handleForkSession(params) {
+  try {
+    const options = {
+      ...(params.cwd ? { dir: params.cwd } : {}),
+      ...(params.upToMessageId ? { upToMessageId: params.upToMessageId } : {}),
+      ...(params.title ? { title: params.title } : {}),
+    };
+    const result = await forkSession(params.sessionId, options);
+    send({ type: "bridge_response", command: "fork_session", success: true, result });
+  } catch (err) {
+    send({ type: "bridge_error", command: "fork_session", error: err.message });
+  }
+}
+
 async function handleSupportedCommands() {
   if (!currentQuery) {
     send({ type: "bridge_error", command: "supported_commands", error: "No active session" });
@@ -577,6 +591,7 @@ async function processCommand(line) {
     case "set_model":               await handleSetModel(params); break;
     case "set_permission_mode":     await handleSetPermissionMode(params); break;
     case "supported_commands":      await handleSupportedCommands(); break;
+    case "fork_session":            await handleForkSession(params); break;
     default: send({ type: "bridge_error", error: "Unknown command: " + cmd.command });
   }
 }

@@ -21,10 +21,23 @@ struct WorkspaceListView: View {
                 DisclosureGroup {
                     ForEach(workspace.sessions) { session in
                         Label(
-                            session.sdkSessionID.map { String($0.prefix(8)) } ?? "New Session",
+                            session.name ?? "New Session",
                             systemImage: session.service?.queryActive == true ? "bubble.left.fill" : "bubble.left"
                         )
                         .tag(session)
+                        .contextMenu {
+                            Button("Fork Session", systemImage: "arrow.triangle.branch") {
+                                forkSession(session)
+                            }
+                            .disabled(session.sdkSessionID == nil)
+                            Divider()
+                            Button("Delete Session", systemImage: "trash", role: .destructive) {
+                                if appState.selectedSession == session {
+                                    appState.selectedSession = nil
+                                }
+                                workspace.removeSession(session)
+                            }
+                        }
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) {
                                 if appState.selectedSession == session {
@@ -53,6 +66,16 @@ struct WorkspaceListView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
+        }
+    }
+
+    private func forkSession(_ session: ClaudeSession) {
+        let service = session.resolveService()
+        Task {
+            guard let forked = await service.forkSession() else { return }
+            await MainActor.run {
+                appState.selectedSession = forked
+            }
         }
     }
 

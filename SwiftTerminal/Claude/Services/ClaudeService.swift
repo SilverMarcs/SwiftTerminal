@@ -363,6 +363,55 @@ final class ClaudeService {
         }
     }
 
+    /// Fork the current session (or fork up to a specific message).
+    /// Creates a new ClaudeSession on the same workspace and returns it.
+    @discardableResult
+    func forkSession(upToMessageID localMessageID: String? = nil) async -> ClaudeSession? {
+        guard let sourceSessionID = session.sessionID else {
+            error = "Cannot fork: no active session"
+            return nil
+        }
+
+        await ensureBridgeStarted()
+
+        var params: [String: Any] = [
+            "sessionId": sourceSessionID,
+            "cwd": workingDirectory,
+        ]
+
+        // If forking from a specific message, resolve its SDK UUID
+        if let localID = localMessageID {
+            if let sdkUUID = userMessageUUIDs[localID] {
+                params["upToMessageId"] = sdkUUID
+            } else if let msg = messages.first(where: { $0.id == localID }),
+                      msg.role == .assistant {
+                if let msgIndex = messages.firstIndex(where: { $0.id == localID }) {
+                    let nextUserMsg = messages[(msgIndex + 1)...].first { $0.role == .user }
+                    if let nextID = nextUserMsg?.id, let aUUID = precedingAssistantUUID[nextID] {
+                        params["upToMessageId"] = aUUID
+                    } else if messages.last(where: { $0.role == .assistant })?.id == localID,
+                              let aUUID = lastAssistantSDKUUID {
+                        params["upToMessageId"] = aUUID
+                    }
+                }
+            }
+        }
+
+        process?.sendCommand("fork_session", params: params)
+        let response = await waitForBridgeResponse("fork_session")
+
+        guard response?.success == true,
+              let result = response?.result,
+              let forkedID = result["sessionId"] as? String else {
+            self.error = "Fork failed"
+            return nil
+        }
+
+        let forked = workspace.newSession()
+        forked.sdkSessionID = forkedID
+        return forked
+    }
+
     @ObservationIgnored private var _continueLastOnNextSend = false
 
     private func restoreMessages(from rawMessages: [[String: Any]]) {
