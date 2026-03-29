@@ -209,6 +209,14 @@ actor GitRepository {
         try await self.executor.execute(GitStashCommand(), at: repositoryRootURL)
     }
 
+    func stashAll(message: String, at repositoryRootURL: URL) async throws {
+        try await self.executor.execute(GitStashWithMessageCommand(message: message), at: repositoryRootURL)
+    }
+
+    func stashPop(at repositoryRootURL: URL) async throws {
+        try await self.executor.execute(GitStashPopCommand(), at: repositoryRootURL)
+    }
+
     // MARK: - Private
 
     private func fetchUnpushedCommits(at repositoryRootURL: URL) async -> [GitUnpushedCommit] {
@@ -579,6 +587,17 @@ private struct GitCreateBranchCommand: GitCommand {
 
 private struct GitStashCommand: GitCommand {
     var arguments: [String] { ["stash", "--include-untracked"] }
+    func parse(output: String) throws { }
+}
+
+private struct GitStashWithMessageCommand: GitCommand {
+    let message: String
+    var arguments: [String] { ["stash", "push", "--include-untracked", "-m", message] }
+    func parse(output: String) throws { }
+}
+
+private struct GitStashPopCommand: GitCommand {
+    var arguments: [String] { ["stash", "pop"] }
     func parse(output: String) throws { }
 }
 

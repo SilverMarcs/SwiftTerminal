@@ -13,6 +13,8 @@ struct GitInspectorView: View {
     @State private var pendingBranchSwitch: String?
     @State private var showNewBranchSheet = false
     @State private var newBranchName = ""
+    @State private var showStashAlert = false
+    @State private var stashMessage = ""
 
     private var selectedSnapshot: GitRepositoryStatusSnapshot? {
         model.snapshots.first { $0.repositoryRootURL == selectedRepoURL }
@@ -66,6 +68,22 @@ struct GitInspectorView: View {
             }
             .sheet(isPresented: $showNewBranchSheet) {
                 newBranchSheet
+            }
+            .alert("Stash All Changes", isPresented: $showStashAlert) {
+                TextField("Stash name", text: $stashMessage)
+                Button("Stash") {
+                    guard let snapshot = selectedSnapshot else { return }
+                    let message = stashMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !message.isEmpty else { return }
+                    Task {
+                        await model.stashAll(message: message, snapshot: snapshot)
+                        stashMessage = ""
+                        await model.refresh(directoryURL: directoryURL)
+                    }
+                }
+                Button("Cancel", role: .cancel) { stashMessage = "" }
+            } message: {
+                Text("Stash all staged, unstaged, and untracked changes.")
             }
             .onChange(of: selectedFileID) { _, newID in
                 guard let id = newID else { return }
@@ -218,6 +236,26 @@ struct GitInspectorView: View {
                     showNewBranchSheet = true
                 } label: {
                     Label("New Branch...", systemImage: "plus")
+                }
+
+                Divider()
+
+                Button {
+                    stashMessage = ""
+                    showStashAlert = true
+                } label: {
+                    Label("Stash All...", systemImage: "tray.and.arrow.down")
+                }
+                .disabled(selectedSnapshot?.isDirty != true)
+
+                Button {
+                    guard let snapshot = selectedSnapshot else { return }
+                    Task {
+                        await model.applyLatestStash(snapshot: snapshot)
+                        await model.refresh(directoryURL: directoryURL)
+                    }
+                } label: {
+                    Label("Apply Stash", systemImage: "tray.and.arrow.up")
                 }
 
                 Divider()

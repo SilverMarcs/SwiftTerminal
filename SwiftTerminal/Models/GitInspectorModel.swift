@@ -86,4 +86,12 @@ final class GitInspectorModel {
         try? await GitRepository.shared.stashAll(at: snapshot.repositoryRootURL)
         try? await GitRepository.shared.switchBranch(to: branch, at: snapshot.repositoryRootURL)
     }
+
+    func stashAll(message: String, snapshot: GitRepositoryStatusSnapshot) async {
+        try? await GitRepository.shared.stashAll(message: message, at: snapshot.repositoryRootURL)
+    }
+
+    func applyLatestStash(snapshot: GitRepositoryStatusSnapshot) async {
+        try? await GitRepository.shared.stashPop(at: snapshot.repositoryRootURL)
+    }
 }
