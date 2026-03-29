@@ -36,6 +36,7 @@ struct SearchBar<Trailing: View>: View {
         .padding(.vertical, 5)
         .background(.quaternary, in: Capsule())
         .task {
+            try? await Task.sleep(for: .milliseconds(50))
             isFocused = true
         }
     }

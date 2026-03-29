@@ -1,7 +1,7 @@
 import AppKit
 
 enum EditorTextViewConstants {
-    static let gutterWidth: CGFloat = 44
+    static let gutterWidth: CGFloat = 36
     static let markerBarWidth: CGFloat = 3
 }
 
@@ -349,13 +349,6 @@ final class DiffPopoverTextView: NSTextView {
         let text = string as NSString
         let containerOrigin = textContainerOrigin
         let gw = constants.gutterWidth
-
-        // Gutter separator
-        NSColor.separatorColor.withAlphaComponent(0.15).setStroke()
-        NSBezierPath.strokeLine(
-            from: NSPoint(x: gw - 0.5, y: rect.minY),
-            to: NSPoint(x: gw - 0.5, y: rect.maxY)
-        )
 
         guard text.length > 0 else { return }
 

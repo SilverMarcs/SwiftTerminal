@@ -5,7 +5,7 @@ enum HunkTextViewConstants {
     static let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
     static let lineHeight: CGFloat = 17
     static let gutterWidth: CGFloat = 36
-    static let lineNumFont = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular)
+    static let lineNumFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
 }
 
 struct HunkTextView: NSViewRepresentable {
@@ -98,13 +98,6 @@ final class HunkNSTextView: NSTextView {
         let text = self.string as NSString
         let containerOrigin = self.textContainerOrigin
         let gutterWidth = constants.gutterWidth
-
-        // Draw gutter separator
-        NSColor.separatorColor.withAlphaComponent(0.15).setStroke()
-        NSBezierPath.strokeLine(
-            from: NSPoint(x: gutterWidth - 0.5, y: rect.minY),
-            to: NSPoint(x: gutterWidth - 0.5, y: rect.maxY)
-        )
 
         guard text.length > 0 else { return }
 

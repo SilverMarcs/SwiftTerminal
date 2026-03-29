@@ -5,6 +5,8 @@ struct DiffHunkHeaderView: View {
     let reference: GitDiffReference
     let onReload: () async -> Void
 
+    @State private var showDiscardAlert = false
+
     var body: some View {
         HStack(spacing: 8) {
             Text(hunk.header)
@@ -17,7 +19,7 @@ struct DiffHunkHeaderView: View {
             switch reference.stage {
             case .unstaged:
                 Button("Discard", role: .destructive) {
-                    Task { await applyHunk(reverse: true, cached: false) }
+                    showDiscardAlert = true
                 }
                 .controlSize(.small)
 
@@ -37,6 +39,14 @@ struct DiffHunkHeaderView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(.regularMaterial)
+        .alert("Discard Changes", isPresented: $showDiscardAlert) {
+            Button("Discard", role: .destructive) {
+                Task { await applyHunk(reverse: true, cached: false) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Are you sure you want to discard this hunk? This cannot be undone.")
+        }
     }
 
     private func applyHunk(reverse: Bool, cached: Bool) async {
