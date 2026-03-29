@@ -3,7 +3,7 @@ import SwiftUI
 struct SessionRow: View {
     @Environment(AppState.self) private var appState
 
-    let session: ClaudeSession
+    let session: ChatSession
     let workspace: Workspace
 
     @State private var isRenaming = false
@@ -36,12 +36,12 @@ struct SessionRow: View {
             Button("Fork Session", systemImage: "arrow.triangle.branch") {
                 forkSession()
             }
-            .disabled(session.sdkSessionID == nil)
+            .disabled(session.externalSessionID == nil)
 
             Divider()
 
             RenameButton()
-                .disabled(session.sdkSessionID == nil)
+                .disabled(session.externalSessionID == nil)
 
             Divider()
 
@@ -80,7 +80,7 @@ struct SessionRow: View {
     private func forkSession() {
         let service = session.resolveService()
         Task {
-            guard let forked = await service.forkSession(in: workspace) else { return }
+            guard let forked = await service.forkSession() else { return }
             await MainActor.run {
                 appState.selectedItem = .session(forked)
             }

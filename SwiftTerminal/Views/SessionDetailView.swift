@@ -3,10 +3,10 @@ import SwiftUI
 struct SessionDetailView: View {
     @Environment(AppState.self) private var appState
 
-    let session: ClaudeSession
+    let session: ChatSession
     let service: ClaudeService
 
-    init(session: ClaudeSession) {
+    init(session: ChatSession) {
         self.session = session
         self.service = session.resolveService()
     }

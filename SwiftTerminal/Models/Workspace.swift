@@ -23,9 +23,9 @@ final class Workspace {
         projectType = ProjectType.detect(at: url)
     }
 
-    @Relationship(deleteRule: .cascade)
-    var unsortedSessions: [ClaudeSession] = []
-    var sessions: [ClaudeSession] {
+    @Relationship(deleteRule: .cascade, inverse: \ChatSession.workspace)
+    var unsortedSessions: [ChatSession] = []
+    var sessions: [ChatSession] {
         unsortedSessions.sorted { $0.createdAt > $1.createdAt }
     }
 
@@ -44,21 +44,21 @@ final class Workspace {
     // MARK: - Session Management
 
     @discardableResult
-    func newSession() -> ClaudeSession {
-        let cs = ClaudeSession(workspace: self)
+    func newSession() -> ChatSession {
+        let cs = ChatSession(workspace: self)
         unsortedSessions.append(cs)
         return cs
     }
 
     /// Returns an existing empty session or creates a new one.
-    func emptyOrNewSession() -> ClaudeSession {
-        if let empty = sessions.first(where: { $0.sdkSessionID == nil }) {
+    func emptyOrNewSession() -> ChatSession {
+        if let empty = sessions.first(where: { $0.externalSessionID == nil }) {
             return empty
         }
         return newSession()
     }
 
-    func removeSession(_ cs: ClaudeSession) {
+    func removeSession(_ cs: ChatSession) {
         cs.service?.stop()
         unsortedSessions.removeAll { $0.id == cs.id }
         cs.modelContext?.delete(cs)

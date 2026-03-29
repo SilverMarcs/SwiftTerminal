@@ -2,14 +2,14 @@ import SwiftUI
 
 enum SidebarSelection: Hashable {
     case workspace(Workspace)
-    case session(ClaudeSession)
+    case session(ChatSession)
 }
 
 @Observable
 final class AppState {
     var selectedItem: SidebarSelection?
 
-    var selectedSession: ClaudeSession? {
+    var selectedSession: ChatSession? {
         if case .session(let session) = selectedItem {
             return session
         }

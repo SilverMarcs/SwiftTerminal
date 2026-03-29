@@ -58,9 +58,9 @@ final class ClaudeService {
 
     // MARK: - Private
 
-    let claudeSession: ClaudeSession
+    let chatSession: ChatSession
     weak var appState: AppState?
-    var workingDirectory: String { claudeSession.workingDirectory }
+    var workingDirectory: String { chatSession.workingDirectory }
     private var process: ClaudeProcess?
     private var readerTask: Task<Void, Never>?
     private var bridgeReady = false
@@ -82,9 +82,9 @@ final class ClaudeService {
     /// When set, next send() will pass resumeSessionAt to truncate conversation
     @ObservationIgnored private var pendingResumeAt: String?
 
-    init(claudeSession: ClaudeSession) {
-        self.claudeSession = claudeSession
-        if let sdkID = claudeSession.sdkSessionID {
+    init(chatSession: ChatSession) {
+        self.chatSession = chatSession
+        if let sdkID = chatSession.externalSessionID {
             self.session.sessionID = sdkID
         }
     }
@@ -406,9 +406,9 @@ final class ClaudeService {
     }
 
     /// Fork the current session (or fork up to a specific message).
-    /// Creates a new ClaudeSession on the same workspace and returns it.
+    /// Creates a new ChatSession on the same workspace and returns it.
     @discardableResult
-    func forkSession(in workspace: Workspace? = nil, upToMessageID localMessageID: String? = nil) async -> ClaudeSession? {
+    func forkSession(upToMessageID localMessageID: String? = nil) async -> ChatSession? {
         guard let sourceSessionID = session.sessionID else {
             error = "Cannot fork: no active session"
             return nil
@@ -449,12 +449,8 @@ final class ClaudeService {
             return nil
         }
 
-        guard let ws = workspace ?? claudeSession.workspace else {
-            self.error = "Fork failed: no workspace"
-            return nil
-        }
-        let forked = ws.newSession()
-        forked.sdkSessionID = forkedID
+        let forked = chatSession.workspace.newSession()
+        forked.externalSessionID = forkedID
         return forked
     }
 
@@ -469,7 +465,7 @@ final class ClaudeService {
         ])
         let response = await waitForBridgeResponse("rename_session")
         if response?.success == true {
-            claudeSession.name = newName
+            chatSession.name = newName
         }
     }
 
@@ -648,7 +644,7 @@ final class ClaudeService {
             handleResult(e)
             fetchContextUsage()
             postSessionNotification(
-                title: claudeSession.name ?? "Claude",
+                title: chatSession.name ?? "Claude",
                 subtitle: "Task complete",
                 category: "taskComplete"
             )
@@ -656,7 +652,7 @@ final class ClaudeService {
         case .approvalRequest(let request):
             pendingApproval = request
             postSessionNotification(
-                title: claudeSession.name ?? "Claude",
+                title: chatSession.name ?? "Claude",
                 subtitle: "Permission required: \(request.displayName ?? request.toolName)",
                 category: "approvalRequest"
             )
@@ -664,7 +660,7 @@ final class ClaudeService {
         case .questionRequest(let request):
             pendingQuestion = UserQuestion(request: request)
             postSessionNotification(
-                title: claudeSession.name ?? "Claude",
+                title: chatSession.name ?? "Claude",
                 subtitle: "Claude is asking a question",
                 category: "approvalRequest"
             )
@@ -874,13 +870,13 @@ final class ClaudeService {
 //        }
     }
 
-    /// Sync SDK session ID back to the persisted ClaudeSession model.
+    /// Sync SDK session ID back to the persisted ChatSession model.
     private func syncSessionID(_ id: String?) {
-        guard let id, claudeSession.sdkSessionID != id else { return }
-        claudeSession.sdkSessionID = id
+        guard let id, chatSession.externalSessionID != id else { return }
+        chatSession.externalSessionID = id
     }
 
-    /// Fetches the session title from the SDK and persists it on the ClaudeSession model.
+    /// Fetches the session title from the SDK and persists it on the ChatSession model.
     private func syncSessionName() {
         guard let sessionID = session.sessionID else { return }
         Task { [weak self] in
@@ -892,7 +888,7 @@ final class ClaudeService {
             let response = await self.waitForBridgeResponse("get_session_info")
             if let result = response?.result,
                let summary = result["summary"] as? String, !summary.isEmpty {
-                self.claudeSession.name = summary
+                self.chatSession.name = summary
             }
         }
     }
@@ -914,12 +910,12 @@ final class ClaudeService {
     // MARK: - Notifications
 
     private func postSessionNotification(title: String, subtitle: String, category: String) {
-        let sessionIDString = claudeSession.id.uuidString
+        let sessionIDString = chatSession.id.uuidString
 
         Task { @MainActor in
-            let isSelected = self.appState?.selectedSession === self.claudeSession
+            let isSelected = self.appState?.selectedSession === self.chatSession
             if !isSelected {
-                self.claudeSession.hasNotification = true
+                self.chatSession.hasNotification = true
             }
 
             let content = UNMutableNotificationContent()

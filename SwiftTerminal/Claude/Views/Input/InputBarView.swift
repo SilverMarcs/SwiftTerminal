@@ -53,7 +53,10 @@ struct InputBarView: View {
                 .padding(9)
             }
         }
-        .task { isFocused = true }
+        .task {
+            try? await Task.sleep(for: .milliseconds(50))
+            isFocused = true
+        }
         .toolbar {
             ToolbarItem(placement: .keyboard) {
                 Button {
