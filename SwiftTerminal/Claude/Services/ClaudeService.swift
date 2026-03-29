@@ -30,7 +30,6 @@ final class ClaudeService {
     var selectedModel: ModelOption = .opus
     var selectedEffort: EffortLevel = .medium
     var selectedContextWindow: ContextWindow = .extended
-    var activeTasks: [String: TaskEvent] = [:]
 
     // MARK: - Private
 
@@ -169,7 +168,6 @@ final class ClaudeService {
         queryActive = false
         isStreaming = false
         pendingApproval = nil
-        activeTasks.removeAll()
         turnContinuation?.resume()
         turnContinuation = nil
         for c in bridgeReadyContinuations { c.resume() }
@@ -195,7 +193,6 @@ final class ClaudeService {
         lastAssistantSDKUUID = nil
         pendingUserMessageLocalID = nil
         pendingResumeAt = nil
-        activeTasks.removeAll()
         pendingApproval = nil
         _continueLastOnNextSend = false
         error = nil
@@ -240,12 +237,6 @@ final class ClaudeService {
         if queryActive {
             process?.sendCommand("set_permission_mode", params: ["mode": mode.rawValue])
         }
-    }
-
-    // MARK: - Task Control
-
-    func stopTask(_ taskID: String) {
-        process?.sendCommand("stop_task", params: ["taskId": taskID])
     }
 
     // MARK: - Rewind
@@ -557,22 +548,8 @@ final class ClaudeService {
         case .statusUpdate(let statusEvent):
             session.isCompacting = statusEvent.status == "compacting"
 
-        case .taskStarted(let task):
-            activeTasks[task.taskID] = task
-
-        case .taskProgress(let task):
-            activeTasks[task.taskID] = task
-
-        case .taskCompleted(let task):
-            activeTasks[task.taskID] = task
-
-        case .elicitationRequest, .promptSuggestion:
+        case .taskStarted, .taskProgress, .taskCompleted:
             break
-
-        case .rateLimit(let e):
-            if let status = e.rateLimitInfo?.status {
-                session.rateLimitStatus = status
-            }
 
         case .unknown:
             break

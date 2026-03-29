@@ -8,17 +8,14 @@ enum StreamEvent {
     case assistant(AssistantEvent)
     case user(UserEvent)
     case result(ResultEvent)
-    case rateLimit(RateLimitEvent)
     case streamEvent(StreamDelta)
     case approvalRequest(ApprovalRequest)
     case toolProgress(ToolProgressEvent)
     case sessionStateChanged(SessionStateEvent)
     case statusUpdate(StatusEvent)
-    case taskStarted(TaskEvent)
-    case taskProgress(TaskEvent)
-    case taskCompleted(TaskEvent)
-    case elicitationRequest(ElicitationRequest)
-    case promptSuggestion(PromptSuggestionEvent)
+    case taskStarted
+    case taskProgress
+    case taskCompleted
     case bridgeReady
     case bridgeResponse(BridgeResponse)
     case bridgeError(BridgeError)
@@ -83,25 +80,6 @@ struct ToolProgressEvent {
     let toolName: String
     let elapsedSeconds: Double
     let taskID: String?
-}
-
-// MARK: - Task Events (Sub-agents)
-
-struct TaskEvent: Identifiable {
-    let id: String
-    let taskID: String
-    let toolUseID: String?
-    let status: TaskStatus
-    let summary: String?
-    let outputFile: String?
-}
-
-enum TaskStatus: String {
-    case started
-    case inProgress = "in_progress"
-    case completed
-    case failed
-    case stopped
 }
 
 // MARK: - Session State
@@ -284,43 +262,6 @@ struct ResultEvent: Decodable {
         case numTurns = "num_turns"
         case totalCostUsd = "total_cost_usd"
     }
-}
-
-// MARK: - Rate Limit
-
-struct RateLimitEvent: Decodable {
-    let rateLimitInfo: RateLimitInfo?
-
-    enum CodingKeys: String, CodingKey {
-        case rateLimitInfo = "rate_limit_info"
-    }
-}
-
-struct RateLimitInfo: Decodable {
-    let status: String?
-}
-
-// MARK: - Elicitation Request (MCP Server Input)
-
-struct ElicitationRequest: Identifiable {
-    var id: String { requestId }
-    let requestId: String
-    let serverName: String
-    let message: String
-    let mode: ElicitationMode
-    let url: String?
-    let requestedSchema: [String: Any]?
-}
-
-enum ElicitationMode: String {
-    case form
-    case url
-}
-
-// MARK: - Prompt Suggestion
-
-struct PromptSuggestionEvent {
-    let suggestions: [String]
 }
 
 // MARK: - AnyCodable Helper

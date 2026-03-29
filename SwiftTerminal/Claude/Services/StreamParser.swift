@@ -44,10 +44,6 @@ enum StreamParser {
         case "approval_request":
             return parseApprovalRequest(raw)
 
-        // Elicitation request from MCP server
-        case "elicitation_request":
-            return parseElicitationRequest(raw)
-
         // SDK messages (unwrap the wrapper)
         case "sdk_message":
             guard let message = raw["message"] as? [String: Any],
@@ -55,7 +51,7 @@ enum StreamParser {
             return parseSDKMessage(msgType, message)
 
         // Direct SDK event types (for backwards compatibility)
-        case "system", "assistant", "user", "result", "rate_limit_event", "stream_event",
+        case "system", "assistant", "user", "result", "stream_event",
              "tool_progress", "tool_use_summary":
             return parseSDKMessage(type, raw)
 
@@ -105,11 +101,6 @@ enum StreamParser {
                   let event = try? JSONDecoder().decode(ResultEvent.self, from: data) else { return nil }
             return .result(event)
 
-        case "rate_limit_event":
-            guard let data = try? JSONSerialization.data(withJSONObject: raw),
-                  let event = try? JSONDecoder().decode(RateLimitEvent.self, from: data) else { return nil }
-            return .rateLimit(event)
-
         case "stream_event":
             return parseStreamEvent(raw)
 
@@ -117,10 +108,7 @@ enum StreamParser {
             return parseToolProgress(raw)
 
         case "task_started", "task_progress", "task_notification":
-            return parseTaskEvent(type, raw)
-
-        case "prompt_suggestion":
-            return parsePromptSuggestion(raw)
+            return parseTaskEvent(type)
 
         default:
             return .unknown(type)
@@ -145,13 +133,13 @@ enum StreamParser {
             return .statusUpdate(StatusEvent(status: status, sessionID: sessionID))
 
         case "task_notification":
-            return parseTaskEvent("task_notification", raw)
+            return .taskCompleted
 
         case "task_started":
-            return parseTaskEvent("task_started", raw)
+            return .taskStarted
 
         case "task_progress":
-            return parseTaskEvent("task_progress", raw)
+            return .taskProgress
 
         default:
             guard let data = try? JSONSerialization.data(withJSONObject: raw),
@@ -213,73 +201,13 @@ enum StreamParser {
         ))
     }
 
-    // MARK: - Elicitation Request
-
-    private static func parseElicitationRequest(_ raw: [String: Any]) -> StreamEvent? {
-        guard let requestId = raw["requestId"] as? String,
-              let serverName = raw["serverName"] as? String,
-              let message = raw["message"] as? String else { return nil }
-
-        let modeStr = raw["mode"] as? String ?? "form"
-        let mode = ElicitationMode(rawValue: modeStr) ?? .form
-
-        let request = ElicitationRequest(
-            requestId: requestId,
-            serverName: serverName,
-            message: message,
-            mode: mode,
-            url: raw["url"] as? String,
-            requestedSchema: raw["requestedSchema"] as? [String: Any]
-        )
-        return .elicitationRequest(request)
-    }
-
-    // MARK: - Prompt Suggestion
-
-    private static func parsePromptSuggestion(_ raw: [String: Any]) -> StreamEvent? {
-        guard let suggestions = raw["suggestions"] as? [String] else { return nil }
-        return .promptSuggestion(PromptSuggestionEvent(suggestions: suggestions))
-    }
-
     // MARK: - Task Events
 
-    private static func parseTaskEvent(_ type: String, _ raw: [String: Any]) -> StreamEvent? {
-        let taskID = raw["task_id"] as? String ?? ""
-        let toolUseID = raw["tool_use_id"] as? String
-        let summary = raw["summary"] as? String
-        let outputFile = raw["output_file"] as? String
-
-        let status: TaskStatus
+    private static func parseTaskEvent(_ type: String) -> StreamEvent {
         switch type {
-        case "task_started":
-            status = .started
-        case "task_progress":
-            status = .inProgress
-        case "task_notification":
-            let rawStatus = raw["status"] as? String ?? "completed"
-            status = TaskStatus(rawValue: rawStatus) ?? .completed
-        default:
-            status = .started
-        }
-
-        let event = TaskEvent(
-            id: taskID,
-            taskID: taskID,
-            toolUseID: toolUseID,
-            status: status,
-            summary: summary,
-            outputFile: outputFile
-        )
-
-        switch type {
-        case "task_started":
-            return .taskStarted(event)
-        case "task_progress":
-            return .taskProgress(event)
-        case "task_notification":
-            return .taskCompleted(event)
-        default:
-            return .taskStarted(event)
+        case "task_started": .taskStarted
+        case "task_progress": .taskProgress
+        default: .taskCompleted
         }
     }
 }

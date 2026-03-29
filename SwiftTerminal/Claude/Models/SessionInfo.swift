@@ -11,7 +11,6 @@ final class SessionInfo {
     var permissionMode: PermissionModeOption = .bypassPermissions
     var state: SessionState = .idle
     var isCompacting = false
-    var rateLimitStatus: String?
     var claudeCodeVersion: String?
 
     func update(from system: SystemEvent) {
