@@ -70,13 +70,7 @@ struct GitInspectorView: View {
             .onChange(of: selectedFileID) { _, newID in
                 guard let id = newID else { return }
                 guard let (file, stage, snapshot) = resolveFile(id: id) else { return }
-                editorPanel.openDiff(GitDiffReference(
-                    repositoryRootURL: snapshot.repositoryRootURL,
-                    fileURL: file.fileURL,
-                    repositoryRelativePath: file.repositoryRelativePath,
-                    stage: stage,
-                    kind: file.kind
-                ))
+                editorPanel.openDiff(file.fileURL, in: snapshot.repositoryRootURL, stage: stage, kind: file.kind)
             }
     }
 

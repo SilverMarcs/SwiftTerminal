@@ -51,7 +51,14 @@ final class EditorPanel {
         highlightRequest = request
     }
 
-    func openDiff(_ reference: GitDiffReference) {
+    func openDiff(_ fileURL: URL, in repositoryRoot: URL, stage: GitDiffStage = .unstaged, kind: GitChangeKind = .modified) {
+        let reference = GitDiffReference(
+            repositoryRootURL: repositoryRoot,
+            fileURL: fileURL,
+            repositoryRelativePath: fileURL.relativePath(from: repositoryRoot),
+            stage: stage,
+            kind: kind
+        )
         navigate(to: .diff(reference))
     }
 

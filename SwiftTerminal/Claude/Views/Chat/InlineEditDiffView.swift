@@ -3,8 +3,15 @@ import SwiftUI
 struct InlineEditDiffView: View {
     let tool: ToolUseInfo
 
+    @Environment(EditorPanel.self) private var editorPanel
+
     private var filePath: String? {
         tool.input["file_path"] as? String
+    }
+
+    private var fileURL: URL? {
+        guard let path = filePath else { return nil }
+        return URL(filePath: path)
     }
 
     private var fileName: String {
@@ -44,6 +51,17 @@ struct InlineEditDiffView: View {
                     ProgressView()
                         .controlSize(.mini)
                 } else {
+                    if let fileURL {
+                        Button {
+                            editorPanel.openFile(fileURL)
+                        } label: {
+                            Image(systemName: "doc.text")
+                                .font(.caption2)
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Open in Editor")
+                    }
+                    
                     Image(systemName: "checkmark")
                         .font(.caption2)
                         .foregroundStyle(.green)
