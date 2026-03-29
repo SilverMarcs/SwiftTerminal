@@ -7,14 +7,13 @@ struct BottomSheetView: View {
     @AppStorage("editorPanelHeight") private var panelHeight: Double = 250
 
     var body: some View {
-        if panel.isOpen {
-            VStack(spacing: 0) {
-                dragBorder
-                content
-            }
-            .frame(height: panelHeight, alignment: .top)
-            .background(colorScheme == .dark ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.bar))
+        VStack(spacing: 0) {
+            dragBorder
+            content
         }
+        .frame(height: panel.isOpen ? panelHeight : 1, alignment: .top)
+        .clipped()
+        .background(colorScheme == .dark ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.bar))
     }
 
     // MARK: - Drag Border
@@ -61,6 +60,7 @@ struct BottomSheetView: View {
                 } description: {
                     Text("Open a file from the sidebar or search results.")
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
     }

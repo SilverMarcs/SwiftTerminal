@@ -50,7 +50,7 @@ struct InputBarView: View {
                     .offset(y: -2)
                     .keyboardShortcut(service.isStreaming ? "d" : .return)
                 }
-                .padding(10)
+                .padding(9)
             }
         }
         .task { isFocused = true }

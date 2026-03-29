@@ -29,7 +29,7 @@ struct SessionRow: View {
                     .lineLimit(1)
             }
         }
-        .badge(session.hasNotification ? Text("!") : nil)
+        .badge(session.hasNotification ? "" : nil)
         .badgeProminence(.increased)
         .tag(SidebarSelection.session(session))
         .contextMenu {
