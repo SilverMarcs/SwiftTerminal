@@ -597,6 +597,7 @@ final class ClaudeService {
 
         case .result(let e):
             handleResult(e)
+            fetchContextUsage()
 
         case .approvalRequest(let request):
             pendingApproval = request
@@ -916,6 +917,20 @@ final class ClaudeService {
             if let result = response?.result,
                let summary = result["summary"] as? String, !summary.isEmpty {
                 self.claudeSession?.name = summary
+            }
+        }
+    }
+
+    private func fetchContextUsage() {
+        guard queryActive || session.sessionID != nil else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            self.process?.sendCommand("get_context_usage")
+            let response = await self.waitForBridgeResponse("get_context_usage")
+            if let result = response?.result {
+                self.session.contextUsedTokens = result["totalTokens"] as? Int ?? 0
+                self.session.contextMaxTokens = result["maxTokens"] as? Int ?? 0
+                self.session.contextPercentage = result["percentage"] as? Double ?? 0
             }
         }
     }

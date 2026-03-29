@@ -17,6 +17,14 @@ struct ToolbarContentView: ToolbarContent {
         }
 
         if showToolbarItems {
+//            if service.session.contextMaxTokens > 0 {
+//                ToolbarItem(placement: .navigation) {
+//                    ContextRing(fraction: service.session.contextPercentage / 100)
+//                        .help("\(Int(service.session.contextPercentage))% context used")
+//                }
+//                .sharedBackgroundVisibility(.hidden)
+//            }
+
             ToolbarSpacer(.fixed)
 
             ToolbarItem(placement: .primaryAction) {
@@ -107,5 +115,25 @@ struct ToolbarContentView: ToolbarContent {
         case .plan: .blue
         case .bypassPermissions: .red
         }
+    }
+}
+
+private struct ContextRing: View {
+    var fraction: Double
+
+    private let lineWidth: CGFloat = 3
+    private let size: CGFloat = 18
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(.tertiary, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+
+            Circle()
+                .trim(from: 0, to: min(fraction, 1.0))
+                .stroke(.blue, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+        }
+        .frame(width: size, height: size)
     }
 }

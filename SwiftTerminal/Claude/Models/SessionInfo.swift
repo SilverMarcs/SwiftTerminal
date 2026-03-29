@@ -12,6 +12,9 @@ final class SessionInfo {
     var state: SessionState = .idle
     var isCompacting = false
     var claudeCodeVersion: String?
+    var contextUsedTokens = 0
+    var contextMaxTokens = 0
+    var contextPercentage: Double = 0
 
     func update(from system: SystemEvent) {
         sessionID = system.sessionID ?? sessionID
