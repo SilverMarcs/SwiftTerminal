@@ -22,7 +22,7 @@ struct WorkspaceListView: View {
                     ForEach(workspace.sessions) { session in
                         Label(
                             session.sdkSessionID.map { String($0.prefix(8)) } ?? "New Session",
-                            systemImage: "bubble.left"
+                            systemImage: session.service?.queryActive == true ? "bubble.left.fill" : "bubble.left"
                         )
                         .tag(session)
                         .swipeActions(edge: .trailing) {

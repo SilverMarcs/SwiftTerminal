@@ -95,7 +95,7 @@ struct UserMessageView: View {
                         NSPasteboard.general.setString(message.text, forType: .string)
                     }
                     Divider()
-                    Button("Rewind to here", systemImage: "arrow.counterclockwise") {
+                    Button("Rewind", systemImage: "arrow.counterclockwise") {
                         Task {
                             await service.rewind(toMessageID: message.id)
                         }

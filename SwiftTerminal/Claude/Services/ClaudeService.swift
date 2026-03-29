@@ -26,7 +26,7 @@ final class ClaudeService {
     private var process: ClaudeProcess?
     private var readerTask: Task<Void, Never>?
     private var bridgeReady = false
-    private var queryActive = false
+    private(set) var queryActive = false
 
     @ObservationIgnored private var toolUseIndex: [String: BlockLocation] = [:]
     @ObservationIgnored private var state = StreamState()
@@ -126,6 +126,27 @@ final class ClaudeService {
         pendingApproval = nil
         turnContinuation?.resume()
         turnContinuation = nil
+    }
+
+    /// Kill the background bridge process but keep all local messages and state.
+    /// The process will auto-resume on next send/rewind.
+    func disconnectProcess() {
+        if queryActive {
+            process?.sendCommand("stop")
+        }
+        process?.terminate()
+        process = nil
+        readerTask?.cancel()
+        readerTask = nil
+        bridgeReady = false
+        queryActive = false
+        isStreaming = false
+        pendingApproval = nil
+        activeTasks.removeAll()
+        turnContinuation?.resume()
+        turnContinuation = nil
+        for c in bridgeReadyContinuations { c.resume() }
+        bridgeReadyContinuations.removeAll()
     }
 
     func clearSession() {

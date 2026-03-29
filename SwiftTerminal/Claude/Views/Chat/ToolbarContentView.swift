@@ -33,6 +33,8 @@ struct ToolbarContentView: ToolbarContent {
                 }
                 .labelsHidden()
                 .pickerStyle(.segmented)
+                .disabled(service.queryActive)
+                .help(service.queryActive ? "Effort can only be changed before starting a session" : "Set reasoning effort level")
             }
 
             ToolbarSpacer(.fixed)

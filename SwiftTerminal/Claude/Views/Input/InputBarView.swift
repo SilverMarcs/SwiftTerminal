@@ -7,6 +7,33 @@ struct InputBarView: View {
     var body: some View {
         GlassEffectContainer {
             HStack(alignment: .bottom) {
+                Menu {
+                    if service.queryActive {
+                        Button(role: .destructive) {
+                            service.disconnectProcess()
+                        } label: {
+                            Label("Stop Session", systemImage: "xmark")
+                        }
+                        Divider()
+                    }
+                    Button {} label: {
+                        Label("Photos Library", systemImage: "photo.on.rectangle.angled")
+                    }
+                    Button {} label: {
+                        Label("Attach Files", systemImage: "paperclip")
+                    }
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .foregroundStyle(.secondary, .clear)
+                        .font(.largeTitle).fontWeight(.semibold)
+                        .glassEffect()
+                }
+                .menuStyle(.button)
+                .buttonStyle(.plain)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .offset(y: -1)
+
                 ZStack(alignment: .leading) {
                     if service.prompt.isEmpty {
                         Text("Make Claude do anything...")
