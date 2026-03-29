@@ -7,6 +7,7 @@ struct WorkspaceListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Workspace.sortOrder) private var workspaces: [Workspace]
     @State private var searchText = ""
+    @State private var expandedWorkspaces: Set<UUID> = []
 
     private var filteredWorkspaces: [Workspace] {
         guard !searchText.isEmpty else { return workspaces }
@@ -16,9 +17,18 @@ struct WorkspaceListView: View {
     }
 
     var body: some View {
-        List(selection: Bindable(appState).selectedSession) {
+        List(selection: Bindable(appState).selectedItem) {
             ForEach(filteredWorkspaces) { workspace in
-                DisclosureGroup {
+                DisclosureGroup(isExpanded: Binding(
+                    get: { expandedWorkspaces.contains(workspace.id) },
+                    set: { isExpanded in
+                        if isExpanded {
+                            expandedWorkspaces.insert(workspace.id)
+                        } else {
+                            expandedWorkspaces.remove(workspace.id)
+                        }
+                    }
+                )) {
                     ForEach(workspace.sessions) { session in
                         SessionRow(session: session, workspace: workspace)
                     }
@@ -28,6 +38,17 @@ struct WorkspaceListView: View {
             }
         }
         .searchable(text: $searchText, placement: .sidebar, prompt: "Filter workspaces")
+        .onChange(of: appState.selectedItem) { _, newValue in
+            guard case .workspace(let workspace) = newValue else { return }
+            expandedWorkspaces.insert(workspace.id)
+            // Find an existing empty session (not tied to a Claude session)
+            if let empty = workspace.sessions.first(where: { $0.sdkSessionID == nil }) {
+                appState.selectedItem = .session(empty)
+            } else {
+                let session = workspace.newSession()
+                appState.selectedItem = .session(session)
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             Button {
                 chooseDirectoryForNewWorkspace()

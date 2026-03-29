@@ -26,7 +26,7 @@ struct ContentView: View {
                   let sessionID = UUID(uuidString: idString) else { return }
             for workspace in workspaces {
                 if let session = workspace.sessions.first(where: { $0.id == sessionID }) {
-                    appState.selectedSession = session
+                    appState.selectedItem = .session(session)
                     break
                 }
             }

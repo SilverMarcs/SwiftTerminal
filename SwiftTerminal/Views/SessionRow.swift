@@ -31,7 +31,7 @@ struct SessionRow: View {
         }
         .badge(session.hasNotification ? Text("!") : nil)
         .badgeProminence(.increased)
-        .tag(session)
+        .tag(SidebarSelection.session(session))
         .contextMenu {
             Button("Fork Session", systemImage: "arrow.triangle.branch") {
                 forkSession()
@@ -77,14 +77,14 @@ struct SessionRow: View {
         Task {
             guard let forked = await service.forkSession() else { return }
             await MainActor.run {
-                appState.selectedSession = forked
+                appState.selectedItem = .session(forked)
             }
         }
     }
 
     private func deleteSession() {
         if appState.selectedSession == session {
-            appState.selectedSession = nil
+            appState.selectedItem = nil
         }
         workspace.removeSession(session)
     }

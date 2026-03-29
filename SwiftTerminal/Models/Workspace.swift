@@ -15,7 +15,7 @@ final class Workspace {
     @Relationship(deleteRule: .cascade)
     var unsortedSessions: [ClaudeSession] = []
     var sessions: [ClaudeSession] {
-        unsortedSessions.sorted { $0.createdAt < $1.createdAt }
+        unsortedSessions.sorted { $0.createdAt > $1.createdAt }
     }
 
     @Relationship(deleteRule: .cascade, inverse: \TerminalTab.workspace)

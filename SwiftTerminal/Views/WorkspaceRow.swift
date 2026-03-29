@@ -26,19 +26,13 @@ struct WorkspaceRow: View {
                     .lineLimit(1)
             }
         }
+        .tag(SidebarSelection.workspace(workspace))
         .contextMenu {
-            Button {
-                let session = workspace.newSession()
-                appState.selectedSession = session
-            } label: {
-                Label("New Session", systemImage: "plus.bubble")
-            }
-            Divider()
             RenameButton()
             Divider()
             Button(role: .destructive) {
                 modelContext.delete(workspace)
-                appState.selectedSession = nil
+                appState.selectedItem = nil
             } label: {
                 Label("Delete", systemImage: "trash")
             }
