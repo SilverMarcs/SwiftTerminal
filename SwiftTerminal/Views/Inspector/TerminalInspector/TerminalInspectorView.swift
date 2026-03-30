@@ -3,7 +3,7 @@ import SwiftUI
 struct TerminalInspectorView: View {
     @Environment(AppState.self) private var appState
 
-    private var workspace: Workspace? { appState.selectedSession?.workspace }
+    private var workspace: Workspace? { appState.selectedTerminal?.workspace }
 
     @State private var selection: TerminalTab?
 
@@ -26,24 +26,21 @@ struct TerminalInspectorView: View {
                     addButton
                 }
 
-                if workspace.unsortedTerminals.isEmpty {
+                if let selection {
+                    TerminalContainerRepresentable(tab: selection)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .overlay {
+                            Button("") { selection.clearTerminal() }
+                                .keyboardShortcut("k", modifiers: .command)
+                                .hidden()
+                        }
+                } else {
                     ContentUnavailableView {
                         Label("No Terminals", systemImage: "terminal")
                     } description: {
                         Text("Add a terminal session to get started.")
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    TerminalContainerRepresentable(
-                        tabs: workspace.unsortedTerminals,
-                        selectedTab: selection
-                    )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .overlay {
-                        Button("") { selection?.clearTerminal() }
-                            .keyboardShortcut("k", modifiers: .command)
-                            .hidden()
-                    }
                 }
             }
             .onAppear {

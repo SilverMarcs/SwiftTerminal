@@ -1,20 +1,8 @@
 import SwiftUI
 
-enum SidebarSelection: Hashable {
-    case workspace(Workspace)
-    case session(ChatSession)
-}
-
 @Observable
 final class AppState {
-    var selectedItem: SidebarSelection?
-
-    var selectedSession: ChatSession? {
-        if case .session(let session) = selectedItem {
-            return session
-        }
-        return nil
-    }
+    var selectedTerminal: TerminalTab?
 
     // Inspector state
     var showingInspector = true

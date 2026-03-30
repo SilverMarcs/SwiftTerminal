@@ -8,13 +8,14 @@ final class TerminalTab {
     var title: String = "Terminal"
     var currentDirectory: String?
     var sortOrder: Int = 0
-    var workspace: Workspace?
+    var workspace: Workspace
 
     @Attribute(.ephemeral) var hasBellNotification = false
     @Attribute(.ephemeral) var shellTitle: String?
     @Transient var localProcessTerminalView: LocalProcessTerminalView?
 
-    init(title: String = "Terminal", currentDirectory: String? = nil, sortOrder: Int = 0) {
+    init(workspace: Workspace, title: String = "Terminal", currentDirectory: String? = nil, sortOrder: Int = 0) {
+        self.workspace = workspace
         self.title = title
         self.currentDirectory = currentDirectory
         self.sortOrder = sortOrder

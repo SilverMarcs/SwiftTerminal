@@ -10,8 +10,8 @@ struct WorkspaceRow: View {
     @State private var isRenaming = false
     @FocusState private var isNameFieldFocused: Bool
 
-    private var activeSessionCount: Int {
-        workspace.sessions.filter { $0.service?.queryActive == true }.count
+    private var terminalCount: Int {
+        workspace.terminals.count
     }
 
     var body: some View {
@@ -37,20 +37,20 @@ struct WorkspaceRow: View {
                     .lineLimit(1)
             }
         }
-        .badge(activeSessionCount > 0 ? activeSessionCount : 0)
-        .tag(SidebarSelection.workspace(workspace))
+        .badge(terminalCount > 0 ? terminalCount : 0)
         .contextMenu {
             Button {
-                appState.selectedItem = .session(workspace.emptyOrNewSession())
+                let tab = workspace.addTerminal()
+                appState.selectedTerminal = tab
             } label: {
-                Label("New Chat", systemImage: "plus.bubble")
+                Label("New Terminal", systemImage: "plus")
             }
             Divider()
             RenameButton()
             Divider()
             Button(role: .destructive) {
                 modelContext.delete(workspace)
-                appState.selectedItem = nil
+                appState.selectedTerminal = nil
             } label: {
                 Label("Delete", systemImage: "trash")
             }

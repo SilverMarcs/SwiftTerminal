@@ -36,7 +36,7 @@ struct TerminalRowView: View {
             }
             Divider()
             Button("Close Terminal") {
-                tab.workspace?.closeTerminal(tab)
+                tab.workspace.closeTerminal(tab)
             }
         }
         .alert("Rename Terminal", isPresented: $isRenaming) {

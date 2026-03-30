@@ -1,15 +1,19 @@
 import SwiftUI
 
 struct WorkspaceView: View {
-    var session: ChatSession
+    var workspace: Workspace
+    var selectedTerminal: TerminalTab
     @Environment(AppState.self) private var appState
     @State private var editorPanel = EditorPanel()
 
-    private var workspace: Workspace { session.workspace }
-
     var body: some View {
-        SessionDetailView(session: session)
-            .id(session.id)
+        TerminalContainerRepresentable(tab: selectedTerminal)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .overlay {
+                Button("") { selectedTerminal.clearTerminal() }
+                    .keyboardShortcut("k", modifiers: .command)
+                    .hidden()
+            }
             .navigationTitle(workspace.name)
             .navigationSubtitle(workspace.directory.replacingOccurrences(of: NSHomeDirectory(), with: "~"))
             .safeAreaInset(edge: .bottom, spacing: 0) {

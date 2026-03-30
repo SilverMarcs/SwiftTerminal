@@ -68,7 +68,7 @@ final class Workspace {
 
     @discardableResult
     func addTerminal() -> TerminalTab {
-        let tab = TerminalTab(currentDirectory: directory, sortOrder: unsortedTerminals.count)
+        let tab = TerminalTab(workspace: self, currentDirectory: directory, sortOrder: unsortedTerminals.count)
         unsortedTerminals.append(tab)
         return tab
     }
