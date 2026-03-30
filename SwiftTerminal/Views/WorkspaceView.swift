@@ -9,6 +9,7 @@ struct WorkspaceView: View {
 
     var body: some View {
         SessionDetailView(session: session)
+            .id(session.id)
             .navigationTitle(workspace.name)
             .navigationSubtitle(workspace.directory.replacingOccurrences(of: NSHomeDirectory(), with: "~"))
             .safeAreaInset(edge: .bottom, spacing: 0) {

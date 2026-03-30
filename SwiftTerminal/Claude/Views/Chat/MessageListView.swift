@@ -108,11 +108,10 @@ struct UserMessageView: View {
             }
 
             if !message.text.isEmpty {
-                Text(message.text)
+                ExpandableText(text: message.text)
                     .padding(12)
                     .background(.background.secondary)
                     .clipShape(RoundedRectangle(cornerRadius: 20))
-                    .textSelection(.enabled)
             }
         }
         .contextMenu {

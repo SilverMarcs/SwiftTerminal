@@ -12,7 +12,7 @@ struct ContentView: View {
         } detail: {
             if let session = appState.selectedSession {
                 WorkspaceView(session: session)
-                    .id(session.id)
+                    .id(session.workspace.id)
             } else {
                 ContentUnavailableView(
                     "No Workspace Selected",
