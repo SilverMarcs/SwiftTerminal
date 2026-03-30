@@ -39,18 +39,14 @@ struct WorkspaceRow: View {
         }
         .badge(terminalCount > 0 ? terminalCount : 0)
         .contextMenu {
-            Button {
-                let tab = workspace.addTerminal()
-                appState.selection = SidebarSelection(workspace: workspace, terminal: tab)
-            } label: {
-                Label("New Terminal", systemImage: "plus")
-            }
-            Divider()
             RenameButton()
             Divider()
             Button(role: .destructive) {
+                if appState.selectedWorkspace === workspace {
+                    appState.selectedWorkspace = nil
+                    appState.selectedTerminal = nil
+                }
                 modelContext.delete(workspace)
-                appState.selection = nil
             } label: {
                 Label("Delete", systemImage: "trash")
             }

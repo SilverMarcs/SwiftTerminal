@@ -61,7 +61,7 @@ struct TerminalRow: View {
 
     private func closeTerminal() {
         if appState.selectedTerminal == terminal {
-            appState.selection = nil
+            appState.selectedTerminal = nil
         }
         terminal.workspace.closeTerminal(terminal)
     }

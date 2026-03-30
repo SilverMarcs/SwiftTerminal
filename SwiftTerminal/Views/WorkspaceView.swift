@@ -1,25 +1,39 @@
 import SwiftUI
 
-struct TerminalDetailView: View {
-    var terminal: Terminal
-
-    private var workspace: Workspace { terminal.workspace }
+struct WorkspaceDetailView: View {
+    let workspace: Workspace
+    @Environment(AppState.self) private var appState
 
     var body: some View {
-        TerminalContainerRepresentable(tab: terminal)
-//            .prefersDefaultFocus(in: <#T##Namespace.ID#>)
-            .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
-            .padding(.top, -8)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .overlay {
-                Button("") { terminal.clearTerminal() }
-                    .keyboardShortcut("k", modifiers: .command)
-                    .hidden()
+        VStack {
+            if let terminal = appState.selectedTerminal {
+                TerminalContainerRepresentable(tab: terminal)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .navigationTitle(workspace.name)
-            .navigationSubtitle(workspace.directory.replacingOccurrences(of: NSHomeDirectory(), with: "~"))
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                BottomSheetView(directoryURL: workspace.url)
+        }
+        .toolbar {
+            Button {
+                if let terminal = appState.selectedTerminal {
+                    terminal.clearTerminal()
+                }
+            } label: {
+                Image(systemName: "clear")
             }
+            .keyboardShortcut("k", modifiers: .command)
+        }
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        .navigationTitle(workspace.name)
+        .navigationSubtitle(workspace.directory.replacingOccurrences(of: NSHomeDirectory(), with: "~"))
+        .safeAreaBar(edge: .top, spacing: 0) {
+            if workspace.terminals.count > 1 {
+                DocumentTabBar(workspace: workspace)
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            BottomSheetView(directoryURL: workspace.url)
+        }
+        .task(id: workspace) {
+            appState.selectedTerminal = workspace.terminals.first ?? workspace.addTerminal()
+        }
     }
 }

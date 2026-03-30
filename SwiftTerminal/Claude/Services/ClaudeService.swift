@@ -954,7 +954,7 @@ final class ClaudeService {
         let sessionIDString = chatSession.id.uuidString
 
         Task { @MainActor in
-            let isSelected = self.appState?.selectedTerminal?.workspace === self.chatSession.workspace
+            let isSelected = self.appState?.selectedWorkspace === self.chatSession.workspace
             if !isSelected {
                 self.chatSession.hasNotification = true
             }

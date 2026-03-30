@@ -6,32 +6,12 @@ struct WorkspaceListView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var modelContext
     @Query private var workspaces: [Workspace]
-    @State private var expandedWorkspaces: Set<UUID> = []
 
     var body: some View {
-        List(selection: Bindable(appState).selection) {
+        List(selection: Bindable(appState).selectedWorkspace) {
             ForEach(workspaces) { workspace in
-                DisclosureGroup(isExpanded: Binding(
-                    get: { expandedWorkspaces.contains(workspace.id) },
-                    set: { isExpanded in
-                        if isExpanded {
-                            expandedWorkspaces.insert(workspace.id)
-                        } else {
-                            expandedWorkspaces.remove(workspace.id)
-                        }
-                    }
-                )) {
-                    ForEach(workspace.terminals) { terminal in
-                        TerminalRow(terminal: terminal)
-                            .tag(SidebarSelection(workspace: workspace, terminal: terminal))
-                    }
-                    .onMove { source, destination in
-                        moveTerminals(in: workspace, from: source, to: destination)
-                    }
-                } label: {
-                    WorkspaceRow(workspace: workspace)
-                        .tag(SidebarSelection(workspace: workspace))
-                }
+                WorkspaceRow(workspace: workspace)
+                    .tag(workspace)
             }
             .onMove { source, destination in
                 moveWorkspaces(from: source, to: destination)
@@ -60,22 +40,12 @@ struct WorkspaceListView: View {
             _workspaces = Query(filter: predicate, sort: \Workspace.sortOrder)
         }
     }
-    
+
     private func moveWorkspaces(from source: IndexSet, to destination: Int) {
         var ordered = workspaces
         ordered.move(fromOffsets: source, toOffset: destination)
         for (index, workspace) in ordered.enumerated() {
             workspace.sortOrder = index
-        }
-    }
-
-    private func moveTerminals(in workspace: Workspace, from source: IndexSet, to destination: Int) {
-        withAnimation {
-            var ordered = workspace.terminals
-            ordered.move(fromOffsets: source, toOffset: destination)
-            for (index, terminal) in ordered.enumerated() {
-                terminal.sortOrder = index
-            }
         }
     }
 
