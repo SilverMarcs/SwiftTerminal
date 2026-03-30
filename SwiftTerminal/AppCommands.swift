@@ -54,14 +54,6 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("3", modifiers: .command)
 
-            Button {
-                appState.showingInspector = true
-                appState.selectedInspectorTab = .terminal
-            } label: {
-                Label("Terminal", systemImage: "terminal")
-            }
-            .keyboardShortcut("4", modifiers: .command)
-
             Divider()
 
             Button {

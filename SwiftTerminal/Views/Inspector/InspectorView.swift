@@ -4,36 +4,21 @@ struct InspectorView: View {
     let directoryURL: URL
     @Environment(AppState.self) private var appState
     @Environment(EditorPanel.self) private var editorPanel
-    @State private var inspectorWidth: CGFloat = 0
     
     var body: some View {
         tabContent
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .onGeometryChange(for: CGFloat.self) { proxy in
-                proxy.size.width
-            } action: { width in
-                inspectorWidth = width
-            }
             .toolbar {
-                ToolbarSpacer(.fixed)
-                
-                if appState.showingInspector {
-                    ToolbarItem(placement: .automatic) {
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                editorPanel.toggle()
-                            }
-                        } label: {
-                            Image(systemName: "inset.filled.bottomthird.square")
+                ToolbarItem(placement: .automatic) {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            editorPanel.toggle()
                         }
+                    } label: {
+                        Image(systemName: "inset.filled.bottomthird.square")
                     }
-
-                    ToolbarItem(placement: .automatic) {
-                        Color.clear
-                            .frame(width: max(inspectorWidth - 110, 0), height: 0)
-                    }
-                    .sharedBackgroundVisibility(.hidden)
                 }
+                
+                ToolbarSpacer(.flexible)
 
                 ToolbarItem(placement: .primaryAction) {
                     Button {
@@ -68,8 +53,6 @@ struct InspectorView: View {
             SearchInspectorView(directoryURL: directoryURL)
         case .git:
             GitInspectorView(directoryURL: directoryURL)
-        case .terminal:
-            TerminalInspectorView()
         }
     }
 

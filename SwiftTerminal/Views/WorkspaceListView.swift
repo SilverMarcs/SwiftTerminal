@@ -5,20 +5,12 @@ import AppKit
 struct WorkspaceListView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Workspace.sortOrder) private var workspaces: [Workspace]
-    @State private var searchText = ""
+    @Query private var workspaces: [Workspace]
     @State private var expandedWorkspaces: Set<UUID> = []
-
-    private var filteredWorkspaces: [Workspace] {
-        guard !searchText.isEmpty else { return workspaces }
-        return workspaces.filter {
-            $0.name.localizedCaseInsensitiveContains(searchText)
-        }
-    }
 
     var body: some View {
         List(selection: Bindable(appState).selectedTerminal) {
-            ForEach(filteredWorkspaces) { workspace in
+            ForEach(workspaces) { workspace in
                 DisclosureGroup(isExpanded: Binding(
                     get: { expandedWorkspaces.contains(workspace.id) },
                     set: { isExpanded in
@@ -37,12 +29,6 @@ struct WorkspaceListView: View {
                 }
             }
         }
-        .task {
-            for workspace in workspaces where workspace.projectType == .unknown {
-                workspace.detectProjectType()
-            }
-        }
-        .searchable(text: $searchText, placement: .sidebar, prompt: "Filter workspaces")
         .safeAreaInset(edge: .bottom) {
             Button {
                 chooseDirectoryForNewWorkspace()
@@ -56,6 +42,17 @@ struct WorkspaceListView: View {
         }
     }
 
+    init(searchText: String = "") {
+        if searchText.isEmpty {
+            _workspaces = Query(sort: \Workspace.sortOrder)
+        } else {
+            let predicate = #Predicate<Workspace> {
+                $0.name.localizedStandardContains(searchText)
+            }
+            _workspaces = Query(filter: predicate, sort: \Workspace.sortOrder)
+        }
+    }
+    
     private func chooseDirectoryForNewWorkspace() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
