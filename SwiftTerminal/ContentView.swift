@@ -12,18 +12,18 @@ struct ContentView: View {
                 .searchable(text: $searchText, placement: .sidebar, prompt: "Filter workspaces")
         } detail: {
             if let terminal = appState.selectedTerminal {
-                WorkspaceView(workspace: terminal.workspace, selectedTerminal: terminal)
+                TerminalDetailView(terminal: terminal)
             } else {
                 ContentUnavailableView(
                     "No Workspace Selected",
                     systemImage: "sidebar.left",
-                    description: Text("Select a terminal to get started.")
+                    description: Text("Select a workspace or terminal to get started.")
                 )
             }
         }
         .inspector(isPresented: Bindable(appState).showingInspector) {
-            if let terminal = appState.selectedTerminal {
-                InspectorView(directoryURL: terminal.workspace.url)
+            if let workspace = appState.selectedWorkspace {
+                InspectorView(directoryURL: workspace.url)
                     .inspectorColumnWidth(min: 240, ideal: 240, max: 360)
             }
         }

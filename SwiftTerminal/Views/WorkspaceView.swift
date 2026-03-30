@@ -1,14 +1,16 @@
 import SwiftUI
 
-struct WorkspaceView: View {
-    var workspace: Workspace
-    var selectedTerminal: TerminalTab
+struct TerminalDetailView: View {
+    var terminal: Terminal
+
+    private var workspace: Workspace { terminal.workspace }
 
     var body: some View {
-        TerminalContainerRepresentable(tab: selectedTerminal)
+        TerminalContainerRepresentable(tab: terminal)
+//            .prefersDefaultFocus(in: <#T##Namespace.ID#>)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .overlay {
-                Button("") { selectedTerminal.clearTerminal() }
+                Button("") { terminal.clearTerminal() }
                     .keyboardShortcut("k", modifiers: .command)
                     .hidden()
             }

@@ -29,9 +29,9 @@ final class Workspace {
         unsortedSessions.sorted { $0.createdAt > $1.createdAt }
     }
 
-    @Relationship(deleteRule: .cascade, inverse: \TerminalTab.workspace)
-    var unsortedTerminals: [TerminalTab] = []
-    var terminals: [TerminalTab] {
+    @Relationship(deleteRule: .cascade, inverse: \Terminal.workspace)
+    var unsortedTerminals: [Terminal] = []
+    var terminals: [Terminal] {
         unsortedTerminals.sorted { $0.sortOrder < $1.sortOrder }
     }
 
@@ -67,13 +67,13 @@ final class Workspace {
     // MARK: - Terminal Management
 
     @discardableResult
-    func addTerminal() -> TerminalTab {
-        let tab = TerminalTab(workspace: self, currentDirectory: directory, sortOrder: unsortedTerminals.count)
+    func addTerminal() -> Terminal {
+        let tab = Terminal(workspace: self, currentDirectory: directory, sortOrder: unsortedTerminals.count)
         unsortedTerminals.append(tab)
         return tab
     }
 
-    func closeTerminal(_ tab: TerminalTab) {
+    func closeTerminal(_ tab: Terminal) {
         tab.terminate()
         unsortedTerminals.removeAll { $0.id == tab.id }
         tab.modelContext?.delete(tab)

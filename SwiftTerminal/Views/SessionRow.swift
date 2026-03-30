@@ -100,8 +100,8 @@ struct SessionRow: View {
     }
 
     private func deleteSession() {
-        if appState.selectedTerminal?.workspace === session.workspace {
-            appState.selectedTerminal = nil
+        if appState.selectedWorkspace === session.workspace {
+            appState.selection = nil
         }
         workspace.removeSession(session)
     }

@@ -5,7 +5,7 @@ import SwiftTerm
 /// The `LocalProcessTerminalView` is retained by `TerminalTab` so it survives
 /// tab switches without being destroyed/recreated.
 struct TerminalContainerRepresentable: NSViewRepresentable {
-    let tab: TerminalTab
+    let tab: Terminal
 
     func makeNSView(context: Context) -> NSView {
         let container = NSView(frame: .zero)
@@ -52,13 +52,13 @@ struct TerminalContainerRepresentable: NSViewRepresentable {
     final class Coordinator: NSObject, LocalProcessTerminalViewDelegate {
         func hostCurrentDirectoryUpdate(source: SwiftTerm.TerminalView, directory: String?) {}
 
-        private var viewMap: [ObjectIdentifier: (id: UUID, tab: TerminalTab)] = [:]
+        private var viewMap: [ObjectIdentifier: (id: UUID, tab: Terminal)] = [:]
 
-        func register(_ view: LocalProcessTerminalView, for tab: TerminalTab) {
+        func register(_ view: LocalProcessTerminalView, for tab: Terminal) {
             viewMap[ObjectIdentifier(view)] = (id: tab.id, tab: tab)
         }
 
-        func createTerminalView(for tab: TerminalTab) -> LocalProcessTerminalView {
+        func createTerminalView(for tab: Terminal) -> LocalProcessTerminalView {
             let tv = LocalProcessTerminalView(frame: .zero)
             tv.onBell = { [weak tab, weak tv] in
                 Task { @MainActor in

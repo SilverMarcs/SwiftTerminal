@@ -41,7 +41,7 @@ struct WorkspaceRow: View {
         .contextMenu {
             Button {
                 let tab = workspace.addTerminal()
-                appState.selectedTerminal = tab
+                appState.selection = SidebarSelection(workspace: workspace, terminal: tab)
             } label: {
                 Label("New Terminal", systemImage: "plus")
             }
@@ -50,7 +50,7 @@ struct WorkspaceRow: View {
             Divider()
             Button(role: .destructive) {
                 modelContext.delete(workspace)
-                appState.selectedTerminal = nil
+                appState.selection = nil
             } label: {
                 Label("Delete", systemImage: "trash")
             }

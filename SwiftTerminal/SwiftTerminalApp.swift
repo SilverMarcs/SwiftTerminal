@@ -13,7 +13,7 @@ struct SwiftTerminalApp: App {
     }
 
     var body: some Scene {
-        Window("main", id: "main") {
+        Window("SwiftTerminal", id: "swiftterminal") {
             ContentView()
                 .environment(appState)
                 .modelContainer(container)

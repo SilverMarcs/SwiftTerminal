@@ -1,8 +1,16 @@
 import SwiftUI
 
+struct SidebarSelection: Hashable {
+    let workspace: Workspace
+    var terminal: Terminal?
+}
+
 @Observable
 final class AppState {
-    var selectedTerminal: TerminalTab?
+    var selection: SidebarSelection?
+
+    var selectedWorkspace: Workspace? { selection?.workspace }
+    var selectedTerminal: Terminal? { selection?.terminal }
 
     // Inspector state
     var showingInspector = true

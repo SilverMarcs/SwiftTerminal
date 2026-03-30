@@ -1,10 +1,9 @@
 import SwiftUI
 
-struct TerminalTabSidebarRow: View {
+struct TerminalRow: View {
     @Environment(AppState.self) private var appState
 
-    let tab: TerminalTab
-    let workspace: Workspace
+    let terminal: Terminal
 
     @State private var isRenaming = false
     @State private var renameText = ""
@@ -12,7 +11,7 @@ struct TerminalTabSidebarRow: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: tab.hasChildProcess ? "terminal.fill" : "terminal")
+            Image(systemName: terminal.hasChildProcess ? "terminal.fill" : "terminal")
 
             if isRenaming {
                 TextField("Terminal Name", text: $renameText)
@@ -21,17 +20,16 @@ struct TerminalTabSidebarRow: View {
                     .onSubmit { commitRename() }
                     .onExitCommand { isRenaming = false }
                     .onAppear {
-                        renameText = tab.title
+                        renameText = terminal.title
                         isNameFieldFocused = true
                     }
             } else {
-                Text(tab.title)
+                Text(terminal.title)
                     .lineLimit(1)
             }
         }
-        .badge(tab.hasBellNotification ? "" : nil)
+        .badge(terminal.hasBellNotification ? "" : nil)
         .badgeProminence(.increased)
-        .tag(tab)
         .contextMenu {
             RenameButton()
 
@@ -57,14 +55,14 @@ struct TerminalTabSidebarRow: View {
     private func commitRename() {
         isRenaming = false
         let trimmed = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, trimmed != tab.title else { return }
-        tab.title = trimmed
+        guard !trimmed.isEmpty, trimmed != terminal.title else { return }
+        terminal.title = trimmed
     }
 
     private func closeTerminal() {
-        if appState.selectedTerminal == tab {
-            appState.selectedTerminal = nil
+        if appState.selectedTerminal == terminal {
+            appState.selection = nil
         }
-        workspace.closeTerminal(tab)
+        terminal.workspace.closeTerminal(terminal)
     }
 }

@@ -3,7 +3,7 @@ import SwiftData
 import SwiftTerm
 
 @Model
-final class TerminalTab {
+final class Terminal {
     var id = UUID()
     var title: String = "Terminal"
     var currentDirectory: String?

@@ -9,7 +9,7 @@ struct WorkspaceListView: View {
     @State private var expandedWorkspaces: Set<UUID> = []
 
     var body: some View {
-        List(selection: Bindable(appState).selectedTerminal) {
+        List(selection: Bindable(appState).selection) {
             ForEach(workspaces) { workspace in
                 DisclosureGroup(isExpanded: Binding(
                     get: { expandedWorkspaces.contains(workspace.id) },
@@ -21,11 +21,13 @@ struct WorkspaceListView: View {
                         }
                     }
                 )) {
-                    ForEach(workspace.terminals) { tab in
-                        TerminalTabSidebarRow(tab: tab, workspace: workspace)
+                    ForEach(workspace.terminals) { terminal in
+                        TerminalRow(terminal: terminal)
+                            .tag(SidebarSelection(workspace: workspace, terminal: terminal))
                     }
                 } label: {
                     WorkspaceRow(workspace: workspace)
+                        .tag(SidebarSelection(workspace: workspace))
                 }
             }
         }
