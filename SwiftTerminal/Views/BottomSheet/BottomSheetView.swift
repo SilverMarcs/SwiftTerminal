@@ -4,7 +4,7 @@ struct BottomSheetView: View {
     let directoryURL: URL
     @Environment(EditorPanel.self) private var panel
     @Environment(\.colorScheme) var colorScheme
-    @AppStorage("editorPanelHeight") private var panelHeight: Double = 250
+    @AppStorage("editorPanelHeight_v2") private var panelHeight: Double = 250
 
     var body: some View {
         VStack(spacing: 0) {

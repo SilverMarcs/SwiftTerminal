@@ -25,10 +25,16 @@ struct WorkspaceListView: View {
                         TerminalRow(terminal: terminal)
                             .tag(SidebarSelection(workspace: workspace, terminal: terminal))
                     }
+                    .onMove { source, destination in
+                        moveTerminals(in: workspace, from: source, to: destination)
+                    }
                 } label: {
                     WorkspaceRow(workspace: workspace)
                         .tag(SidebarSelection(workspace: workspace))
                 }
+            }
+            .onMove { source, destination in
+                moveWorkspaces(from: source, to: destination)
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -55,6 +61,24 @@ struct WorkspaceListView: View {
         }
     }
     
+    private func moveWorkspaces(from source: IndexSet, to destination: Int) {
+        var ordered = workspaces
+        ordered.move(fromOffsets: source, toOffset: destination)
+        for (index, workspace) in ordered.enumerated() {
+            workspace.sortOrder = index
+        }
+    }
+
+    private func moveTerminals(in workspace: Workspace, from source: IndexSet, to destination: Int) {
+        withAnimation {
+            var ordered = workspace.terminals
+            ordered.move(fromOffsets: source, toOffset: destination)
+            for (index, terminal) in ordered.enumerated() {
+                terminal.sortOrder = index
+            }
+        }
+    }
+
     private func chooseDirectoryForNewWorkspace() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false

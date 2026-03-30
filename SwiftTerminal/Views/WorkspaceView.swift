@@ -8,6 +8,8 @@ struct TerminalDetailView: View {
     var body: some View {
         TerminalContainerRepresentable(tab: terminal)
 //            .prefersDefaultFocus(in: <#T##Namespace.ID#>)
+            .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+            .padding(.top, -8)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .overlay {
                 Button("") { terminal.clearTerminal() }

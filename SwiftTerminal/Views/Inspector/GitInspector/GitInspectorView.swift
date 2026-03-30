@@ -177,6 +177,7 @@ struct GitInspectorView: View {
         }
         .pickerStyle(.menu)
         .controlSize(.large)
+        .buttonSizing(.flexible)
     }
 
     // MARK: - Branch Row

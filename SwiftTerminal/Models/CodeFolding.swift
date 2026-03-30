@@ -22,7 +22,7 @@ final class FoldingManager {
 
         // Detect fold regions
         regions = Self.detectFoldRegions(in: text)
-        regionsByStartLine = Dictionary(uniqueKeysWithValues: regions.map { ($0.startLine, $0) })
+        regionsByStartLine = Dictionary(regions.map { ($0.startLine, $0) }, uniquingKeysWith: { _, last in last })
 
         // Prune any folded lines whose regions no longer exist
         foldedStartLines = foldedStartLines.filter { regionsByStartLine[$0] != nil }
