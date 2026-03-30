@@ -36,6 +36,7 @@ struct DetachedEditorView: View {
         }
         .environment(editorPanel)
         .environment(\.isDetachedEditor, true)
+        .environment(\.editorFontSize, 13)
         .onAppear {
             editorPanel.content = content
             editorPanel.isOpen = true

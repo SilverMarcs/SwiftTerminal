@@ -13,7 +13,9 @@ final class EditorTextView: NSTextView {
     var fileExtension: String = ""
     let foldingManager = FoldingManager()
 
-    private let lineNumberFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
+    var editorFontSize: CGFloat = 12
+    var lineNumberFontSize: CGFloat = 11
+    private var lineNumberFont: NSFont { NSFont.monospacedDigitSystemFont(ofSize: lineNumberFontSize, weight: .medium) }
     private let indentUnit = "    " // 4 spaces
 
     // MARK: - Folding
@@ -28,7 +30,7 @@ final class EditorTextView: NSTextView {
         // Re-highlight to reset attributes, then re-apply fold hiding
         let source = string
         let ranges = selectedRanges
-        let highlighted = SyntaxHighlighter.highlight(source, fileExtension: fileExtension)
+        let highlighted = SyntaxHighlighter.highlight(source, fileExtension: fileExtension, fontSize: editorFontSize)
         textStorage?.setAttributedString(highlighted)
         setSelectedRanges(ranges, affinity: .downstream, stillSelecting: false)
         applyFoldAttributes()

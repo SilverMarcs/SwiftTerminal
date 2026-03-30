@@ -30,7 +30,7 @@ struct SwiftTerminalApp: App {
                     .frame(minWidth: 400, minHeight: 300)
             }
         }
-        .defaultSize(width: 700, height: 500)
+        .defaultSize(width: 875, height: 625)
         .restorationBehavior(.disabled)
     }
 }

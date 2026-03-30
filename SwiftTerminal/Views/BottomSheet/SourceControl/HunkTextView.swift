@@ -11,10 +11,11 @@ enum HunkTextViewConstants {
 struct HunkTextView: NSViewRepresentable {
     let hunk: DiffHunk
     let fileExtension: String
+    @Environment(\.editorFontSize) private var fontSize
 
     func makeNSView(context: Context) -> HunkNSTextView {
         let textView = HunkNSTextView()
-        textView.configure(hunk: hunk, fileExtension: fileExtension)
+        textView.configure(hunk: hunk, fileExtension: fileExtension, fontSize: fontSize)
         return textView
     }
 
@@ -39,8 +40,10 @@ struct HunkTextView: NSViewRepresentable {
 /// NSTextView that draws line backgrounds and a line number gutter for a single hunk.
 final class HunkNSTextView: NSTextView {
     private var lineData: [(kind: GitDiffLineKind?, oldNum: Int?, newNum: Int?)] = []
+    private var activeFontSize: CGFloat = 12
 
-    func configure(hunk: DiffHunk, fileExtension: String) {
+    func configure(hunk: DiffHunk, fileExtension: String, fontSize: CGFloat = 12) {
+        activeFontSize = fontSize
         let constants = HunkTextViewConstants.self
 
         // Set appearance before resolving any dynamic colors
@@ -49,7 +52,7 @@ final class HunkNSTextView: NSTextView {
         isEditable = false
         isSelectable = true
         isRichText = false
-        font = constants.font
+        font = NSFont.monospacedSystemFont(ofSize: activeFontSize, weight: .regular)
         backgroundColor = .clear
         drawsBackground = false
         textColor = .labelColor
@@ -67,7 +70,7 @@ final class HunkNSTextView: NSTextView {
 
         // Syntax highlight only — diff indication is handled by line backgrounds
         let attributed = NSMutableAttributedString(
-            attributedString: SyntaxHighlighter.highlight(source, fileExtension: fileExtension)
+            attributedString: SyntaxHighlighter.highlight(source, fileExtension: fileExtension, fontSize: activeFontSize)
         )
 
         textStorage?.setAttributedString(attributed)
@@ -105,7 +108,7 @@ final class HunkNSTextView: NSTextView {
         let charRange = layoutManager.characterRange(forGlyphRange: fullRange, actualGlyphRange: nil)
 
         let lineNumAttrs: [NSAttributedString.Key: Any] = [
-            .font: constants.lineNumFont,
+            .font: NSFont.monospacedDigitSystemFont(ofSize: activeFontSize - 1, weight: .regular),
             .foregroundColor: NSColor.secondaryLabelColor,
         ]
 

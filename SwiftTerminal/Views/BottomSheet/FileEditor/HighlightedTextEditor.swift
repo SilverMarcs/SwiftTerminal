@@ -6,6 +6,7 @@ struct HighlightedTextEditor: NSViewRepresentable {
     let fileExtension: String
     var gutterDiff: GutterDiffResult
     var highlightRequest: HighlightRequest?
+    @Environment(\.editorFontSize) private var fontSize
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -40,7 +41,9 @@ struct HighlightedTextEditor: NSViewRepresentable {
         textView.isAutomaticTextReplacementEnabled = false
         textView.isAutomaticSpellingCorrectionEnabled = false
         textView.isRichText = false
-        textView.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        textView.font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+        textView.editorFontSize = fontSize
+        textView.lineNumberFontSize = fontSize - 1
         textView.textColor = .labelColor
         textView.backgroundColor = .clear
         textView.drawsBackground = false
@@ -63,7 +66,7 @@ struct HighlightedTextEditor: NSViewRepresentable {
         context.coordinator.textView = textView
 
         // Initial content + fold computation
-        let highlighted = SyntaxHighlighter.highlight(text, fileExtension: fileExtension)
+        let highlighted = SyntaxHighlighter.highlight(text, fileExtension: fileExtension, fontSize: fontSize)
         textView.textStorage?.setAttributedString(highlighted)
         textView.recomputeFolding()
 
@@ -89,7 +92,7 @@ struct HighlightedTextEditor: NSViewRepresentable {
 
         // Only update if the binding changed externally (not from editing)
         if !context.coordinator.isEditing, textView.string != text {
-            let highlighted = SyntaxHighlighter.highlight(text, fileExtension: fileExtension)
+            let highlighted = SyntaxHighlighter.highlight(text, fileExtension: fileExtension, fontSize: fontSize)
             textView.textStorage?.setAttributedString(highlighted)
             textView.recomputeFolding()
             textView.applyFoldAttributes()
@@ -130,7 +133,7 @@ struct HighlightedTextEditor: NSViewRepresentable {
                 let source = tv.string
                 let ext = self.parent.fileExtension
                 let selectedRanges = tv.selectedRanges
-                let highlighted = SyntaxHighlighter.highlight(source, fileExtension: ext)
+                let highlighted = SyntaxHighlighter.highlight(source, fileExtension: ext, fontSize: tv.editorFontSize)
                 tv.textStorage?.setAttributedString(highlighted)
                 tv.setSelectedRanges(selectedRanges, affinity: .downstream, stillSelecting: false)
                 tv.recomputeFolding()

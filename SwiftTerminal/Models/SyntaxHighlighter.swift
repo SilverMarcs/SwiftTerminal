@@ -20,9 +20,10 @@ enum SyntaxHighlighter {
 
     // MARK: - Public
 
-    static func highlight(_ source: String, fileExtension: String, theme: Theme = defaultTheme) -> NSAttributedString {
+    static func highlight(_ source: String, fileExtension: String, fontSize: CGFloat = 12, theme: Theme = defaultTheme) -> NSAttributedString {
+        let font = fontSize == 12 ? theme.font : NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
         let base: [NSAttributedString.Key: Any] = [
-            .font: theme.font,
+            .font: font,
             .foregroundColor: theme.foreground,
         ]
         let attributed = NSMutableAttributedString(string: source, attributes: base)
