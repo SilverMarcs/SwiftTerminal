@@ -6,6 +6,21 @@ struct AppCommands: Commands {
     @AppStorage("showHiddenFiles") var showHiddenFiles = false
 
     var body: some Commands {
+        // Override the system's File > Close (Cmd+W) to close the active tab instead of the window
+        CommandGroup(after: .newItem) {
+            Button {
+                guard let workspace = appState.selectedWorkspace,
+                      let terminal = appState.selectedTerminal else { return }
+                let next = workspace.terminalAfter(terminal) ?? workspace.terminalBefore(terminal)
+                workspace.closeTerminal(terminal)
+                appState.selectedTerminal = next
+            } label: {
+                Label("Close Tab", systemImage: "xmark.square")
+            }
+            .keyboardShortcut("w", modifiers: .command)
+            .disabled((appState.selectedWorkspace?.terminals.count ?? 0) < 2)
+        }
+
         CommandGroup(replacing: .toolbar) {
             Button {
                 appState.selectedTerminal?.increaseFontSize()
@@ -143,18 +158,6 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("n", modifiers: .command)
             .disabled(appState.selectedWorkspace == nil)
-
-            Button {
-                guard let workspace = appState.selectedWorkspace,
-                      let terminal = appState.selectedTerminal else { return }
-                let next = workspace.terminalAfter(terminal) ?? workspace.terminalBefore(terminal)
-                workspace.closeTerminal(terminal)
-                appState.selectedTerminal = next
-            } label: {
-                Label("Close Tab", systemImage: "xmark.square")
-            }
-            .keyboardShortcut("w", modifiers: .command)
-            .disabled((appState.selectedWorkspace?.terminals.count ?? 0) < 2)
 
             Divider()
 
