@@ -101,7 +101,7 @@
 			mainGroup = 08D10C412F64897100754649;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				08BEFC262F74722D009C370D /* XCLocalSwiftPackageReference "../SwiftTerm" */,
+				08BEFC262F74722D009C370D /* XCRemoteSwiftPackageReference "SwiftTerm" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 08D10C4B2F64897100754649 /* Products */;
@@ -389,16 +389,21 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		08BEFC262F74722D009C370D /* XCLocalSwiftPackageReference "../SwiftTerm" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../SwiftTerm;
+/* Begin XCRemoteSwiftPackageReference section */
+		08BEFC262F74722D009C370D /* XCRemoteSwiftPackageReference "SwiftTerm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/SilverMarcs/SwiftTerm";
+			requirement = {
+				branch = feature;
+				kind = branch;
+			};
 		};
-/* End XCLocalSwiftPackageReference section */
+/* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		08BEFC272F74722D009C370D /* SwiftTerm */ = {
 			isa = XCSwiftPackageProductDependency;
+			package = 08BEFC262F74722D009C370D /* XCRemoteSwiftPackageReference "SwiftTerm" */;
 			productName = SwiftTerm;
 		};
 /* End XCSwiftPackageProductDependency section */

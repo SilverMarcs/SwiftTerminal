@@ -3,7 +3,7 @@ import SwiftUI
 struct InspectorView: View {
     let directoryURL: URL
     @Environment(AppState.self) private var appState
-    @Environment(EditorPanel.self) private var editorPanel
+    @State private var state = InspectorViewState()
     
     var body: some View {
         tabContent
@@ -38,11 +38,11 @@ struct InspectorView: View {
     private var tabContent: some View {
         switch appState.selectedInspectorTab {
         case .files:
-            FileTreeView(directoryURL: directoryURL)
+            FileTreeView(directoryURL: directoryURL, state: state.fileTree)
         case .search:
-            SearchInspectorView(directoryURL: directoryURL)
+            SearchInspectorView(directoryURL: directoryURL, state: state.search)
         case .git:
-            GitInspectorView(directoryURL: directoryURL)
+            GitInspectorView(directoryURL: directoryURL, state: state.git)
         }
     }
 

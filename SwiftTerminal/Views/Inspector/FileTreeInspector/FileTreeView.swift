@@ -2,18 +2,15 @@ import SwiftUI
 
 struct FileTreeView: View {
     let directoryURL: URL
+    @Bindable var state: FileTreeInspectorState
 
     @Environment(EditorPanel.self) private var editorPanel
-    @State private var model = FileTreeModel()
-    @State private var selectedID: FileItem.ID?
-    @State private var expandedIDs: Set<String> = []
-    @State private var savedExpandedIDs: Set<String>?
     @AppStorage("showHiddenFiles") private var showHiddenFiles = false
 
     var body: some View {
-        List(selection: $selectedID) {
-            ForEach(model.displayItems) { item in
-                FileNodeView(item: item, expandedIDs: $expandedIDs, onAction: handleAction)
+        List(selection: $state.selectedID) {
+            ForEach(state.model.displayItems) { item in
+                FileNodeView(item: item, expandedIDs: $state.expandedIDs, onAction: handleAction)
                     .tag(item.id)
             }
         }
@@ -29,10 +26,10 @@ struct FileTreeView: View {
             Toggle("Show Hidden Files", isOn: $showHiddenFiles)
         }
         .safeAreaBar(edge: .bottom) {
-            SearchBar(text: $model.searchText, placeholder: "Search for Files") {
+            SearchBar(text: $state.model.searchText, placeholder: "Search for Files") {
                 Button(action: toggleChangedFilter) {
-                    Image(systemName: model.showChangedOnly ? "plusminus.circle.fill" : "plusminus.circle")
-                        .foregroundStyle(model.showChangedOnly ? Color.accentColor : .secondary)
+                    Image(systemName: state.model.showChangedOnly ? "plusminus.circle.fill" : "plusminus.circle")
+                        .foregroundStyle(state.model.showChangedOnly ? Color.accentColor : .secondary)
                 }
                 .buttonStyle(.plain)
                 .help("Show only git-changed files")
@@ -40,38 +37,38 @@ struct FileTreeView: View {
             .padding(11)
         }
         .task(id: directoryURL) {
-            model.showHiddenFiles = showHiddenFiles
-            model.load(directoryURL: directoryURL)
-            await model.refreshGit(directoryURL: directoryURL)
+            state.model.showHiddenFiles = showHiddenFiles
+            state.model.load(directoryURL: directoryURL)
+            await state.model.refreshGit(directoryURL: directoryURL)
         }
         .gitPolling(id: directoryURL) {
-            await model.refreshGit(directoryURL: directoryURL)
+            await state.model.refreshGit(directoryURL: directoryURL)
         }
-        .onChange(of: model.searchText) { oldValue, newValue in
+        .onChange(of: state.model.searchText) { oldValue, newValue in
             if !newValue.isEmpty && oldValue.isEmpty {
                 // Starting a search — save expansion state and expand all
-                if savedExpandedIDs == nil {
-                    savedExpandedIDs = expandedIDs
+                if state.savedExpandedIDs == nil {
+                    state.savedExpandedIDs = state.expandedIDs
                 }
-                expandAllFolders(in: model.displayItems)
+                expandAllFolders(in: state.model.displayItems)
             } else if !newValue.isEmpty {
                 // Search text changed — expand all filtered results
-                expandAllFolders(in: model.displayItems)
-            } else if newValue.isEmpty && !oldValue.isEmpty && !model.showChangedOnly {
+                expandAllFolders(in: state.model.displayItems)
+            } else if newValue.isEmpty && !oldValue.isEmpty && !state.model.showChangedOnly {
                 // Search cleared and no other filter active — restore
-                if let saved = savedExpandedIDs {
-                    expandedIDs = saved
-                    savedExpandedIDs = nil
+                if let saved = state.savedExpandedIDs {
+                    state.expandedIDs = saved
+                    state.savedExpandedIDs = nil
                 }
             }
         }
         .onChange(of: showHiddenFiles) {
-            model.showHiddenFiles = showHiddenFiles
-            model.load(directoryURL: directoryURL)
+            state.model.showHiddenFiles = showHiddenFiles
+            state.model.load(directoryURL: directoryURL)
         }
-        .onChange(of: selectedID) { _, newID in
+        .onChange(of: state.selectedID) { _, newID in
             guard let id = newID,
-                  let item = model.findItem(id: id),
+                  let item = state.model.findItem(id: id),
                   !item.isDirectory
             else { return }
             editorPanel.openFile(item.url)
@@ -79,23 +76,23 @@ struct FileTreeView: View {
     }
 
     private func toggleChangedFilter() {
-        if !model.showChangedOnly {
-            if savedExpandedIDs == nil {
-                savedExpandedIDs = expandedIDs
+        if !state.model.showChangedOnly {
+            if state.savedExpandedIDs == nil {
+                state.savedExpandedIDs = state.expandedIDs
             }
-            expandAllFolders(in: model.displayItems)
-        } else if model.searchText.isEmpty, let saved = savedExpandedIDs {
+            expandAllFolders(in: state.model.displayItems)
+        } else if state.model.searchText.isEmpty, let saved = state.savedExpandedIDs {
             // Only restore if search is also inactive
-            expandedIDs = saved
-            savedExpandedIDs = nil
+            state.expandedIDs = saved
+            state.savedExpandedIDs = nil
         }
-        model.showChangedOnly.toggle()
+        state.model.showChangedOnly.toggle()
     }
 
     private func expandAllFolders(in items: [FileItem]) {
         for item in items {
             if item.children != nil {
-                expandedIDs.insert(item.id)
+                state.expandedIDs.insert(item.id)
                 if let children = item.children {
                     expandAllFolders(in: children)
                 }
@@ -111,18 +108,18 @@ struct FileTreeView: View {
             NSWorkspace.shared.activateFileViewerSelecting([url])
 
         case .moveToTrash(let url):
-            model.moveToTrash(url: url, directoryURL: directoryURL)
+            state.model.moveToTrash(url: url, directoryURL: directoryURL)
 
         case .duplicate(let url):
-            model.duplicate(url: url, directoryURL: directoryURL)
+            state.model.duplicate(url: url, directoryURL: directoryURL)
 
         case .newFile(let parentURL):
-            let parent = model.createNewFile(in: parentURL, directoryURL: directoryURL)
-            expandedIDs.insert(parent.path)
+            let parent = state.model.createNewFile(in: parentURL, directoryURL: directoryURL)
+            state.expandedIDs.insert(parent.path)
 
         case .newFolder(let parentURL):
-            let parent = model.createNewFolder(in: parentURL, directoryURL: directoryURL)
-            expandedIDs.insert(parent.path)
+            let parent = state.model.createNewFolder(in: parentURL, directoryURL: directoryURL)
+            state.expandedIDs.insert(parent.path)
         }
     }
 }

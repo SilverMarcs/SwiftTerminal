@@ -2,34 +2,25 @@ import SwiftUI
 
 struct GitInspectorView: View {
     let directoryURL: URL
+    @Bindable var state: GitInspectorState
 
     @Environment(EditorPanel.self) private var editorPanel
-    @State private var model = GitInspectorModel()
-    @State private var selectedRepoURL: URL?
-    @State private var selectedFileID: String?
-    @State private var commitMessage = ""
-    @State private var discardTarget: DiscardTarget?
-    @State private var pendingBranchSwitch: String?
-    @State private var showNewBranchSheet = false
-    @State private var newBranchName = ""
-    @State private var showStashAlert = false
-    @State private var stashMessage = ""
 
     private var selectedSnapshot: GitRepositoryStatusSnapshot? {
-        model.snapshots.first { $0.repositoryRootURL == selectedRepoURL }
-            ?? model.snapshots.first
+        state.model.snapshots.first { $0.repositoryRootURL == state.selectedRepoURL }
+            ?? state.model.snapshots.first
     }
 
     var body: some View {
         changesList
             .overlay {
-                if model.isLoading && model.snapshots.isEmpty {
+                if state.model.isLoading && state.model.snapshots.isEmpty {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
             .overlay(alignment: .bottom) {
-                if let error = model.errorMessage {
+                if let error = state.model.errorMessage {
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(.yellow)
@@ -37,7 +28,7 @@ struct GitInspectorView: View {
                             .lineLimit(3)
                         Spacer()
                         Button {
-                            model.errorMessage = nil
+                            state.model.errorMessage = nil
                         } label: {
                             Image(systemName: "xmark")
                         }
@@ -50,28 +41,28 @@ struct GitInspectorView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .task {
                         try? await Task.sleep(for: .seconds(5))
-                        if model.errorMessage == error {
-                            model.errorMessage = nil
+                        if state.model.errorMessage == error {
+                            state.model.errorMessage = nil
                         }
                     }
                 }
             }
-            .animation(.easeInOut(duration: 0.2), value: model.errorMessage)
+            .animation(.easeInOut(duration: 0.2), value: state.model.errorMessage)
             .task(id: directoryURL) {
-                await model.refresh(directoryURL: directoryURL)
-                if selectedRepoURL == nil {
-                    selectedRepoURL = model.snapshots.first?.repositoryRootURL
+                await state.model.refresh(directoryURL: directoryURL)
+                if state.selectedRepoURL == nil {
+                    state.selectedRepoURL = state.model.snapshots.first?.repositoryRootURL
                 }
             }
             .gitPolling(id: directoryURL) {
-                await model.refresh(directoryURL: directoryURL)
+                await state.model.refresh(directoryURL: directoryURL)
             }
             .alert("Discard Changes?", isPresented: discardAlertBinding) {
                 Button("Discard", role: .destructive) {
-                    guard let target = discardTarget else { return }
+                    guard let target = state.discardTarget else { return }
                     Task {
                         await performDiscard(target)
-                        await model.refresh(directoryURL: directoryURL)
+                        await state.model.refresh(directoryURL: directoryURL)
                     }
                 }
                 Button("Cancel", role: .cancel) {}
@@ -80,36 +71,36 @@ struct GitInspectorView: View {
             }
             .alert("Stash Changes?", isPresented: stashAlertBinding) {
                 Button("Stash & Switch", role: .destructive) {
-                    guard let branch = pendingBranchSwitch, let snapshot = selectedSnapshot else { return }
+                    guard let branch = state.pendingBranchSwitch, let snapshot = selectedSnapshot else { return }
                     Task {
-                        await model.stashAndSwitch(to: branch, snapshot: snapshot)
-                        await model.refresh(directoryURL: directoryURL)
+                        await state.model.stashAndSwitch(to: branch, snapshot: snapshot)
+                        await state.model.refresh(directoryURL: directoryURL)
                     }
                 }
-                Button("Cancel", role: .cancel) { pendingBranchSwitch = nil }
+                Button("Cancel", role: .cancel) { state.pendingBranchSwitch = nil }
             } message: {
                 Text("You have uncommitted changes. Stash all changes (including staged and untracked) before switching branches?")
             }
-            .sheet(isPresented: $showNewBranchSheet) {
+            .sheet(isPresented: $state.showNewBranchSheet) {
                 newBranchSheet
             }
-            .alert("Stash All Changes", isPresented: $showStashAlert) {
-                TextField("Stash name", text: $stashMessage)
+            .alert("Stash All Changes", isPresented: $state.showStashAlert) {
+                TextField("Stash name", text: $state.stashMessage)
                 Button("Stash") {
                     guard let snapshot = selectedSnapshot else { return }
-                    let message = stashMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let message = state.stashMessage.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard !message.isEmpty else { return }
                     Task {
-                        await model.stashAll(message: message, snapshot: snapshot)
-                        stashMessage = ""
-                        await model.refresh(directoryURL: directoryURL)
+                        await state.model.stashAll(message: message, snapshot: snapshot)
+                        state.stashMessage = ""
+                        await state.model.refresh(directoryURL: directoryURL)
                     }
                 }
-                Button("Cancel", role: .cancel) { stashMessage = "" }
+                Button("Cancel", role: .cancel) { state.stashMessage = "" }
             } message: {
                 Text("Stash all staged, unstaged, and untracked changes.")
             }
-            .onChange(of: selectedFileID) { _, newID in
+            .onChange(of: state.selectedFileID) { _, newID in
                 guard let id = newID else { return }
                 guard let (file, stage, snapshot) = resolveFile(id: id) else { return }
                 editorPanel.openDiff(file.fileURL, in: snapshot.repositoryRootURL, stage: stage, kind: file.kind)
@@ -118,14 +109,11 @@ struct GitInspectorView: View {
 
     // MARK: - List
 
-    @State private var stagedExpanded = true
-    @State private var unstagedExpanded = true
-
     private var changesList: some View {
-        List(selection: $selectedFileID) {
+        List(selection: $state.selectedFileID) {
             if let snapshot = selectedSnapshot {
                 if !snapshot.stagedFiles.isEmpty {
-                    DisclosureGroup(isExpanded: $stagedExpanded) {
+                    DisclosureGroup(isExpanded: $state.stagedExpanded) {
                         fileRows(snapshot.stagedFiles, staged: true, snapshot: snapshot)
                     } label: {
                         Label("Staged Changes", systemImage: "checkmark.circle")
@@ -137,7 +125,7 @@ struct GitInspectorView: View {
                 }
 
                 if !snapshot.unstagedFiles.isEmpty {
-                    DisclosureGroup(isExpanded: $unstagedExpanded) {
+                    DisclosureGroup(isExpanded: $state.unstagedExpanded) {
                         fileRows(snapshot.unstagedFiles, staged: false, snapshot: snapshot)
                     } label: {
                         Label("Changes", systemImage: "circle.dashed")
@@ -176,7 +164,7 @@ struct GitInspectorView: View {
             .padding(.top, 7)
         }
         .safeAreaBar(edge: .bottom) {
-            if model.snapshots.count > 1 {
+            if state.model.snapshots.count > 1 {
                 repoPicker
                     .padding()
             }
@@ -186,8 +174,8 @@ struct GitInspectorView: View {
     // MARK: - Repo Picker
 
     private var repoPicker: some View {
-        Picker(selection: $selectedRepoURL) {
-            ForEach(model.snapshots, id: \.repositoryRootURL) { snapshot in
+        Picker(selection: $state.selectedRepoURL) {
+            ForEach(state.model.snapshots, id: \.repositoryRootURL) { snapshot in
                 Label {
                     Text(snapshot.repositoryRootURL.lastPathComponent)
                 } icon: {
@@ -242,8 +230,8 @@ struct GitInspectorView: View {
 
             Menu {
                 Button {
-                    newBranchName = ""
-                    showNewBranchSheet = true
+                    state.newBranchName = ""
+                    state.showNewBranchSheet = true
                 } label: {
                     Label("New Branch...", systemImage: "plus")
                 }
@@ -251,8 +239,8 @@ struct GitInspectorView: View {
                 Divider()
 
                 Button {
-                    stashMessage = ""
-                    showStashAlert = true
+                    state.stashMessage = ""
+                    state.showStashAlert = true
                 } label: {
                     Label("Stash All...", systemImage: "tray.and.arrow.down")
                 }
@@ -261,8 +249,8 @@ struct GitInspectorView: View {
                 Button {
                     guard let snapshot = selectedSnapshot else { return }
                     Task {
-                        await model.applyLatestStash(snapshot: snapshot)
-                        await model.refresh(directoryURL: directoryURL)
+                        await state.model.applyLatestStash(snapshot: snapshot)
+                        await state.model.refresh(directoryURL: directoryURL)
                     }
                 } label: {
                     Label("Apply Stash", systemImage: "tray.and.arrow.up")
@@ -273,8 +261,8 @@ struct GitInspectorView: View {
                 Button {
                     guard let snapshot = selectedSnapshot else { return }
                     Task {
-                        await model.fetch(snapshot: snapshot)
-                        await model.refresh(directoryURL: directoryURL)
+                        await state.model.fetch(snapshot: snapshot)
+                        await state.model.refresh(directoryURL: directoryURL)
                     }
                 } label: {
                     Label("Refresh", systemImage: "arrow.clockwise")
@@ -293,17 +281,17 @@ struct GitInspectorView: View {
     private func switchToBranch(_ branch: String) {
         guard let snapshot = selectedSnapshot else { return }
         if snapshot.isDirty {
-            pendingBranchSwitch = branch
+            state.pendingBranchSwitch = branch
         } else {
             Task {
-                await model.switchBranch(to: branch, snapshot: snapshot)
-                await model.refresh(directoryURL: directoryURL)
+                await state.model.switchBranch(to: branch, snapshot: snapshot)
+                await state.model.refresh(directoryURL: directoryURL)
             }
         }
     }
 
     private var stashAlertBinding: Binding<Bool> {
-        Binding(get: { pendingBranchSwitch != nil }, set: { if !$0 { pendingBranchSwitch = nil } })
+        Binding(get: { state.pendingBranchSwitch != nil }, set: { if !$0 { state.pendingBranchSwitch = nil } })
     }
 
     private var newBranchSheet: some View {
@@ -315,27 +303,27 @@ struct GitInspectorView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            TextField("Branch name", text: $newBranchName)
+            TextField("Branch name", text: $state.newBranchName)
                 .textFieldStyle(.roundedBorder)
 
             HStack {
                 Button("Cancel") {
-                    showNewBranchSheet = false
+                    state.showNewBranchSheet = false
                 }
                 .keyboardShortcut(.cancelAction)
 
                 Button("Create") {
                     guard let snapshot = selectedSnapshot else { return }
-                    let name = newBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let name = state.newBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard !name.isEmpty else { return }
-                    showNewBranchSheet = false
+                    state.showNewBranchSheet = false
                     Task {
-                        await model.createBranch(named: name, snapshot: snapshot)
-                        await model.refresh(directoryURL: directoryURL)
+                        await state.model.createBranch(named: name, snapshot: snapshot)
+                        await state.model.refresh(directoryURL: directoryURL)
                     }
                 }
                 .keyboardShortcut(.defaultAction)
-                .disabled(newBranchName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(state.newBranchName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
         .padding()
@@ -376,7 +364,7 @@ struct GitInspectorView: View {
 
     private var commitArea: some View {
         VStack(spacing: 6) {
-            TextField("Commit message", text: $commitMessage, axis: .vertical)
+            TextField("Commit message", text: $state.commitMessage, axis: .vertical)
                 .lineLimit(1...4)
 
             Button {
@@ -386,7 +374,7 @@ struct GitInspectorView: View {
             }
             .buttonSizing(.flexible)
             .buttonStyle(.borderedProminent)
-            .disabled(currentAction == .commit && commitMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(currentAction == .commit && state.commitMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
     }
 
@@ -394,22 +382,22 @@ struct GitInspectorView: View {
         guard let snapshot = selectedSnapshot else { return }
         switch currentAction {
         case .commit:
-            let message = commitMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+            let message = state.commitMessage.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !message.isEmpty, !snapshot.stagedFiles.isEmpty else { return }
             Task {
-                await model.commit(message: message, snapshot: snapshot)
-                commitMessage = ""
-                await model.refresh(directoryURL: directoryURL)
+                await state.model.commit(message: message, snapshot: snapshot)
+                state.commitMessage = ""
+                await state.model.refresh(directoryURL: directoryURL)
             }
         case .push:
             Task {
-                await model.push(snapshot: snapshot)
-                await model.refresh(directoryURL: directoryURL)
+                await state.model.push(snapshot: snapshot)
+                await state.model.refresh(directoryURL: directoryURL)
             }
         case .pull:
             Task {
-                await model.pull(snapshot: snapshot)
-                await model.refresh(directoryURL: directoryURL)
+                await state.model.pull(snapshot: snapshot)
+                await state.model.refresh(directoryURL: directoryURL)
             }
         }
     }
@@ -447,39 +435,34 @@ struct GitInspectorView: View {
     private func handleAction(_ action: GitAction) {
         switch action {
         case .stage(let files, let snapshot):
-            Task { await model.stage(files: files, snapshot: snapshot); await model.refresh(directoryURL: directoryURL) }
+            Task { await state.model.stage(files: files, snapshot: snapshot); await state.model.refresh(directoryURL: directoryURL) }
         case .unstage(let files, let snapshot):
-            Task { await model.unstage(files: files, snapshot: snapshot); await model.refresh(directoryURL: directoryURL) }
+            Task { await state.model.unstage(files: files, snapshot: snapshot); await state.model.refresh(directoryURL: directoryURL) }
         case .stageAll(let snapshot):
-            Task { await model.stageAll(snapshot: snapshot); await model.refresh(directoryURL: directoryURL) }
+            Task { await state.model.stageAll(snapshot: snapshot); await state.model.refresh(directoryURL: directoryURL) }
         case .unstageAll(let snapshot):
-            Task { await model.unstageAll(snapshot: snapshot); await model.refresh(directoryURL: directoryURL) }
+            Task { await state.model.unstageAll(snapshot: snapshot); await state.model.refresh(directoryURL: directoryURL) }
         case .discard(let files, let snapshot):
-            discardTarget = .files(files, snapshot)
+            state.discardTarget = .files(files, snapshot)
         case .discardAll(let snapshot):
-            discardTarget = .all(snapshot)
+            state.discardTarget = .all(snapshot)
         case .commit:
             performSourceControlAction()
         case .openFile(let url):
             editorPanel.openFile(url)
         case .push(let snapshot):
-            Task { await model.push(snapshot: snapshot); await model.refresh(directoryURL: directoryURL) }
+            Task { await state.model.push(snapshot: snapshot); await state.model.refresh(directoryURL: directoryURL) }
         }
     }
 
     // MARK: - Discard
 
-    private enum DiscardTarget {
-        case files([GitChangedFile], GitRepositoryStatusSnapshot)
-        case all(GitRepositoryStatusSnapshot)
-    }
-
     private var discardAlertBinding: Binding<Bool> {
-        Binding(get: { discardTarget != nil }, set: { if !$0 { discardTarget = nil } })
+        Binding(get: { state.discardTarget != nil }, set: { if !$0 { state.discardTarget = nil } })
     }
 
     private var discardAlertMessage: String {
-        switch discardTarget {
+        switch state.discardTarget {
         case .files(let files, _) where files.count == 1:
             "This will discard changes to \"\(files[0].repositoryRelativePath)\". This cannot be undone."
         case .files(let files, _):
@@ -491,10 +474,10 @@ struct GitInspectorView: View {
         }
     }
 
-    private func performDiscard(_ target: DiscardTarget) async {
+    private func performDiscard(_ target: GitInspectorDiscardTarget) async {
         switch target {
-        case .files(let files, let snapshot): await model.discardChanges(files: files, snapshot: snapshot)
-        case .all(let snapshot): await model.discardAllChanges(snapshot: snapshot)
+        case .files(let files, let snapshot): await state.model.discardChanges(files: files, snapshot: snapshot)
+        case .all(let snapshot): await state.model.discardAllChanges(snapshot: snapshot)
         }
     }
 
