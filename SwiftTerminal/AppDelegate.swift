@@ -10,6 +10,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let center = UNUserNotificationCenter.current()
         center.delegate = self
         center.requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+
+        // Remove the system "Close" (Cmd+W) from File menu so our custom Close Tab command takes priority
+        removeCloseMenuItem()
+    }
+
+    /// Removes the default File > Close menu item so that our Cmd+W shortcut always maps to Close Tab.
+    private func removeCloseMenuItem() {
+        guard let mainMenu = NSApplication.shared.mainMenu,
+              let fileMenu = mainMenu.items.first(where: { $0.submenu?.title == "File" })?.submenu else { return }
+        for item in fileMenu.items where item.keyEquivalent == "w" && item.keyEquivalentModifierMask == .command {
+            fileMenu.removeItem(item)
+            break
+        }
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {

@@ -69,7 +69,9 @@ final class CommandRunner {
     func stop(_ entry: CommandEntry) {
         guard let state = states[entry] else { return }
         if state.process.isRunning {
-            state.process.terminate()
+            // Kill the entire process group so child processes are also terminated
+            let pid = state.process.processIdentifier
+            kill(-pid, SIGTERM)
         }
         state.pipe.fileHandleForReading.readabilityHandler = nil
         states.removeValue(forKey: entry)

@@ -74,13 +74,6 @@ struct GitFileContextMenu: View {
     let onAction: (GitAction) -> Void
 
     var body: some View {
-        if let file = files.first, files.count == 1 {
-            Button { onAction(.openFile(file.fileURL)) } label: {
-                Label("Open File", systemImage: "doc")
-            }
-
-            Divider()
-        }
 
         Button { onAction(.stage(files, snapshot)) } label: {
             Label("Stage Changes", systemImage: "tray.and.arrow.down")
@@ -105,5 +98,13 @@ struct GitFileContextMenu: View {
             Label("Commit...", systemImage: "checkmark.circle")
         }
         .disabled(snapshot.stagedFiles.isEmpty)
+        
+        if let file = files.first, files.count == 1 {
+            Divider()
+            
+            Button { onAction(.openFile(file.fileURL)) } label: {
+                Label("Open File", systemImage: "doc")
+            }
+        }
     }
 }

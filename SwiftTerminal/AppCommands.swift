@@ -19,7 +19,8 @@ struct AppCommands: Commands {
             CommandGroup(after: .newItem) {
                 Button {
                     guard let workspace = appState.selectedWorkspace,
-                          let terminal = appState.selectedTerminal else { return }
+                          let terminal = appState.selectedTerminal,
+                          workspace.terminals.count > 1 else { return }
                     if terminal.hasChildProcess {
                         appState.terminalPendingClose = terminal
                     } else {
@@ -31,7 +32,6 @@ struct AppCommands: Commands {
                     Label("Close Tab", systemImage: "xmark.square")
                 }
                 .keyboardShortcut("w", modifiers: .command)
-                .disabled((appState.selectedWorkspace?.terminals.count ?? 0) < 2)
             }
 
             CommandGroup(replacing: .toolbar) {
