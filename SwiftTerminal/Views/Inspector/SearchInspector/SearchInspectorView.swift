@@ -13,12 +13,14 @@ struct SearchInspectorView: View {
                     ForEach(fileResult.matches) { match in
                         matchRow(match)
                             .tag(match.id)
+                            .padding(.leading, -15)
                     }
                 } label: {
                     FileLabel(name: fileResult.relativePath, icon: fileResult.fileURL.fileIcon)
                 }
                 .tag(fileResult.id)
             }
+            .listRowSeparator(.hidden)
         }
         .scrollContentBackground(.hidden)
         .safeAreaBar(edge: .top) {

@@ -224,7 +224,7 @@ struct GitInspectorView: View {
                 }
             }
             .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
+//            .menuIndicator(.hidden)
             
             Spacer()
 

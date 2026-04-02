@@ -43,6 +43,10 @@ struct InspectorView: View {
             SearchInspectorView(directoryURL: directoryURL, state: state.search)
         case .git:
             GitInspectorView(directoryURL: directoryURL, state: state.git)
+        case .commands:
+            if let workspace = appState.selectedWorkspace {
+                CommandsInspectorView(workspace: workspace, state: state.commands)
+            }
         }
     }
 

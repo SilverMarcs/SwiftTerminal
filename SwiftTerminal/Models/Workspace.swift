@@ -29,6 +29,12 @@ final class Workspace {
         unsortedTerminals.sorted { $0.sortOrder < $1.sortOrder }
     }
 
+    @Relationship(deleteRule: .cascade, inverse: \CommandEntry.workspace)
+    var unsortedCommands: [CommandEntry] = []
+    var commands: [CommandEntry] {
+        unsortedCommands.sorted { $0.sortOrder < $1.sortOrder }
+    }
+
     init(name: String, directory: String, sortOrder: Int = 0) {
         self.name = name
         self.directory = directory
@@ -72,5 +78,24 @@ final class Workspace {
         let ordered = terminals
         guard let idx = ordered.firstIndex(where: { $0 === terminal }), idx + 1 < ordered.count else { return nil }
         return ordered[idx + 1]
+    }
+
+    // MARK: - Command Management
+
+    @discardableResult
+    func addCommand(name: String, command: String) -> CommandEntry {
+        let entry = CommandEntry(
+            workspace: self,
+            name: name,
+            command: command,
+            sortOrder: unsortedCommands.count
+        )
+        unsortedCommands.append(entry)
+        return entry
+    }
+
+    func removeCommand(_ entry: CommandEntry) {
+        unsortedCommands.removeAll { $0.id == entry.id }
+        entry.modelContext?.delete(entry)
     }
 }

@@ -6,6 +6,15 @@ final class InspectorViewState {
     var fileTree = FileTreeInspectorState()
     var search = SearchInspectorState()
     var git = GitInspectorState()
+    var commands = CommandsInspectorState()
+}
+
+@MainActor
+@Observable
+final class CommandsInspectorState {
+    var runner = CommandRunner()
+    var selectedEntry: CommandEntry?
+    var showAddSheet = false
 }
 
 @MainActor

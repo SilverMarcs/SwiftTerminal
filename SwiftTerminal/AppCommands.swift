@@ -96,6 +96,16 @@ struct AppCommands: Commands {
             .keyboardShortcut("3", modifiers: .command)
 
             Divider()
+            
+            Button {
+                appState.showingInspector = true
+                appState.selectedInspectorTab = .commands
+            } label: {
+                Label("Command Runner", systemImage: "apple.terminal")
+            }
+            .keyboardShortcut("3", modifiers: .command)
+
+            Divider()
 
             Button {
                 appState.showingInspector = true
