@@ -7,4 +7,5 @@ extension EnvironmentValues {
 
 extension FocusedValues {
     @Entry var editorPanel: EditorPanel?
+    @Entry var isMainWindow: Bool?
 }

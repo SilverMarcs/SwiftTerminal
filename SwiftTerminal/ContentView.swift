@@ -33,6 +33,7 @@ struct ContentView: View {
         }
         .environment(editorPanel)
         .focusedSceneValue(\.editorPanel, editorPanel)
+        .focusedSceneValue(\.isMainWindow, true)
         .onReceive(NotificationCenter.default.publisher(for: .navigateToSession)) { notification in
             guard let workspaceID = notification.userInfo?["workspaceID"] as? String,
                   let terminalID = notification.userInfo?["terminalID"] as? String else { return }

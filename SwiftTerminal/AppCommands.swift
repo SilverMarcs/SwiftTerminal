@@ -3,199 +3,203 @@ import SwiftUI
 struct AppCommands: Commands {
     @Bindable var appState: AppState
     @FocusedValue(\.editorPanel) private var editorPanel
+    @FocusedValue(\.isMainWindow) private var isMainWindow
     @AppStorage("showHiddenFiles") var showHiddenFiles = false
 
+    /// Whether the focused window is the main SwiftTerminal window.
+    private var mainWindowActive: Bool { isMainWindow == true }
+
     var body: some Commands {
-        // Override the system's File > Close (Cmd+W) to close the active tab instead of the window
-        CommandGroup(after: .newItem) {
-            Button {
-                guard let workspace = appState.selectedWorkspace,
-                      let terminal = appState.selectedTerminal else { return }
-                if terminal.hasChildProcess {
-                    appState.terminalPendingClose = terminal
-                } else {
-                    let next = workspace.terminalAfter(terminal) ?? workspace.terminalBefore(terminal)
-                    workspace.closeTerminal(terminal)
+        if mainWindowActive {
+            // Override the system's File > Close (Cmd+W) to close the active tab instead of the window
+            CommandGroup(after: .newItem) {
+                Button {
+                    guard let workspace = appState.selectedWorkspace,
+                          let terminal = appState.selectedTerminal else { return }
+                    if terminal.hasChildProcess {
+                        appState.terminalPendingClose = terminal
+                    } else {
+                        let next = workspace.terminalAfter(terminal) ?? workspace.terminalBefore(terminal)
+                        workspace.closeTerminal(terminal)
+                        appState.selectedTerminal = next
+                    }
+                } label: {
+                    Label("Close Tab", systemImage: "xmark.square")
+                }
+                .keyboardShortcut("w", modifiers: .command)
+                .disabled((appState.selectedWorkspace?.terminals.count ?? 0) < 2)
+            }
+
+            CommandGroup(replacing: .toolbar) {
+                Button {
+                    appState.selectedTerminal?.increaseFontSize()
+                } label: {
+                    Label("Zoom In", systemImage: "plus.magnifyingglass")
+                }
+                .keyboardShortcut("+", modifiers: .command)
+                .disabled(appState.selectedTerminal?.localProcessTerminalView == nil)
+
+                Button {
+                    appState.selectedTerminal?.decreaseFontSize()
+                } label: {
+                    Label("Zoom Out", systemImage: "minus.magnifyingglass")
+                }
+                .keyboardShortcut("-", modifiers: .command)
+                .disabled(appState.selectedTerminal?.localProcessTerminalView == nil)
+
+                Button {
+                    appState.selectedTerminal?.resetFontSize()
+                } label: {
+                    Label("Actual Size", systemImage: "1.magnifyingglass")
+                }
+                .keyboardShortcut("0", modifiers: .command)
+                .disabled(appState.selectedTerminal?.localProcessTerminalView == nil)
+
+                Divider()
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        editorPanel?.toggle()
+                    }
+                } label: {
+                    Label("Toggle Editor Panel", systemImage: "rectangle.bottomhalf.inset.filled")
+                }
+                .keyboardShortcut("j", modifiers: .command)
+
+                Divider()
+
+                Button {
+                    showHiddenFiles.toggle()
+                } label: {
+                    Label(
+                        showHiddenFiles ? "Hide Hidden Files" : "Show Hidden Files",
+                        systemImage: showHiddenFiles ? "eye.slash" : "eye"
+                    )
+                }
+                .keyboardShortcut(".", modifiers: [.command, .shift])
+            }
+
+            CommandMenu("Inspector") {
+                Button {
+                    appState.showingInspector = true
+                    appState.selectedInspectorTab = .files
+                } label: {
+                    Label("Files Navigator", systemImage: "folder")
+                }
+                .keyboardShortcut("1", modifiers: .command)
+
+                Button {
+                    appState.showingInspector = true
+                    appState.selectedInspectorTab = .git
+                } label: {
+                    Label("Git Navigator", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
+                }
+                .keyboardShortcut("2", modifiers: .command)
+
+                Button {
+                    appState.showingInspector = true
+                    appState.selectedInspectorTab = .search
+                } label: {
+                    Label("Search Navigator", systemImage: "magnifyingglass")
+                }
+                .keyboardShortcut("3", modifiers: .command)
+
+                Button {
+                    appState.showingInspector = true
+                    appState.selectedInspectorTab = .commands
+                } label: {
+                    Label("Command Runner", systemImage: "apple.terminal")
+                }
+                .keyboardShortcut("3", modifiers: .command)
+
+                Divider()
+
+                Button {
+                    appState.showingInspector = true
+                    appState.selectedInspectorTab = .search
+                } label: {
+                    Label("Find in Files", systemImage: "doc.text.magnifyingglass")
+                }
+                .keyboardShortcut("f", modifiers: [.command, .shift])
+            }
+
+            CommandGroup(after: .textEditing) {
+                Button("Find…") {
+                    let item = NSMenuItem()
+                    item.tag = Int(NSFindPanelAction.showFindPanel.rawValue)
+                    NSApp.sendAction(#selector(NSTextView.performFindPanelAction(_:)), to: nil, from: item)
+                }
+                .keyboardShortcut("f", modifiers: .command)
+
+                Button("Find and Replace…") {
+                    let item = NSMenuItem()
+                    item.tag = Int(NSFindPanelAction.setFindString.rawValue)
+                    NSApp.sendAction(#selector(NSTextView.performFindPanelAction(_:)), to: nil, from: item)
+                }
+                .keyboardShortcut("f", modifiers: [.command, .option])
+            }
+
+            CommandMenu("Terminal") {
+                Button {
+                    appState.selectedTerminal?.clearTerminal()
+                } label: {
+                    Label("Clear Terminal", systemImage: "clear")
+                }
+                .keyboardShortcut("k", modifiers: .command)
+                .disabled(appState.selectedTerminal?.localProcessTerminalView == nil)
+            }
+
+            CommandMenu("Tabs") {
+                Button {
+                    guard let workspace = appState.selectedWorkspace else { return }
+                    let terminal = workspace.addTerminal(
+                        currentDirectory: appState.selectedTerminal?.liveCurrentDirectory,
+                        after: appState.selectedTerminal
+                    )
+                    appState.selectedTerminal = terminal
+                } label: {
+                    Label("New Tab", systemImage: "plus.square")
+                }
+                .keyboardShortcut("t", modifiers: .command)
+                .disabled(appState.selectedWorkspace == nil)
+
+                Button {
+                    guard let workspace = appState.selectedWorkspace else { return }
+                    let terminal = workspace.addTerminal(
+                        currentDirectory: workspace.directory,
+                        after: appState.selectedTerminal
+                    )
+                    appState.selectedTerminal = terminal
+                } label: {
+                    Label("New Tab in Workspace", systemImage: "plus.square.on.square")
+                }
+                .keyboardShortcut("n", modifiers: .command)
+                .disabled(appState.selectedWorkspace == nil)
+
+                Divider()
+
+                Button {
+                    guard let workspace = appState.selectedWorkspace,
+                          let current = appState.selectedTerminal,
+                          let prev = workspace.terminalBefore(current) else { return }
+                    appState.selectedTerminal = prev
+                } label: {
+                    Label("Select Previous Tab", systemImage: "chevron.left.square")
+                }
+                .keyboardShortcut("[", modifiers: [.command, .shift])
+                .disabled((appState.selectedWorkspace?.terminals.count ?? 0) < 2)
+
+                Button {
+                    guard let workspace = appState.selectedWorkspace,
+                          let current = appState.selectedTerminal,
+                          let next = workspace.terminalAfter(current) else { return }
                     appState.selectedTerminal = next
+                } label: {
+                    Label("Select Next Tab", systemImage: "chevron.right.square")
                 }
-            } label: {
-                Label("Close Tab", systemImage: "xmark.square")
+                .keyboardShortcut("]", modifiers: [.command, .shift])
+                .disabled((appState.selectedWorkspace?.terminals.count ?? 0) < 2)
             }
-            .keyboardShortcut("w", modifiers: .command)
-            .disabled((appState.selectedWorkspace?.terminals.count ?? 0) < 2)
-        }
-
-        CommandGroup(replacing: .toolbar) {
-            Button {
-                appState.selectedTerminal?.increaseFontSize()
-            } label: {
-                Label("Zoom In", systemImage: "plus.magnifyingglass")
-            }
-            .keyboardShortcut("+", modifiers: .command)
-            .disabled(appState.selectedTerminal?.localProcessTerminalView == nil)
-
-            Button {
-                appState.selectedTerminal?.decreaseFontSize()
-            } label: {
-                Label("Zoom Out", systemImage: "minus.magnifyingglass")
-            }
-            .keyboardShortcut("-", modifiers: .command)
-            .disabled(appState.selectedTerminal?.localProcessTerminalView == nil)
-
-            Button {
-                appState.selectedTerminal?.resetFontSize()
-            } label: {
-                Label("Actual Size", systemImage: "1.magnifyingglass")
-            }
-            .keyboardShortcut("0", modifiers: .command)
-            .disabled(appState.selectedTerminal?.localProcessTerminalView == nil)
-
-            Divider()
-
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    editorPanel?.toggle()
-                }
-            } label: {
-                Label("Toggle Editor Panel", systemImage: "rectangle.bottomhalf.inset.filled")
-            }
-            .keyboardShortcut("j", modifiers: .command)
-
-            Divider()
-
-            Button {
-                showHiddenFiles.toggle()
-            } label: {
-                Label(
-                    showHiddenFiles ? "Hide Hidden Files" : "Show Hidden Files",
-                    systemImage: showHiddenFiles ? "eye.slash" : "eye"
-                )
-            }
-            .keyboardShortcut(".", modifiers: [.command, .shift])
-        }
-
-        CommandMenu("Inspector") {
-            Button {
-                appState.showingInspector = true
-                appState.selectedInspectorTab = .files
-            } label: {
-                Label("Files Navigator", systemImage: "folder")
-            }
-            .keyboardShortcut("1", modifiers: .command)
-
-            Button {
-                appState.showingInspector = true
-                appState.selectedInspectorTab = .git
-            } label: {
-                Label("Git Navigator", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
-            }
-            .keyboardShortcut("2", modifiers: .command)
-
-            Button {
-                appState.showingInspector = true
-                appState.selectedInspectorTab = .search
-            } label: {
-                Label("Search Navigator", systemImage: "magnifyingglass")
-            }
-            .keyboardShortcut("3", modifiers: .command)
-
-            Divider()
-            
-            Button {
-                appState.showingInspector = true
-                appState.selectedInspectorTab = .commands
-            } label: {
-                Label("Command Runner", systemImage: "apple.terminal")
-            }
-            .keyboardShortcut("3", modifiers: .command)
-
-            Divider()
-
-            Button {
-                appState.showingInspector = true
-                appState.selectedInspectorTab = .search
-            } label: {
-                Label("Find in Files", systemImage: "doc.text.magnifyingglass")
-            }
-            .keyboardShortcut("f", modifiers: [.command, .shift])
-        }
-
-        CommandGroup(after: .textEditing) {
-            Button("Find…") {
-                let item = NSMenuItem()
-                item.tag = Int(NSFindPanelAction.showFindPanel.rawValue)
-                NSApp.sendAction(#selector(NSTextView.performFindPanelAction(_:)), to: nil, from: item)
-            }
-            .keyboardShortcut("f", modifiers: .command)
-
-            Button("Find and Replace…") {
-                let item = NSMenuItem()
-                item.tag = Int(NSFindPanelAction.setFindString.rawValue)
-                NSApp.sendAction(#selector(NSTextView.performFindPanelAction(_:)), to: nil, from: item)
-            }
-            .keyboardShortcut("f", modifiers: [.command, .option])
-        }
-
-        CommandMenu("Terminal") {
-            Button {
-                appState.selectedTerminal?.clearTerminal()
-            } label: {
-                Label("Clear Terminal", systemImage: "clear")
-            }
-            .keyboardShortcut("k", modifiers: .command)
-            .disabled(appState.selectedTerminal?.localProcessTerminalView == nil)
-        }
-
-        CommandMenu("Tabs") {
-            Button {
-                guard let workspace = appState.selectedWorkspace else { return }
-                let terminal = workspace.addTerminal(
-                    currentDirectory: appState.selectedTerminal?.liveCurrentDirectory,
-                    after: appState.selectedTerminal
-                )
-                appState.selectedTerminal = terminal
-            } label: {
-                Label("New Tab", systemImage: "plus.square")
-            }
-            .keyboardShortcut("t", modifiers: .command)
-            .disabled(appState.selectedWorkspace == nil)
-
-            Button {
-                guard let workspace = appState.selectedWorkspace else { return }
-                let terminal = workspace.addTerminal(
-                    currentDirectory: workspace.directory,
-                    after: appState.selectedTerminal
-                )
-                appState.selectedTerminal = terminal
-            } label: {
-                Label("New Tab in Workspace Directory", systemImage: "plus.square.on.square")
-            }
-            .keyboardShortcut("n", modifiers: .command)
-            .disabled(appState.selectedWorkspace == nil)
-
-            Divider()
-
-            Button {
-                guard let workspace = appState.selectedWorkspace,
-                      let current = appState.selectedTerminal,
-                      let prev = workspace.terminalBefore(current) else { return }
-                appState.selectedTerminal = prev
-            } label: {
-                Label("Select Previous Tab", systemImage: "chevron.left.square")
-            }
-            .keyboardShortcut("[", modifiers: [.command, .shift])
-            .disabled((appState.selectedWorkspace?.terminals.count ?? 0) < 2)
-
-            Button {
-                guard let workspace = appState.selectedWorkspace,
-                      let current = appState.selectedTerminal,
-                      let next = workspace.terminalAfter(current) else { return }
-                appState.selectedTerminal = next
-            } label: {
-                Label("Select Next Tab", systemImage: "chevron.right.square")
-            }
-            .keyboardShortcut("]", modifiers: [.command, .shift])
-            .disabled((appState.selectedWorkspace?.terminals.count ?? 0) < 2)
         }
     }
 }

@@ -40,8 +40,6 @@ struct CommandEntryRow: View {
                 }
 
                 Spacer()
-                
-//                statusIndicator
 
                 actionButtons
             }
@@ -65,7 +63,7 @@ struct CommandEntryRow: View {
     private var statusIndicator: some View {
         if isRunning {
             ProgressView()
-                .controlSize(.small)
+                .controlSize(.mini)
                 .frame(width: 14, height: 14)
         } else if let code = runner[entry]?.exitCode {
             Image(systemName: code == 0 ? "checkmark.circle.fill" : "xmark.circle.fill")
@@ -105,7 +103,7 @@ struct CommandEntryRow: View {
                 .textSelection(.enabled)
         }
         .frame(maxHeight: 120)
-        .padding(6)
+        .contentMargins(6)
         .background(.background.secondary, in: .rect(cornerRadius: 6))
         .padding(.leading, -15)
     }

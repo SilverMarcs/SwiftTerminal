@@ -38,6 +38,9 @@ struct SwiftTerminalApp: App {
                     .frame(minWidth: 400, minHeight: 300)
             }
         }
+        .commands {
+            CommandGroup(replacing: .newItem) {}
+        }
         .defaultSize(width: 875, height: 625)
         .restorationBehavior(.disabled)
     }
