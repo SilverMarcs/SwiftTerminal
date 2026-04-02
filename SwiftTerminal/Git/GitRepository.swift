@@ -581,7 +581,7 @@ private struct GitSwitchCommand: GitCommand {
 
 private struct GitCreateBranchCommand: GitCommand {
     let name: String
-    var arguments: [String] { ["switch", "-c", name] }
+    var arguments: [String] { ["switch", "-c", name, "--no-track"] }
     func parse(output: String) throws { }
 }
 
