@@ -11,9 +11,13 @@ struct AppCommands: Commands {
             Button {
                 guard let workspace = appState.selectedWorkspace,
                       let terminal = appState.selectedTerminal else { return }
-                let next = workspace.terminalAfter(terminal) ?? workspace.terminalBefore(terminal)
-                workspace.closeTerminal(terminal)
-                appState.selectedTerminal = next
+                if terminal.hasChildProcess {
+                    appState.terminalPendingClose = terminal
+                } else {
+                    let next = workspace.terminalAfter(terminal) ?? workspace.terminalBefore(terminal)
+                    workspace.closeTerminal(terminal)
+                    appState.selectedTerminal = next
+                }
             } label: {
                 Label("Close Tab", systemImage: "xmark.square")
             }

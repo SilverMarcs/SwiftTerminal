@@ -54,6 +54,11 @@ struct GitInspectorView: View {
                     state.selectedRepoURL = state.model.snapshots.first?.repositoryRootURL
                 }
             }
+            .task(id: selectedSnapshot?.branchName) {
+                guard let snapshot = selectedSnapshot else { return }
+                await state.model.fetch(snapshot: snapshot)
+                await state.model.refresh(directoryURL: directoryURL)
+            }
             .gitPolling(id: directoryURL) {
                 await state.model.refresh(directoryURL: directoryURL)
             }

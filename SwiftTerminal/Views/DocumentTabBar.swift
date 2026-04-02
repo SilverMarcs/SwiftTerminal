@@ -175,8 +175,15 @@ struct DocumentTabBar: View {
     }
 
     private func closeTerminal(_ terminal: Terminal) {
+        if terminal.hasChildProcess {
+            appState.terminalPendingClose = terminal
+            return
+        }
+        performClose(terminal)
+    }
+
+    private func performClose(_ terminal: Terminal) {
         if appState.selectedTerminal === terminal {
-            // Select an adjacent terminal
             let terminals = workspace.terminals
             if let idx = terminals.firstIndex(where: { $0 === terminal }) {
                 if idx + 1 < terminals.count {

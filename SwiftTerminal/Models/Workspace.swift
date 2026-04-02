@@ -9,6 +9,7 @@ final class Workspace {
     
     var directory: String = ""
     var projectTypeRaw: String = ProjectType.unknown.rawValue
+    var scratchPad: String = ""
 
     var url: URL {
         URL(fileURLWithPath: directory)
