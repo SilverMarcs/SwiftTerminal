@@ -26,7 +26,7 @@ struct FileTreeView: View {
             Toggle("Show Hidden Files", isOn: $showHiddenFiles)
         }
         .safeAreaBar(edge: .bottom) {
-            SearchBar(text: $state.model.searchText, placeholder: "Search for Files") {
+            SearchBar(text: $state.model.searchText, placeholder: "Search for Files", focusTrigger: state.searchFocusTrigger) {
                 Button(action: toggleChangedFilter) {
                     Image(systemName: state.model.showChangedOnly ? "plusminus.circle.fill" : "plusminus.circle")
                         .foregroundStyle(state.model.showChangedOnly ? Color.accentColor : .secondary)

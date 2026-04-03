@@ -121,10 +121,20 @@ struct AppCommands: Commands {
                 Button {
                     appState.showingInspector = true
                     appState.selectedWorkspace?.inspectorState.selectedTab = .search
+                    appState.selectedWorkspace?.inspectorState.search.searchFocusTrigger += 1
                 } label: {
                     Label("Find in Files", systemImage: "doc.text.magnifyingglass")
                 }
                 .keyboardShortcut("f", modifiers: [.command, .shift])
+
+                Button {
+                    appState.showingInspector = true
+                    appState.selectedWorkspace?.inspectorState.selectedTab = .files
+                    appState.selectedWorkspace?.inspectorState.fileTree.searchFocusTrigger += 1
+                } label: {
+                    Label("Go to File", systemImage: "doc.text.magnifyingglass")
+                }
+                .keyboardShortcut("p", modifiers: .command)
             }
 
             CommandGroup(after: .textEditing) {

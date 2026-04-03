@@ -27,6 +27,7 @@ struct SearchInspectorView: View {
             SearchBar(
                 text: $state.model.query,
                 placeholder: "Search Within Files",
+                focusTrigger: state.searchFocusTrigger,
                 onSubmit: {
                     Task {
                         await state.model.search(in: directoryURL)

@@ -21,6 +21,7 @@ final class FileTreeInspectorState {
     var selectedID: FileItem.ID?
     var expandedIDs: Set<String> = []
     var savedExpandedIDs: Set<String>?
+    var searchFocusTrigger = 0
 }
 
 @Observable
@@ -28,6 +29,7 @@ final class SearchInspectorState {
     var model = SearchInspectorModel()
     var expandedIDs: Set<UUID> = []
     var selectedID: UUID?
+    var searchFocusTrigger = 0
 }
 
 enum GitInspectorDiscardTarget {
