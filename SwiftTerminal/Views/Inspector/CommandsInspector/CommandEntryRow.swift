@@ -21,13 +21,13 @@ struct CommandEntryRow: View {
                 VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 6) {
                         Text(entry.name)
-                            .font(.subheadline)
+                            .font(.callout)
                             .lineLimit(1)
                         statusIndicator
                     }
 
                     Text(entry.command)
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundStyle(.tertiary)
                         .lineLimit(1)
                 }
@@ -71,7 +71,7 @@ struct CommandEntryRow: View {
             }
         } label: {
             Image(systemName: isRunning ? "stop.fill" : "play.fill")
-                .font(.caption)
+                // .font(.caption)
                 .contentTransition(.symbolEffect(.replace))
         }
         .buttonStyle(.borderless)

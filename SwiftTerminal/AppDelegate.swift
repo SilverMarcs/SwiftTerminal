@@ -91,6 +91,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        #if DEBUG
+        return .terminateNow
+        #else
         let alert = NSAlert()
         alert.messageText = "Quit SwiftTerminal?"
         alert.informativeText = "Are you sure you want to quit?"
@@ -100,5 +103,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
         let response = alert.runModal()
         return response == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
+        #endif
     }
 }
