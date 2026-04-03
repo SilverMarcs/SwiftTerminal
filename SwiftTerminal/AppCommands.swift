@@ -129,23 +129,11 @@ struct AppCommands: Commands {
                     appState.showingInspector = true
                     workspace.inspectorState.selectedTab = .commands
                 } label: {
-                    if appState.selectedWorkspace?.defaultCommand?.runner.isRunning == true {
-                        Label("Stop", systemImage: "stop.fill")
-                    } else {
-                        Label("Run", systemImage: "play.fill")
-                    }
+                    let running = appState.selectedWorkspace?.defaultCommand?.runner.isRunning == true
+                    Label(running ? "Stop" : "Run", systemImage: running ? "stop.fill" : "play.fill")
                 }
-                .keyboardShortcut("r", modifiers: .command)
+                .keyboardShortcut(appState.selectedWorkspace?.defaultCommand?.runner.isRunning == true ? "d" : "r", modifiers: .command)
                 .disabled(appState.selectedWorkspace?.defaultCommand == nil)
-
-                if appState.selectedWorkspace?.defaultCommand?.runner.isRunning == true {
-                    Button {
-                        appState.selectedWorkspace?.defaultCommand?.runner.stop()
-                    } label: {
-                        Label("Stop", systemImage: "stop.fill")
-                    }
-                    .keyboardShortcut("d", modifiers: .command)
-                }
 
                 Divider()
 

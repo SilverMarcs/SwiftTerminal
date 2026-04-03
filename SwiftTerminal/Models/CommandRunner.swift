@@ -80,4 +80,8 @@ final class CommandRunner {
         process = nil
         pipe = nil
     }
+
+    func clearOutput() {
+        output = ""
+    }
 }

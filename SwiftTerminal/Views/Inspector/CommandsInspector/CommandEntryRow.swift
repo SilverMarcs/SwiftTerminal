@@ -12,13 +12,14 @@ struct CommandEntryRow: View {
     private var isRunning: Bool { runner.isRunning }
 
     var body: some View {
-        HStack(spacing: 8) {
-            statusIndicator
-
+        HStack(spacing: 6) {
             VStack(alignment: .leading, spacing: 1) {
-                Text(entry.name)
-                    .font(.callout)
-                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(entry.name)
+                        .font(.callout)
+                        .lineLimit(1)
+                    statusIndicator
+                }
 
                 Text(entry.command)
                     .font(.subheadline)
@@ -44,12 +45,12 @@ struct CommandEntryRow: View {
     private var statusIndicator: some View {
         if isRunning {
             ProgressView()
-                .controlSize(.small)
-                // .frame(width: 16, height: 16)
+                .controlSize(.mini)
+                .frame(width: 14, height: 14)
         } else if let code = runner.exitCode {
             Image(systemName: code == 0 ? "checkmark.circle.fill" : "xmark.circle.fill")
                 .foregroundStyle(code == 0 ? .green : .red)
-                .font(.callout)
+                .font(.caption)
         }
     }
 

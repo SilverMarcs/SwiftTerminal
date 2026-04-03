@@ -11,7 +11,7 @@ struct CommandsInspectorView: View {
             commandList
                 .layoutPriority(1)
             outputPanel
-                .frame(minHeight: 285, maxHeight: .infinity)
+                .frame(minHeight: 300, maxHeight: .infinity)
                 .frame(maxWidth: .infinity)
         }
         .safeAreaBar(edge: .top) {
@@ -60,6 +60,15 @@ struct CommandsInspectorView: View {
                     .font(.callout)
             } else {
                 CommandOutputView(text: runner.output)
+                    .overlay(alignment: .topTrailing) {
+                       Button {
+                            runner.clearOutput()
+                        } label: {
+                            Image(systemName: "trash")
+                        }
+                        .buttonStyle(.borderless)
+                        .padding(10)
+                    }
             }
         } else {
             Color.clear
