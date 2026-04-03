@@ -12,6 +12,7 @@ final class Workspace {
     var scratchPad: String = ""
 
     @Transient var inspectorState = InspectorViewState()
+    @Transient var editorPanel = EditorPanel()
 
     var url: URL {
         URL(fileURLWithPath: directory)

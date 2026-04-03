@@ -35,6 +35,7 @@ struct WorkspaceDetailView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             BottomSheetView(directoryURL: workspace.url)
         }
+        .environment(workspace.editorPanel)
         .task(id: workspace) {
             appState.selectedTerminal = workspace.terminals.first ?? workspace.addTerminal()
         }

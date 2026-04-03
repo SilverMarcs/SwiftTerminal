@@ -4,7 +4,6 @@ import SwiftData
 struct ContentView: View {
     @Environment(AppState.self) private var appState
     @Query private var workspaces: [Workspace]
-    @State private var editorPanel = EditorPanel()
     @State private var searchText = ""
 
     var body: some View {
@@ -27,12 +26,12 @@ struct ContentView: View {
         .inspector(isPresented: Bindable(appState).showingInspector) {
             if let workspace = appState.selectedWorkspace {
                 InspectorView(workspace: workspace)
+                    .environment(workspace.editorPanel)
                     .id(workspace.url)
                     .inspectorColumnWidth(min: 240, ideal: 240, max: 360)
             }
         }
-        .environment(editorPanel)
-        .focusedSceneValue(\.editorPanel, editorPanel)
+        .focusedSceneValue(\.editorPanel, appState.selectedWorkspace?.editorPanel)
         .focusedSceneValue(\.isMainWindow, true)
         .onReceive(NotificationCenter.default.publisher(for: .navigateToSession)) { notification in
             guard let workspaceID = notification.userInfo?["workspaceID"] as? String,
