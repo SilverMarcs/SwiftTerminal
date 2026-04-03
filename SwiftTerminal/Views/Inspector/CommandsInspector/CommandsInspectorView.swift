@@ -2,12 +2,13 @@ import SwiftUI
 
 struct CommandsInspectorView: View {
     let workspace: Workspace
-    @Bindable var state: CommandsInspectorState
+
+    @State private var showAddSheet = false
 
     var body: some View {
         List {
             ForEach(workspace.commands) { entry in
-                CommandEntryRow(entry: entry, runner: state.runner)
+                CommandEntryRow(entry: entry)
             }
             .onMove { from, to in
                 reorder(from: from, to: to)
@@ -23,7 +24,7 @@ struct CommandsInspectorView: View {
                     Text("Add commands like build, run, or test.")
                 } actions: {
                     Button("Add Command") {
-                        state.showAddSheet = true
+                        showAddSheet = true
                     }
                 }
             }
@@ -37,7 +38,7 @@ struct CommandsInspectorView: View {
                 Spacer()
 
                 Button {
-                    state.showAddSheet = true
+                    showAddSheet = true
                 } label: {
                     Image(systemName: "plus")
                 }
@@ -47,7 +48,7 @@ struct CommandsInspectorView: View {
             .padding(.vertical, 6)
             .padding(.top, 7)
         }
-        .sheet(isPresented: $state.showAddSheet) {
+        .sheet(isPresented: $showAddSheet) {
             CommandEntrySheet(workspace: workspace)
         }
     }

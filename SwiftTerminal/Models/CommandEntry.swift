@@ -9,10 +9,16 @@ final class CommandEntry {
     var sortOrder: Int = 0
     var workspace: Workspace
 
+    @Transient var runner = CommandRunner()
+
     init(workspace: Workspace, name: String, command: String, sortOrder: Int = 0) {
         self.workspace = workspace
         self.name = name
         self.command = command
         self.sortOrder = sortOrder
+    }
+
+    func run() {
+        runner.run(command: command, in: workspace.url)
     }
 }

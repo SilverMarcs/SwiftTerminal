@@ -22,7 +22,7 @@ struct InspectorView: View {
             .safeAreaBar(edge: .top) {
                 Picker("Inspector", selection: Bindable(state).selectedTab) {
                     ForEach(InspectorTab.allCases) { tab in
-                        Image(systemName: tab.icon)
+                        Image(systemName: iconName(for: tab))
                             .help(tab.label)
                             .tag(tab)
                     }
@@ -35,6 +35,13 @@ struct InspectorView: View {
             }
     }
 
+    private func iconName(for tab: InspectorTab) -> String {
+        if tab == .commands && workspace.commands.contains(where: { $0.runner.isRunning }) {
+            return "terminal.fill"
+        }
+        return tab.icon
+    }
+
     @ViewBuilder
     private var tabContent: some View {
         switch state.selectedTab {
@@ -45,7 +52,7 @@ struct InspectorView: View {
         case .git:
             GitInspectorView(directoryURL: workspace.url, state: state.git)
         case .commands:
-            CommandsInspectorView(workspace: workspace, state: state.commands)
+            CommandsInspectorView(workspace: workspace)
         }
     }
 

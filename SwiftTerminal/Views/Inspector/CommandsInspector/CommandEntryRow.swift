@@ -3,25 +3,18 @@ import SwiftTerm
 
 struct CommandEntryRow: View {
     let entry: CommandEntry
-    let runner: CommandRunner
     @Environment(AppState.self) private var appState
 
     @State private var showEditSheet = false
     @State private var showFullOutput = false
 
-    private var isRunning: Bool {
-        runner.isRunning(entry)
-    }
-
-    private var hasOutput: Bool {
-        guard let state = runner[entry] else { return false }
-        return !state.output.isEmpty
-    }
+    private var runner: CommandRunner { entry.runner }
+    private var isRunning: Bool { runner.isRunning }
 
     var body: some View {
         DisclosureGroup {
-            if let runState = runner[entry], !runState.output.isEmpty {
-                outputView(runState.output)
+            if !runner.output.isEmpty {
+                outputView(runner.output)
             }
         } label: {
             HStack(spacing: 6) {
@@ -60,7 +53,7 @@ struct CommandEntryRow: View {
             ProgressView()
                 .controlSize(.mini)
                 .frame(width: 14, height: 14)
-        } else if let code = runner[entry]?.exitCode {
+        } else if let code = runner.exitCode {
             Image(systemName: code == 0 ? "checkmark.circle.fill" : "xmark.circle.fill")
                 .foregroundStyle(code == 0 ? .green : .red)
                 .font(.caption)
@@ -72,9 +65,9 @@ struct CommandEntryRow: View {
     private var actionButtons: some View {
         Button {
             if isRunning {
-                runner.stop(entry)
+                runner.stop()
             } else {
-                runner.run(entry, in: entry.workspace.url)
+                entry.run()
             }
         } label: {
             Image(systemName: isRunning ? "stop.fill" : "play.fill")
@@ -143,12 +136,12 @@ struct CommandEntryRow: View {
     @ViewBuilder
     private var contextMenuItems: some View {
         if isRunning {
-            Button { runner.stop(entry) } label: {
+            Button { runner.stop() } label: {
                 Label("Stop", systemImage: "stop.fill")
             }
         } else {
             Button {
-                runner.run(entry, in: entry.workspace.url)
+                entry.run()
             } label: {
                 Label("Run", systemImage: "play.fill")
             }
@@ -171,7 +164,7 @@ struct CommandEntryRow: View {
         Divider()
 
         Button(role: .destructive) {
-            runner.stop(entry)
+            runner.stop()
             entry.workspace.removeCommand(entry)
         } label: {
             Label("Delete", systemImage: "trash")
