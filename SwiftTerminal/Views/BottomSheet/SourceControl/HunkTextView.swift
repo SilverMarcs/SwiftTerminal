@@ -74,6 +74,10 @@ final class HunkNSTextView: NSTextView {
         )
 
         textStorage?.setAttributedString(attributed)
+
+        // Apply inline word-level highlights for paired add/remove lines
+        applyInlineHighlights(lines: hunk.lines)
+
         let text = source as NSString
 
         // Force layout so glyphs are generated before first draw
@@ -141,6 +145,92 @@ final class HunkNSTextView: NSTextView {
                 str.draw(at: NSPoint(x: gutterWidth - size.width - 6, y: y), withAttributes: lineNumAttrs)
             }
         }
+    }
+
+    // MARK: - Inline (word-level) diff highlights
+
+    private func applyInlineHighlights(lines: [DiffHunkLine]) {
+        guard let textStorage = self.textStorage else { return }
+
+        // Build UTF-16 offset table for each line in the text storage
+        var lineOffsets: [Int] = []
+        var offset = 0
+        for line in lines {
+            lineOffsets.append(offset)
+            offset += (line.content as NSString).length + 1 // +1 for \n
+        }
+
+        // Scan for consecutive removed→added blocks and pair them
+        var i = 0
+        while i < lines.count {
+            guard lines[i].kind == .removed else { i += 1; continue }
+            let removedStart = i
+            while i < lines.count && lines[i].kind == .removed { i += 1 }
+            let removedEnd = i
+
+            guard i < lines.count && lines[i].kind == .added else { continue }
+            let addedStart = i
+            while i < lines.count && lines[i].kind == .added { i += 1 }
+            let addedEnd = i
+
+            let pairCount = min(removedEnd - removedStart, addedEnd - addedStart)
+            for p in 0..<pairCount {
+                let ri = removedStart + p
+                let ai = addedStart + p
+                let oldLine = lines[ri].content
+                let newLine = lines[ai].content
+
+                let (oldRange, newRange) = Self.inlineDiffRanges(old: oldLine, new: newLine)
+
+                if let r = oldRange {
+                    let nsRange = NSRange(location: lineOffsets[ri] + r.lowerBound, length: r.upperBound - r.lowerBound)
+                    if nsRange.upperBound <= textStorage.length {
+                        textStorage.addAttribute(.backgroundColor, value: NSColor.systemRed.withAlphaComponent(0.22), range: nsRange)
+                    }
+                }
+                if let r = newRange {
+                    let nsRange = NSRange(location: lineOffsets[ai] + r.lowerBound, length: r.upperBound - r.lowerBound)
+                    if nsRange.upperBound <= textStorage.length {
+                        textStorage.addAttribute(.backgroundColor, value: NSColor.systemGreen.withAlphaComponent(0.22), range: nsRange)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Returns the differing UTF-16 ranges within two lines using common prefix/suffix.
+    private static func inlineDiffRanges(old: String, new: String) -> (Range<Int>?, Range<Int>?) {
+        let oldChars: [unichar] = Array(old.utf16)
+        let newChars: [unichar] = Array(new.utf16)
+
+        // Common prefix length
+        var prefixLen = 0
+        let minLen = min(oldChars.count, newChars.count)
+        while prefixLen < minLen && oldChars[prefixLen] == newChars[prefixLen] {
+            prefixLen += 1
+        }
+
+        // Common suffix length (not overlapping with prefix)
+        let maxSuffix = min(oldChars.count - prefixLen, newChars.count - prefixLen)
+        var suffixLen = 0
+        while suffixLen < maxSuffix {
+            let oldIdx = oldChars.count - 1 - suffixLen
+            let newIdx = newChars.count - 1 - suffixLen
+            guard oldChars[oldIdx] == newChars[newIdx] else { break }
+            suffixLen += 1
+        }
+
+        let oldDiffEnd = oldChars.count - suffixLen
+        let newDiffEnd = newChars.count - suffixLen
+
+        // Skip if nothing changed or if the entire line differs (no useful highlight)
+        let oldLen = oldDiffEnd - prefixLen
+        let newLen = newDiffEnd - prefixLen
+        if oldLen <= 0 && newLen <= 0 { return (nil, nil) }
+
+        let oldRange: Range<Int>? = oldLen > 0 ? prefixLen..<oldDiffEnd : nil
+        let newRange: Range<Int>? = newLen > 0 ? prefixLen..<newDiffEnd : nil
+        return (oldRange, newRange)
     }
 
     private func lineIndex(forCharacterIndex index: Int) -> Int {
