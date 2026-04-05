@@ -4,6 +4,7 @@ enum EditorTextViewConstants {
     static let gutterWidth: CGFloat = 48
     static let markerBarWidth: CGFloat = 3
     static let foldColumnWidth: CGFloat = 12
+    static let minimapWidth: CGFloat = 16
 
     // Diff mode gutter layout (single line number, no fold column)
     static let diffGutterWidth: CGFloat = 52
@@ -23,6 +24,8 @@ final class EditorTextView: NSTextView {
     var diffLineNumbers: [Int: GitDiffLineNumbers] = [:]
     var isDiffMode: Bool { !diffLineKinds.isEmpty }
     var diffGutterClickHandler: ((Int, NSPoint) -> Void)?
+    var repositoryRootURL: URL?
+    var gutterDiffReloadHandler: (() async -> Void)?
 
     var editorFontSize: CGFloat = 12
     var lineNumberFontSize: CGFloat = 11
@@ -477,9 +480,12 @@ final class EditorTextView: NSTextView {
             let glyphRange = layoutManager.glyphRange(forCharacterRange: lineRange, actualCharacterRange: nil)
 
             if glyphRange.location != NSNotFound {
-                var lineRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
-                lineRect.origin.x += containerOrigin.x
-                lineRect.origin.y += containerOrigin.y
+                let lineRect = drawingLineRect(
+                    for: glyphRange,
+                    layoutManager: layoutManager,
+                    textContainer: textContainer,
+                    containerOrigin: containerOrigin
+                )
 
                 let isVisible = lineRect.height > 1
                     && lineRect.minY + lineRect.height >= rect.minY && lineRect.minY <= rect.maxY
@@ -574,9 +580,12 @@ final class EditorTextView: NSTextView {
             let glyphRange = layoutManager.glyphRange(forCharacterRange: lineRange, actualCharacterRange: nil)
 
             if glyphRange.location != NSNotFound {
-                var lineRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
-                lineRect.origin.x += containerOrigin.x
-                lineRect.origin.y += containerOrigin.y
+                let lineRect = drawingLineRect(
+                    for: glyphRange,
+                    layoutManager: layoutManager,
+                    textContainer: textContainer,
+                    containerOrigin: containerOrigin
+                )
 
                 let isHidden = foldingManager.isLineHidden(lineNumber)
                 let isVisible = !isHidden && lineRect.height > 1
@@ -597,13 +606,9 @@ final class EditorTextView: NSTextView {
                     numStr.draw(at: NSPoint(x: x, y: y), withAttributes: lineNumAttrs)
 
                     // Draw git change marker bar
-                    if let kind = gutterDiff.markers[lineNumber] {
-                        kind.color.setFill()
-                        if kind == .deleted {
-                            NSRect(x: markerBarX, y: lineRect.minY - 1, width: markerBarWidth + 1, height: 3).fill()
-                        } else {
-                            NSRect(x: markerBarX, y: lineRect.minY, width: markerBarWidth, height: lineRect.height).fill()
-                        }
+                    if let marker = gutterDiff.markers[lineNumber] {
+                        marker.color.setFill()
+                        NSRect(x: markerBarX, y: lineRect.minY, width: markerBarWidth, height: lineRect.height).fill()
                     }
 
                     // Draw fold indicator
@@ -657,6 +662,19 @@ final class EditorTextView: NSTextView {
 
         // Draw bracket matching highlights on top
         drawBracketHighlights()
+    }
+
+    private func drawingLineRect(
+        for glyphRange: NSRange,
+        layoutManager: NSLayoutManager,
+        textContainer: NSTextContainer,
+        containerOrigin: NSPoint
+    ) -> NSRect {
+        let glyphIndex = min(glyphRange.location, max(layoutManager.numberOfGlyphs - 1, 0))
+        var lineRect = layoutManager.lineFragmentUsedRect(forGlyphAt: glyphIndex, effectiveRange: nil)
+        lineRect.origin.x += containerOrigin.x
+        lineRect.origin.y += containerOrigin.y
+        return lineRect
     }
 
     // MARK: - Scroll to line and highlight match
@@ -772,7 +790,12 @@ final class EditorTextView: NSTextView {
         // Diff popover click
         guard gutterDiff.markers[clickedLine] != nil else { return }
 
+        let markerStage = gutterDiff.markers[clickedLine]?.stage
+
         guard let hunk = gutterDiff.hunks.first(where: { hunk in
+            if let markerStage, hunk.stage != markerStage {
+                return false
+            }
             if hunk.kind == .deleted {
                 return clickedLine == max(hunk.newStart, 1)
             } else {
@@ -780,6 +803,12 @@ final class EditorTextView: NSTextView {
             }
         }) else { return }
 
-        DiffPopoverPresenter.showDiffPopover(for: hunk, at: localPoint, in: self)
+        DiffPopoverPresenter.showDiffPopover(
+            for: hunk,
+            at: localPoint,
+            in: self,
+            repositoryRootURL: repositoryRootURL,
+            onReload: gutterDiffReloadHandler
+        )
     }
 }

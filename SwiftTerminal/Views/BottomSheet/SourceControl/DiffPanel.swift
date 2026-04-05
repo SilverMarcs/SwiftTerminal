@@ -23,7 +23,7 @@ struct DiffPanel: View {
             }
         } actions: {
             Button { panel.openFile(reference.fileURL) } label: {
-                Image(systemName: "doc.text")
+                Image(systemName: "arrow.up.forward.square")
             }
             .buttonStyle(.borderless)
             .help("Open File")
@@ -37,7 +37,7 @@ struct DiffPanel: View {
                         .foregroundStyle(.secondary)
                 }
             } else if let presentation, !presentation.string.isEmpty {
-                DiffTextEditor(
+                CodeTextEditor(
                     presentation: presentation,
                     fileExtension: reference.fileURL.pathExtension.lowercased(),
                     hunks: filePresentation?.hunks ?? [],

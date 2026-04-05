@@ -8,7 +8,7 @@ import SwiftUI
 /// buttons, the separator, and the trailing toggle button.
 struct PanelLayout<Title: View, Actions: View, Content: View>: View {
     @Environment(EditorPanel.self) private var panel
-    @Environment(\.openWindow) private var openWindow
+    // @Environment(\.openWindow) private var openWindow
     @Environment(\.isDetachedEditor) private var isDetached
     @AppStorage("editorPanelHeight") private var panelHeight: Double = 250
 
@@ -59,15 +59,16 @@ struct PanelLayout<Title: View, Actions: View, Content: View>: View {
 
             actions
 
-            if let content = panel.content {
-                Button {
-                    openWindow(value: content)
-                } label: {
-                    Image(systemName: "arrow.up.forward.square")
-                }
-                .buttonStyle(.borderless)
-                .help("Open in New Window")
-            }
+            // MARK: Open in New Window (disabled for now)
+            // if let content = panel.content {
+            //     Button {
+            //         openWindow(value: content)
+            //     } label: {
+            //         Image(systemName: "arrow.up.forward.square")
+            //     }
+            //     .buttonStyle(.borderless)
+            //     .help("Open in New Window")
+            // }
 
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {

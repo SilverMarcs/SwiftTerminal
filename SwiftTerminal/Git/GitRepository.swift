@@ -94,9 +94,17 @@ actor GitRepository {
 
             let relativePath = String(filePath.dropFirst(rootPath.count))
                 .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            let raw = try await self.executor.execute(
-                GitGutterDiffCommand(relativePath: relativePath), at: rootURL)
-            return GutterDiffParser.parse(raw)
+            async let unstagedRaw = self.executor.execute(
+                GitGutterDiffCommand(relativePath: relativePath, stage: .unstaged),
+                at: rootURL
+            )
+            async let stagedRaw = self.executor.execute(
+                GitGutterDiffCommand(relativePath: relativePath, stage: .staged),
+                at: rootURL
+            )
+            let unstaged = GutterDiffParser.parse(try await unstagedRaw, stage: .unstaged)
+            let staged = GutterDiffParser.parse(try await stagedRaw, stage: .staged)
+            return GutterDiffParser.merge(unstaged: unstaged, staged: staged)
         }
 
         return .empty
@@ -496,9 +504,15 @@ struct GitBranchNameCommand: GitCommand {
 
 struct GitGutterDiffCommand: GitCommand {
     let relativePath: String
+    let stage: GutterHunkStage
 
     var arguments: [String] {
-        ["diff", "HEAD", "--no-color", "--no-ext-diff", "--unified=0", "--", relativePath]
+        switch stage {
+        case .staged:
+            ["diff", "--cached", "--no-color", "--no-ext-diff", "--unified=0", "--", relativePath]
+        case .unstaged:
+            ["diff", "--no-color", "--no-ext-diff", "--unified=0", "--", relativePath]
+        }
     }
 
     func parse(output: String) throws -> String { output }

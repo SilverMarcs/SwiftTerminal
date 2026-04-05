@@ -1,6 +1,11 @@
 import SwiftUI
 
 struct FileEditorPanel: View {
+    private struct FileGitState {
+        var stagedKind: GitChangeKind?
+        var unstagedKind: GitChangeKind?
+    }
+
     let fileURL: URL
     let directoryURL: URL
     @Environment(EditorPanel.self) private var panel
@@ -10,6 +15,7 @@ struct FileEditorPanel: View {
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var gutterDiff: GutterDiffResult = .empty
+    @State private var gitState = FileGitState()
     @Environment(\.showInFileTree) private var showInFileTree
 
     private var hasUnsavedChanges: Bool {
@@ -25,6 +31,12 @@ struct FileEditorPanel: View {
                 .font(.subheadline.weight(.medium))
                 .lineLimit(1)
                 .truncationMode(.middle)
+            if let unstagedKind = gitState.unstagedKind {
+                GitStatusBadge(kind: unstagedKind, staged: false)
+            }
+            if let stagedKind = gitState.stagedKind {
+                GitStatusBadge(kind: stagedKind, staged: true)
+            }
             if panel.isDirty {
                 Circle()
                     .fill(.secondary)
@@ -33,26 +45,30 @@ struct FileEditorPanel: View {
             }
         } actions: {
             Button { showInFileTree(fileURL) } label: {
-                Image(systemName: "sidebar.trailing")
+                Image(systemName: "folder")
             }
             .buttonStyle(.borderless)
             .keyboardShortcut("j", modifiers: [.command, .shift])
             .help("Show in File Tree")
 
+            // Save button removed but Cmd+S shortcut preserved
             Button { panel.saveRequested = true } label: {
-                Image(systemName: "opticaldiscdrive")
+                Color.clear.frame(width: 0, height: 0)
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
             .keyboardShortcut("s", modifiers: .command)
-            .disabled(!panel.isDirty)
-            .help("Save")
+            .frame(width: 0, height: 0)
+            .opacity(0)
+            .allowsHitTesting(false)
         } content: {
             if isLoaded {
-                HighlightedTextEditor(
+                CodeTextEditor(
                     text: $content,
                     fileExtension: fileURL.pathExtension.lowercased(),
                     gutterDiff: gutterDiff,
-                    highlightRequest: panel.highlightRequest
+                    highlightRequest: panel.highlightRequest,
+                    repositoryRootURL: directoryURL,
+                    onReloadFromDisk: { loadFile() }
                 )
             } else if let errorMessage {
                 ContentUnavailableView {
@@ -65,7 +81,9 @@ struct FileEditorPanel: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .task(id: fileURL) { loadFile() }
+        .task(id: fileURL) {
+            loadFile()
+        }
         .onChange(of: hasUnsavedChanges) { _, dirty in
             panel.isDirty = dirty
         }
@@ -100,6 +118,7 @@ struct FileEditorPanel: View {
         isLoaded = false
         errorMessage = nil
         gutterDiff = .empty
+        gitState = FileGitState()
         panel.isDirty = false
         do {
             let data = try Data(contentsOf: fileURL)
@@ -110,7 +129,7 @@ struct FileEditorPanel: View {
             content = string
             savedContent = string
             isLoaded = true
-            loadGutterDiff()
+            refreshGitState()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -121,20 +140,40 @@ struct FileEditorPanel: View {
         do {
             try content.write(to: fileURL, atomically: true, encoding: .utf8)
             savedContent = content
-            loadGutterDiff()
+            refreshGitState()
         } catch {
             errorMessage = error.localizedDescription
         }
         isSaving = false
     }
 
-    private func loadGutterDiff() {
+    private func refreshGitState() {
         Task {
             do {
-                gutterDiff = try await GitRepository.shared.gutterDiff(for: fileURL, in: directoryURL)
+                async let gutter = GitRepository.shared.gutterDiff(for: fileURL, in: directoryURL)
+                async let snapshots = GitRepository.shared.statusSnapshots(in: directoryURL)
+                gutterDiff = try await gutter
+                gitState = try await fileGitState(from: snapshots)
             } catch {
                 gutterDiff = .empty
+                gitState = FileGitState()
             }
         }
+    }
+
+    private func fileGitState(from snapshots: [GitRepositoryStatusSnapshot]) throws -> FileGitState {
+        let standardizedURL = fileURL.standardizedFileURL
+        var state = FileGitState()
+
+        for snapshot in snapshots {
+            if let stagedMatch = snapshot.stagedFiles.first(where: { $0.fileURL.standardizedFileURL == standardizedURL }) {
+                state.stagedKind = stagedMatch.kind
+            }
+            if let unstagedMatch = snapshot.unstagedFiles.first(where: { $0.fileURL.standardizedFileURL == standardizedURL }) {
+                state.unstagedKind = unstagedMatch.kind
+            }
+        }
+
+        return state
     }
 }
