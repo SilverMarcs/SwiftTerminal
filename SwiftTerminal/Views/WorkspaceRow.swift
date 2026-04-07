@@ -36,7 +36,7 @@ struct WorkspaceRow: View {
                     .lineLimit(1)
             }
         }
-        .badge(busyCount)
+        .badge(hasBell ? Text("") : Text(busyCount > 0 ? "\(busyCount)" : ""))
         .badgeProminence(hasBell ? .increased : .standard)
         .task {
             while !Task.isCancelled {

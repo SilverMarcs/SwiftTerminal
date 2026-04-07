@@ -15,7 +15,7 @@ struct BottomSheetView: View {
         }
         .frame(height: panel.isOpen ? panelHeight : headerHeight, alignment: .top)
         .clipped()
-        .background(colorScheme == .dark ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.bar))
+        .background(.bar)
     }
 
     private var dragBorder: some View {
