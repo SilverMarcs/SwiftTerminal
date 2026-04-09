@@ -104,12 +104,24 @@ struct TerminalContainerRepresentable: NSViewRepresentable {
                 currentDirectory: startingDirectory
             )
 
-            Task {
+            Task { [weak tab] in
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .seconds(5))
-                    guard !Task.isCancelled else { break }
+                    guard !Task.isCancelled, let tab else { break }
 
-                    if let liveDir = tab.liveCurrentDirectory, liveDir != tab.currentDirectory {
+                    guard let pid = tab.localProcessTerminalView?.process.shellPid, pid > 0 else { continue }
+
+                    var pathInfo = proc_vnodepathinfo()
+                    let size = MemoryLayout<proc_vnodepathinfo>.size
+                    let result = proc_pidinfo(pid, PROC_PIDVNODEPATHINFO, 0, &pathInfo, Int32(size))
+                    guard result == size else { continue }
+
+                    let liveDir = withUnsafePointer(to: pathInfo.pvi_cdir.vip_path) { ptr in
+                        ptr.withMemoryRebound(to: CChar.self, capacity: Int(MAXPATHLEN)) {
+                            String(cString: $0)
+                        }
+                    }
+                    if !liveDir.isEmpty, liveDir != tab.currentDirectory {
                         tab.currentDirectory = liveDir
                     }
                 }

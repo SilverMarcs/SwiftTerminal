@@ -28,7 +28,7 @@ struct DocumentTabBar: View {
             tabStrip(terminals: terminals)
             Button {
                 let terminal = workspace.addTerminal(
-                    currentDirectory: appState.selectedTerminal?.liveCurrentDirectory,
+                    currentDirectory: appState.selectedTerminal?.currentDirectory,
                     after: appState.selectedTerminal
                 )
                 appState.selectedTerminal = terminal

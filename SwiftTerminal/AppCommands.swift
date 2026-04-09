@@ -179,7 +179,7 @@ struct AppCommands: Commands {
                 Button {
                     guard let workspace = appState.selectedWorkspace else { return }
                     let terminal = workspace.addTerminal(
-                        currentDirectory: appState.selectedTerminal?.liveCurrentDirectory,
+                        currentDirectory: appState.selectedTerminal?.currentDirectory,
                         after: appState.selectedTerminal
                     )
                     appState.selectedTerminal = terminal
