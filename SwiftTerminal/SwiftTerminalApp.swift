@@ -40,5 +40,9 @@ struct SwiftTerminalApp: App {
         }
         .defaultSize(width: 875, height: 625)
         .restorationBehavior(.disabled)
+
+        Settings {
+            SettingsView()
+        }
     }
 }

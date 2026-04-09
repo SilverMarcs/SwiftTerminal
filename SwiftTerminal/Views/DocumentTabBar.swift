@@ -3,6 +3,7 @@ import SwiftUI
 struct DocumentTabBar: View {
     @Environment(AppState.self) private var appState
     @Environment(\.colorScheme) private var colorScheme
+    @AppStorage("hideTabBarWithSingleTab") private var hideTabBarWithSingleTab = false
     let workspace: Workspace
     @State private var hoveredTabID: UUID?
     @State private var draggedTabID: UUID?
@@ -20,7 +21,7 @@ struct DocumentTabBar: View {
 
     var body: some View {
         let terminals = self.terminals
-        if terminals.count > 1 {
+        if terminals.count > 1 || (terminals.count == 1 && !hideTabBarWithSingleTab) {
             tabContent(terminals: terminals)
         }
     }
