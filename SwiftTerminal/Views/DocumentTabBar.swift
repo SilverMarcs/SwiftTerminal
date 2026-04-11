@@ -14,16 +14,14 @@ struct DocumentTabBar: View {
     @State private var renamingTab: Terminal?
     @State private var processNames: [UUID: String] = [:]
 
-    // Read the stored relationship directly to ensure SwiftData observation fires
-    private var terminals: [Terminal] {
-        workspace.unsortedTerminals.sorted { $0.sortOrder < $1.sortOrder }
-    }
-
     var body: some View {
-        let terminals = self.terminals
-        if terminals.count > 1 || (terminals.count == 1 && !hideTabBarWithSingleTab) {
-            tabContent(terminals: terminals)
-        }
+        let terminals = workspace.terminals
+        let isVisible = terminals.count > 1 || (terminals.count == 1 && !hideTabBarWithSingleTab)
+        tabContent(terminals: terminals)
+            .frame(height: isVisible ? nil : 0)
+            .opacity(isVisible ? 1 : 0)
+            .allowsHitTesting(isVisible)
+            .clipped()
     }
 
     @ViewBuilder
@@ -50,7 +48,7 @@ struct DocumentTabBar: View {
         .task {
             while !Task.isCancelled {
                 var names: [UUID: String] = [:]
-                for terminal in workspace.unsortedTerminals {
+                for terminal in terminals {
                     if let name = terminal.foregroundProcessName {
                         names[terminal.id] = name
                     }
@@ -203,7 +201,7 @@ struct DocumentTabBar: View {
 
     private func handleDragChanged(terminal: Terminal, translation: CGFloat, tabStride: CGFloat) {
         if draggedTabID != terminal.id {
-            let sorted = self.terminals
+            let sorted = workspace.terminals
             guard let originalIdx = sorted.firstIndex(where: { $0.id == terminal.id }) else { return }
             draggedTabID = terminal.id
             dragOriginalIndex = originalIdx
@@ -213,7 +211,7 @@ struct DocumentTabBar: View {
         }
 
         guard let originalIdx = dragOriginalIndex else { return }
-        let count = self.terminals.count
+        let count = workspace.terminals.count
 
         let delta = translation - lastDragTranslation
         lastDragTranslation = translation
@@ -251,7 +249,7 @@ struct DocumentTabBar: View {
         // so the dragged tab slides smoothly to rest instead of snapping.
         withAnimation(.snappy(duration: 0.22)) {
             if originalIdx != currentIdx {
-                let sorted = self.terminals
+                let sorted = workspace.terminals
                 if let dragged = sorted.first(where: { $0.id == draggedID }) {
                     var newOrder = sorted
                     newOrder.remove(at: originalIdx)
@@ -299,7 +297,7 @@ struct DocumentTabBar: View {
 
     private func performClose(_ terminal: Terminal) {
         if appState.selectedTerminal === terminal {
-            let terminals = self.terminals
+            let terminals = workspace.terminals
             if let idx = terminals.firstIndex(where: { $0 === terminal }) {
                 if idx + 1 < terminals.count {
                     appState.selectedTerminal = terminals[idx + 1]

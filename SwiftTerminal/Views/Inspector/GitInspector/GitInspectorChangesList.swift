@@ -38,18 +38,21 @@ struct GitInspectorChangesList: View {
                     }
                 }
 
-                ForEach(snapshot.unpushedCommits) { commit in
-                    let binding = commitExpandedBinding(for: commit.hash)
-                    Section(isExpanded: binding) {
-                        commitFileRows(commit.files, commit: commit)
-                    } header: {
-                        sectionHeader(
-                            title: commit.message,
-                            systemImage: "circle.fill",
-                            isExpanded: binding
-                        )
-                        .contextMenu {
-                            GitCommitContextMenu(commit: commit, snapshot: snapshot, onAction: handleAction)
+                if !snapshot.unpushedCommits.isEmpty {
+                    Section {
+                        ForEach(snapshot.unpushedCommits) { commit in
+                            Label {
+                                Text(commit.message)
+                                    .lineLimit(1)
+                            } icon: {
+                                Image(systemName: "circle.fill")
+                                    .foregroundStyle(.accent)
+                            }
+                            .font(.subheadline)
+                            .contextMenu {
+                                GitCommitContextMenu(commit: commit, snapshot: snapshot, onAction: handleAction)
+                            }
+                            .listRowSeparator(.hidden)
                         }
                     }
                 }
@@ -58,13 +61,7 @@ struct GitInspectorChangesList: View {
         .contextMenu(forSelectionType: String.self) { items in
             if let id = items.first, let (file, stage, snap) = resolveFile(id: id) {
                 let staged = stage == .staged
-                if !id.hasPrefix("commit:") {
-                    GitFileContextMenu(files: [file], staged: staged, snapshot: snap, onAction: handleAction)
-                } else if file.kind != .deleted {
-                    Button { onShowInFileTree?(file.fileURL) } label: {
-                        Label("Show in File Tree", systemImage: "sidebar.trailing")
-                    }
-                }
+                GitFileContextMenu(files: [file], staged: staged, snapshot: snap, onAction: handleAction)
             }
         } primaryAction: { items in
             for id in items {
@@ -141,47 +138,10 @@ struct GitInspectorChangesList: View {
         .listRowSeparator(.hidden)
     }
 
-    @ViewBuilder
-    private func commitFileRows(_ files: [GitChangedFile], commit: GitUnpushedCommit) -> some View {
-        let rows = files.map { GitFileRow(id: "commit:\(commit.hash):\($0.repositoryRelativePath)", file: $0) }
-        ForEach(rows) { row in
-            FileLabel(name: row.file.fileURL.lastPathComponent, icon: row.file.fileURL.fileIcon) {
-                GitStatusBadge(kind: row.file.kind, staged: true)
-            }
-            .tag(row.id)
-        }
-        .listRowSeparator(.hidden)
-    }
-
     // MARK: - Bindings & Helpers
-
-    private func commitExpandedBinding(for hash: String) -> Binding<Bool> {
-        Binding(
-            get: { state.expandedCommitHashes.contains(hash) },
-            set: { isExpanded in
-                if isExpanded {
-                    state.expandedCommitHashes.insert(hash)
-                } else {
-                    state.expandedCommitHashes.remove(hash)
-                }
-            }
-        )
-    }
 
     private func resolveFile(id: String) -> (GitChangedFile, GitDiffStage, GitRepositoryStatusSnapshot)? {
         guard let snapshot else { return nil }
-
-        if id.hasPrefix("commit:") {
-            let remainder = id.dropFirst(7)
-            guard let separator = remainder.firstIndex(of: ":") else { return nil }
-            let hash = String(remainder[remainder.startIndex..<separator])
-            let path = String(remainder[remainder.index(after: separator)...])
-            if let commit = snapshot.unpushedCommits.first(where: { $0.hash == hash }),
-               let file = commit.files.first(where: { $0.repositoryRelativePath == path }) {
-                return (file, .commit(hash: hash), snapshot)
-            }
-            return nil
-        }
 
         let staged = id.hasPrefix("staged:")
         let path = String(id.drop(while: { $0 != ":" }).dropFirst())
