@@ -3,114 +3,40 @@ import SwiftUI
 struct BottomSheetView: View {
     let directoryURL: URL
     @Environment(EditorPanel.self) private var panel
+    @Environment(\.colorScheme) var colorScheme
+    @AppStorage("editorPanelHeight") private var panelHeight: Double = 250
+    @State private var measuredHeaderHeight: CGFloat = 0
+
+    /// 1px drag border + measured header from PanelLayout.
+    private var collapsedHeight: CGFloat { 1 + measuredHeaderHeight }
+
     var body: some View {
         VStack(spacing: 0) {
-            header
-            Rectangle()
-                .fill(Color(nsColor: .gridColor))
-                .frame(height: 1)
+            dragBorder
             content
         }
+        .frame(maxHeight: panel.isOpen ? panelHeight : collapsedHeight, alignment: .top)
+        .onPreferenceChange(PanelHeaderHeightKey.self) { measuredHeaderHeight = $0 }
+        .background(.bar)
     }
 
-    // MARK: - Header
-
-    private var header: some View {
-        HStack(spacing: 6) {
-            Button { panel.goBack() } label: {
-                Image(systemName: "chevron.left")
-            }
-            .buttonStyle(.borderless)
-            .disabled(!panel.canGoBack)
-            .help("Back")
-
-            Button { panel.goForward() } label: {
-                Image(systemName: "chevron.right")
-            }
-            .buttonStyle(.borderless)
-            .disabled(!panel.canGoForward)
-            .help("Forward")
-
-            Divider()
-                .frame(height: 15)
-                .padding(.horizontal, 3)
-
-            contentTitle
-
-            Spacer()
-
-            contentActions
-
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    panel.toggle()
-                }
-            } label: {
-                Image(systemName: "inset.filled.bottomthird.square")
-                    .foregroundStyle(panel.isOpen ? .accent : .secondary)
-            }
-            .buttonStyle(.borderless)
-            .help("Toggle Panel")
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(.background.secondary)
+    private var borderColor: Color {
+        colorScheme == .dark ? Color(nsColor: .shadowColor) : Color(nsColor: .gridColor)
     }
 
-    @ViewBuilder
-    private var contentTitle: some View {
-        switch panel.content {
-        case .file(let url):
-            Image(nsImage: url.fileIcon)
-                .resizable()
-                .frame(width: 16, height: 16)
-            Text(url.relativePath(from: directoryURL))
-                .font(.subheadline.weight(.medium))
-                .lineLimit(1)
-                .truncationMode(.middle)
-            if panel.isDirty {
-                Circle()
-                    .fill(.secondary)
-                    .frame(width: 6, height: 6)
-                    .help("Unsaved changes")
+    private var dragBorder: some View {
+        Rectangle()
+            .fill(borderColor)
+            .frame(height: 1)
+            .overlay {
+                Rectangle()
+                    .fill(.clear)
+                    .frame(height: 8)
+                    .contentShape(Rectangle())
+                    .cursor(.resizeUpDown)
+                    .gesture(resizeGesture)
             }
-        case .diff(let ref):
-            Image(nsImage: ref.fileURL.fileIcon)
-                .resizable()
-                .frame(width: 16, height: 16)
-            Text(ref.repositoryRelativePath)
-                .font(.subheadline.weight(.medium))
-                .lineLimit(1)
-                .truncationMode(.middle)
-            GitStatusBadge(kind: ref.kind, staged: ref.stage != .unstaged)
-        case .none:
-            EmptyView()
-        }
     }
-
-    @ViewBuilder
-    private var contentActions: some View {
-        switch panel.content {
-        case .file:
-            Button { panel.saveRequested = true } label: {
-                Image(systemName: "opticaldiscdrive")
-            }
-            .buttonStyle(.borderless)
-            .keyboardShortcut("s", modifiers: .command)
-            .disabled(!panel.isDirty)
-            .help("Save")
-        case .diff(let ref):
-            Button { panel.openFile(ref.fileURL) } label: {
-                Image(systemName: "doc.text")
-            }
-            .buttonStyle(.borderless)
-            .help("Open File")
-        case .none:
-            EmptyView()
-        }
-    }
-
-    // MARK: - Content
 
     @ViewBuilder
     private var content: some View {
@@ -120,7 +46,35 @@ struct BottomSheetView: View {
         case .diff(let ref):
             DiffPanel(reference: ref)
         case .none:
-            EmptyView()
+            PanelLayout {
+                // no title
+            } actions: {
+                // no actions
+            } content: {
+                // no content
+            }
+        }
+    }
+
+    @State private var dragStartHeight: Double?
+
+    private var resizeGesture: some Gesture {
+        DragGesture(minimumDistance: 1)
+            .onChanged { value in
+                if dragStartHeight == nil { dragStartHeight = panelHeight }
+                let proposed = (dragStartHeight ?? panelHeight) - value.translation.height
+                panelHeight = min(max(100, proposed), 800)
+            }
+            .onEnded { _ in
+                dragStartHeight = nil
+            }
+    }
+}
+
+extension View {
+    func cursor(_ cursor: NSCursor) -> some View {
+        onHover { inside in
+            if inside { cursor.push() } else { NSCursor.pop() }
         }
     }
 }

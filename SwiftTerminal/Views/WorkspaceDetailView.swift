@@ -1,90 +1,74 @@
 import SwiftUI
 
 struct WorkspaceDetailView: View {
-    @Bindable var workspace: Workspace
+    let workspace: Workspace
     @Environment(AppState.self) private var appState
-    @FocusState private var isTerminalFocused: Bool
-    @State private var editorPanel = EditorPanel()
-    @AppStorage("editorPanelHeight") private var panelHeight: Double = 250
+    @State private var showingScratchPad = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                TerminalContainerRepresentable(
-                    tabs: workspace.tabs,
-                    selectedTab: workspace.selectedTab
-                )
-                .focusable()
-                .focusEffectDisabled()
-                .focused($isTerminalFocused)
-                .containerRelativeFrame(.vertical)
+        VStack {
+            if let terminal = appState.selectedTerminal {
+                TerminalContainerRepresentable(tab: terminal, appState: appState)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.bottom, 30)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            if editorPanel.content != nil {
-                Rectangle()
-                    .fill(Color(nsColor: .gridColor))
-                    .frame(height: 1)
-                    .overlay {
-                        if editorPanel.isOpen {
-                            Rectangle()
-                                .fill(.clear)
-                                .frame(height: 20)
-                                .contentShape(Rectangle())
-                                .cursor(.resizeUpDown)
-                                .gesture(
-                                    DragGesture(minimumDistance: 1)
-                                        .onChanged { value in
-                                            let delta = -value.translation.height
-                                            panelHeight = max(100, panelHeight + delta)
-                                        }
-                                )
-                        }
-                    }
-                BottomSheetView(
-                    directoryURL: workspace.directory.map { URL(fileURLWithPath: $0) } ?? URL(fileURLWithPath: "/")
-                )
-                .frame(height: editorPanel.isOpen ? panelHeight : 30, alignment: .top)
+        }
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    showingScratchPad = true
+                } label: {
+                    Label("Scratch Pad", systemImage: "note.text")
+                }
             }
+        }
+        .sheet(isPresented: $showingScratchPad) {
+            ScratchPadSheet(workspace: workspace)
         }
         .navigationTitle(workspace.name)
-        .navigationSubtitle(workspace.selectedTab?.displayDirectory ?? "")
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .task(id: workspace.selectedTab?.id) {
-            focusTerminal()
-        }
+        .navigationSubtitle(workspace.directory.replacingOccurrences(of: NSHomeDirectory(), with: "~"))
         .safeAreaBar(edge: .top, spacing: 0) {
-            if workspace.tabs.count > 1 {
-                DocumentTabBar(workspace: workspace)
+            DocumentTabBar(workspace: workspace)
+        }
+        .overlay(alignment: .bottom) {
+            BottomSheetView(directoryURL: workspace.url)
+        }
+        .environment(workspace.editorPanel)
+        .environment(\.showInFileTree) { url in
+            workspace.inspectorState.revealInFileTree(url, relativeTo: workspace.url)
+        }
+        .task(id: workspace) {
+            appState.selectedTerminal = workspace.terminals.first ?? workspace.addTerminal()
+        }
+        .onChange(of: appState.selectedTerminal) {
+            appState.selectedTerminal?.hasBellNotification = false
+        }
+        .alert(
+            "Close Tab?",
+            isPresented: Binding(
+                get: { appState.terminalPendingClose != nil },
+                set: { if !$0 { appState.terminalPendingClose = nil } }
+            )
+        ) {
+            Button("Close", role: .destructive) {
+                guard let terminal = appState.terminalPendingClose else { return }
+                let next = workspace.terminalAfter(terminal) ?? workspace.terminalBefore(terminal)
+                workspace.closeTerminal(terminal)
+                if appState.selectedTerminal === terminal {
+                    appState.selectedTerminal = next
+                }
+                appState.terminalPendingClose = nil
             }
-        }
-        .inspector(isPresented: Bindable(appState).showingInspector) {
-            if let directory = workspace.directory {
-                InspectorView(directoryURL: URL(fileURLWithPath: directory))
-                    .inspectorColumnWidth(min: 180, ideal: 220, max: 360)
+            Button("Cancel", role: .cancel) {
+                appState.terminalPendingClose = nil
             }
-        }
-        .environment(editorPanel)
-        .onChange(of: appState.panelToggleToken) {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                editorPanel.toggle()
+        } message: {
+            if let terminal = appState.terminalPendingClose, let name = terminal.foregroundProcessName {
+                Text("\"\(name)\" is still running in this tab. Are you sure you want to close it?")
+            } else {
+                Text("A process is still running in this tab. Are you sure you want to close it?")
             }
-        }
-    }
-
-    private func focusTerminal() {
-        guard workspace.selectedTab != nil else { return }
-
-        DispatchQueue.main.async {
-            isTerminalFocused = true
-        }
-    }
-}
-
-private extension View {
-    func cursor(_ cursor: NSCursor) -> some View {
-        onHover { inside in
-            if inside { cursor.push() } else { NSCursor.pop() }
         }
     }
 }

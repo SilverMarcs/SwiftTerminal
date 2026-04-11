@@ -18,7 +18,7 @@ struct FileItem: Identifiable, Hashable {
     }
 
     static func == (lhs: FileItem, rhs: FileItem) -> Bool {
-        lhs.url == rhs.url && lhs.gitStatus == rhs.gitStatus
+        lhs.url == rhs.url && lhs.gitStatus == rhs.gitStatus && lhs.children == rhs.children
     }
 
     func hash(into hasher: inout Hasher) {
@@ -44,6 +44,15 @@ struct FileItem: Identifiable, Hashable {
         return copy
     }
 
+    /// Clears git statuses from this item and all descendants.
+    mutating func clearGitStatuses() {
+        gitStatus = nil
+        if var kids = children {
+            for i in kids.indices { kids[i].clearGitStatuses() }
+            children = kids
+        }
+    }
+
     /// Applies git statuses to this item and all descendants.
     /// Directories bubble up the highest-priority status from their children.
     mutating func applyGitStatuses(_ statuses: [URL: GitChangeKind]) {
@@ -66,23 +75,32 @@ struct FileItem: Identifiable, Hashable {
         }
     }
 
-    static func buildTree(at directoryURL: URL, showHiddenFiles: Bool = false) -> [FileItem] {
+    static func buildTree(at directoryURL: URL, showHiddenFiles: Bool = false, maxDepth: Int = 15) -> [FileItem] {
+        buildTree(at: directoryURL, showHiddenFiles: showHiddenFiles, maxDepth: maxDepth, currentDepth: 0)
+    }
+
+    private static func buildTree(at directoryURL: URL, showHiddenFiles: Bool, maxDepth: Int, currentDepth: Int) -> [FileItem] {
         guard let contents = try? FileManager.default.contentsOfDirectory(
             at: directoryURL,
             includingPropertiesForKeys: [.isDirectoryKey],
             options: showHiddenFiles ? [] : [.skipsHiddenFiles]
         ) else { return [] }
 
+        let atDepthLimit = currentDepth + 1 >= maxDepth
+
         return contents
             .filter { !ignoredNames.contains($0.lastPathComponent) }
             .compactMap { url -> FileItem? in
                 let values = try? url.resourceValues(forKeys: [.isDirectoryKey])
                 let isDir = values?.isDirectory ?? false
+                let children: [FileItem]? = isDir
+                    ? (atDepthLimit ? nil : buildTree(at: url, showHiddenFiles: showHiddenFiles, maxDepth: maxDepth, currentDepth: currentDepth + 1))
+                    : nil
                 return FileItem(
                     name: url.lastPathComponent,
                     url: url,
                     isDirectory: isDir,
-                    children: isDir ? buildTree(at: url, showHiddenFiles: showHiddenFiles) : nil
+                    children: children
                 )
             }
             .sorted { lhs, rhs in

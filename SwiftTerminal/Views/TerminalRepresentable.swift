@@ -1,12 +1,12 @@
 import SwiftUI
 import SwiftTerm
 
-/// A single NSViewRepresentable that manages ALL terminal views at the AppKit level.
-/// Terminal views are retained by TerminalTab and survive workspace/tab switches
-/// by toggling `isHidden` instead of destroying/recreating views.
+/// Displays a single terminal tab's view inside a SwiftUI hierarchy.
+/// The `LocalProcessTerminalView` is retained by `TerminalTab` so it survives
+/// tab switches without being destroyed/recreated.
 struct TerminalContainerRepresentable: NSViewRepresentable {
-    let tabs: [TerminalTab]
-    let selectedTab: TerminalTab?
+    let tab: Terminal
+    let appState: AppState
 
     func makeNSView(context: Context) -> NSView {
         let container = NSView(frame: .zero)
@@ -16,45 +16,37 @@ struct TerminalContainerRepresentable: NSViewRepresentable {
 
     func updateNSView(_ container: NSView, context: Context) {
         let coordinator = context.coordinator
-        let currentTabIDs = Set(tabs.map(\.id))
+        let terminalView: LocalProcessTerminalView
 
-        // Remove subviews for tabs no longer present
-        for subview in container.subviews {
-            guard let tv = subview as? LocalProcessTerminalView,
-                  let tabID = coordinator.tabID(for: tv),
-                  !currentTabIDs.contains(tabID) else { continue }
-            tv.isHidden = true
-            tv.removeFromSuperview()
+        if let existing = tab.localProcessTerminalView {
+            terminalView = existing
+            coordinator.register(existing, for: tab)
+        } else {
+            terminalView = coordinator.createTerminalView(for: tab, appState: appState)
         }
 
-        // Ensure each tab has a terminal view in the container
-        for tab in tabs {
-            let terminalView: LocalProcessTerminalView
+        terminalView.processDelegate = coordinator
 
-            if let existing = tab.localProcessTerminalView {
-                terminalView = existing
-                // Re-register in case the coordinator was recreated (e.g. workspace switch)
-                coordinator.register(existing, for: tab)
-            } else {
-                terminalView = coordinator.createTerminalView(for: tab)
-            }
+        // Add to container if not already a subview (never remove — just hide/show)
+        if terminalView.superview !== container {
+            terminalView.translatesAutoresizingMaskIntoConstraints = false
+            container.addSubview(terminalView)
+            NSLayoutConstraint.activate([
+                terminalView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+                terminalView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+                terminalView.topAnchor.constraint(equalTo: container.topAnchor),
+                terminalView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            ])
+        }
 
-            // Ensure delegate points to current coordinator
-            terminalView.processDelegate = coordinator
-            // Add to container if not already a subview
-            if terminalView.superview !== container {
-                terminalView.removeFromSuperview()
-                terminalView.translatesAutoresizingMaskIntoConstraints = false
-                container.addSubview(terminalView)
-                NSLayoutConstraint.activate([
-                    terminalView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-                    terminalView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-                    terminalView.topAnchor.constraint(equalTo: container.topAnchor),
-                    terminalView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-                ])
-            }
+        // Hide all, then show the selected one
+        for subview in container.subviews {
+            subview.isHidden = (subview !== terminalView)
+        }
+        terminalView.isHidden = false
 
-            terminalView.isHidden = (tab !== selectedTab)
+        DispatchQueue.main.async {
+            terminalView.window?.makeFirstResponder(terminalView)
         }
     }
 
@@ -63,47 +55,37 @@ struct TerminalContainerRepresentable: NSViewRepresentable {
     }
 
     final class Coordinator: NSObject, LocalProcessTerminalViewDelegate {
-        func hostCurrentDirectoryUpdate(source: SwiftTerm.TerminalView, directory: String?) {
-            // SwiftTerm doesn't fire this callback; directory updates are handled via polling
-        }
-        
-        /// Maps terminal view identity → (tab ID, weak tab ref) for delegate callbacks
-        private var viewMap: [ObjectIdentifier: (id: UUID, tab: TerminalTab)] = [:]
+        func hostCurrentDirectoryUpdate(source: SwiftTerm.TerminalView, directory: String?) {}
 
-        func register(_ view: LocalProcessTerminalView, for tab: TerminalTab) {
+        private var viewMap: [ObjectIdentifier: (id: UUID, tab: Terminal)] = [:]
+
+        func register(_ view: LocalProcessTerminalView, for tab: Terminal) {
             viewMap[ObjectIdentifier(view)] = (id: tab.id, tab: tab)
         }
 
-        func tabID(for view: LocalProcessTerminalView) -> UUID? {
-            viewMap[ObjectIdentifier(view)]?.id
-        }
-
-        func createTerminalView(for tab: TerminalTab) -> LocalProcessTerminalView {
+        func createTerminalView(for tab: Terminal, appState: AppState) -> LocalProcessTerminalView {
             let tv = LocalProcessTerminalView(frame: .zero)
-            tv.onBell = { [weak tab, weak tv] in
+            tv.onBell = { [weak tab, weak tv, weak appState] in
                 Task { @MainActor in
                     guard let tab else { return }
-                    // Only badge if the tab isn't currently visible to the user
-                    let isVisible = tv.map { !$0.isHidden && $0.window != nil } ?? false
+                    let isSelected = appState?.selectedTerminal === tab
+                    let isVisible = isSelected && (tv.map { !$0.isHidden && $0.window != nil } ?? false)
                     if !isVisible {
                         tab.hasBellNotification = true
                     }
                     AppDelegate.bounceDockIcon()
                     AppDelegate.updateBadge(count: 1)
-                    AppDelegate.sendNotification(
-                        workspaceID: tab.workspace?.id ?? UUID(),
-                        tabID: tab.id
-                    )
+                    AppDelegate.sendNotification(workspaceID: tab.workspace.id, terminalID: tab.id)
                 }
             }
-            
+
             tv.configureNativeColors()
             tab.localProcessTerminalView = tv
             register(tv, for: tab)
 
             let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
             let shellBasename = (shell as NSString).lastPathComponent
-            let shellName = "-" + shellBasename  // e.g. "-zsh" for login shell
+            let shellName = "-" + shellBasename
             let home = FileManager.default.homeDirectoryForCurrentUser.path
             let startingDirectory = resolvedWorkingDirectoryPath(from: tab.currentDirectory) ?? home
             var env = ProcessInfo.processInfo.environment
@@ -122,13 +104,24 @@ struct TerminalContainerRepresentable: NSViewRepresentable {
                 currentDirectory: startingDirectory
             )
 
-            // Periodically update the stored directory from the live process state
-            Task {
+            Task { [weak tab] in
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .seconds(5))
-                    guard !Task.isCancelled else { break }
+                    guard !Task.isCancelled, let tab else { break }
 
-                    if let liveDir = tab.liveCurrentDirectory, liveDir != tab.currentDirectory {
+                    guard let pid = tab.localProcessTerminalView?.process.shellPid, pid > 0 else { continue }
+
+                    var pathInfo = proc_vnodepathinfo()
+                    let size = MemoryLayout<proc_vnodepathinfo>.size
+                    let result = proc_pidinfo(pid, PROC_PIDVNODEPATHINFO, 0, &pathInfo, Int32(size))
+                    guard result == size else { continue }
+
+                    let liveDir = withUnsafePointer(to: pathInfo.pvi_cdir.vip_path) { ptr in
+                        ptr.withMemoryRebound(to: CChar.self, capacity: Int(MAXPATHLEN)) {
+                            String(cString: $0)
+                        }
+                    }
+                    if !liveDir.isEmpty, liveDir != tab.currentDirectory {
                         tab.currentDirectory = liveDir
                     }
                 }

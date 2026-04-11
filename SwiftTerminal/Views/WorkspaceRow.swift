@@ -1,64 +1,91 @@
 import SwiftUI
+import SwiftData
 
 struct WorkspaceRow: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.modelContext) private var modelContext
 
     let workspace: Workspace
-    @Binding var renamingWorkspace: Workspace?
 
-    @State private var runningProcessCount = 0
+    @State private var isRenaming = false
     @FocusState private var isNameFieldFocused: Bool
 
-    private var isRenaming: Bool {
-        renamingWorkspace == workspace
-    }
+    @State private var busyCount = 0
+    @State private var hasBell = false
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: "folder")
-                .overlay(alignment: .bottomTrailing) {
-                    if runningProcessCount > 0 {
-                        Text("\(runningProcessCount)")
-                            .font(.system(size: 8, weight: .semibold))
-                            .monospaced()
-                            .padding(4)
-                            .background(.ultraThickMaterial, in: .circle)
-                            .offset(x: 5, y: 5)
-                    }
-                }
+            if workspace.projectType != .unknown {
+                Image(workspace.projectType.iconName)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 16, height: 16)
+            } else {
+                Image(systemName: "folder")
+            }
 
             if isRenaming {
                 TextField("Workspace Name", text: Bindable(workspace).name)
                     .textFieldStyle(.plain)
                     .focused($isNameFieldFocused)
-                    .onSubmit { renamingWorkspace = nil }
-                    .onExitCommand { renamingWorkspace = nil }
+                    .onSubmit { isRenaming = false }
+                    .onExitCommand { isRenaming = false }
                     .onAppear { isNameFieldFocused = true }
             } else {
                 Text(workspace.name)
                     .lineLimit(1)
             }
         }
+        .badge(hasBell ? Text("") : Text(busyCount > 0 ? "\(busyCount)" : ""))
+        .badgeProminence(hasBell ? .increased : .standard)
         .task {
             while !Task.isCancelled {
-                runningProcessCount = workspace.runningProcessCount
+                busyCount = workspace.terminals.filter(\.hasChildProcess).count
+                hasBell = workspace.terminals.contains(where: \.hasBellNotification)
                 try? await Task.sleep(for: .seconds(2))
             }
         }
-        .badge(workspace.notificationCount)
-        .badgeProminence(.increased)
         .contextMenu {
             RenameButton()
+
+            Menu("Project Type") {
+                ForEach(ProjectType.allCases, id: \.self) { type in
+                    Button {
+                        workspace.projectType = type
+                    } label: {
+                        Label {
+                            Text(type.displayName)
+                        } icon: {
+                            if workspace.projectType == type {
+                                Image(systemName: "checkmark")
+                            } else if !type.iconName.isEmpty {
+                                Image(type.iconName)
+                            }
+                        }
+                    }
+                }
+
+                Divider()
+
+                Button("Auto-Detect") {
+                    workspace.detectProjectType()
+                }
+            }
+
             Divider()
             Button(role: .destructive) {
-                appState.removeWorkspace(workspace)
+                if appState.selectedWorkspace === workspace {
+                    appState.selectedWorkspace = nil
+                    appState.selectedTerminal = nil
+                }
+                workspace.commands.forEach { $0.runner.stop() }
+                modelContext.delete(workspace)
             } label: {
                 Label("Delete", systemImage: "trash")
             }
         }
         .renameAction {
-            appState.selectedWorkspace = workspace
-            renamingWorkspace = workspace
+            isRenaming = true
         }
     }
 }

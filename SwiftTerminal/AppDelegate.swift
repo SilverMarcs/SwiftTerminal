@@ -1,18 +1,32 @@
 import AppKit
 import UserNotifications
 
-final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
-    /// Set by SwiftTerminalApp so the delegate can navigate on notification tap.
-    var navigateToTab: ((UUID, UUID) -> Void)?
+extension Notification.Name {
+    static let navigateToSession = Notification.Name("navigateToSession")
+}
 
+final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let center = UNUserNotificationCenter.current()
         center.delegate = self
         center.requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+
+        // Remove the system "Close" (Cmd+W) from File menu so our custom Close Tab command takes priority
+        removeCloseMenuItem()
+    }
+
+    /// Removes the default File > Close menu item so that our Cmd+W shortcut always maps to Close Tab.
+    private func removeCloseMenuItem() {
+        guard let mainMenu = NSApplication.shared.mainMenu,
+              let fileMenu = mainMenu.items.first(where: { $0.submenu?.title == "File" })?.submenu else { return }
+        for item in fileMenu.items where item.keyEquivalent == "w" && item.keyEquivalentModifierMask == .command {
+            fileMenu.removeItem(item)
+            break
+        }
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
-        AppDelegate.updateBadge(count: 0)
+        NSApplication.shared.dockTile.badgeLabel = nil
     }
 
     // Show notifications even when the app is in the foreground
@@ -24,43 +38,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         completionHandler([.banner, .sound])
     }
 
-    // Handle notification tap → navigate to the originating tab
+    // Handle notification click — navigate to the workspace/terminal that triggered it
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let userInfo = response.notification.request.content.userInfo
-        if let tabIDString = userInfo["tabID"] as? String,
-           let workspaceIDString = userInfo["workspaceID"] as? String,
-           let tabID = UUID(uuidString: tabIDString),
-           let workspaceID = UUID(uuidString: workspaceIDString) {
-            navigateToTab?(workspaceID, tabID)
+        if let workspaceID = userInfo["workspaceID"] as? String,
+           let terminalID = userInfo["terminalID"] as? String {
+            NotificationCenter.default.post(
+                name: .navigateToSession,
+                object: nil,
+                userInfo: [
+                    "workspaceID": workspaceID,
+                    "terminalID": terminalID,
+                ]
+            )
         }
+        NSApplication.shared.dockTile.badgeLabel = nil
         completionHandler()
     }
 
-    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        let alert = NSAlert()
-        alert.messageText = "Quit SwiftTerminal?"
-        alert.informativeText = "Are you sure you want to quit?"
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Quit")
-        alert.addButton(withTitle: "Cancel")
-
-        let response = alert.runModal()
-        return response == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
-    }
-
-    // MARK: - Helpers
-
-    static func sendNotification(workspaceID: UUID, tabID: UUID) {
+    static func sendNotification(workspaceID: UUID, terminalID: UUID) {
         let content = UNMutableNotificationContent()
         content.title = "Terminal"
         content.body = "Terminal needs attention"
         content.sound = .default
         content.userInfo = [
-            "tabID": tabID.uuidString,
+            "terminalID": terminalID.uuidString,
             "workspaceID": workspaceID.uuidString,
         ]
 
@@ -82,5 +88,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         } else {
             NSApplication.shared.dockTile.badgeLabel = nil
         }
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        #if DEBUG
+        return .terminateNow
+        #else
+        let alert = NSAlert()
+        alert.messageText = "Quit SwiftTerminal?"
+        alert.informativeText = "Are you sure you want to quit?"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Quit")
+        alert.addButton(withTitle: "Cancel")
+
+        let response = alert.runModal()
+        return response == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
+        #endif
     }
 }

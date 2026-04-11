@@ -94,9 +94,17 @@ actor GitRepository {
 
             let relativePath = String(filePath.dropFirst(rootPath.count))
                 .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            let raw = try await self.executor.execute(
-                GitGutterDiffCommand(relativePath: relativePath), at: rootURL)
-            return GutterDiffParser.parse(raw)
+            async let unstagedRaw = self.executor.execute(
+                GitGutterDiffCommand(relativePath: relativePath, stage: .unstaged),
+                at: rootURL
+            )
+            async let stagedRaw = self.executor.execute(
+                GitGutterDiffCommand(relativePath: relativePath, stage: .staged),
+                at: rootURL
+            )
+            let unstaged = GutterDiffParser.parse(try await unstagedRaw, stage: .unstaged)
+            let staged = GutterDiffParser.parse(try await stagedRaw, stage: .staged)
+            return GutterDiffParser.merge(unstaged: unstaged, staged: staged)
         }
 
         return .empty
@@ -159,6 +167,21 @@ actor GitRepository {
         return GitDiffPresentation(raw: raw)
     }
 
+    func fullContextDiffPresentation(for reference: GitDiffReference) async throws -> GitDiffPresentation {
+        if reference.kind == .untracked {
+            return try self.presentationForUntrackedFile(reference)
+        }
+
+        let raw = try await self.executor.execute(
+            GitFullContextDiffCommand(reference: reference),
+            at: reference.repositoryRootURL
+        )
+        guard !raw.isEmpty else {
+            return GitDiffPresentation(message: "No diff available.")
+        }
+        return GitDiffPresentation(raw: raw)
+    }
+
     func stage(paths: [String], at repositoryRootURL: URL) async throws {
         try await self.executor.execute(GitStageCommand(paths: paths), at: repositoryRootURL)
     }
@@ -207,6 +230,14 @@ actor GitRepository {
 
     func stashAll(at repositoryRootURL: URL) async throws {
         try await self.executor.execute(GitStashCommand(), at: repositoryRootURL)
+    }
+
+    func stashAll(message: String, at repositoryRootURL: URL) async throws {
+        try await self.executor.execute(GitStashWithMessageCommand(message: message), at: repositoryRootURL)
+    }
+
+    func stashPop(at repositoryRootURL: URL) async throws {
+        try await self.executor.execute(GitStashPopCommand(), at: repositoryRootURL)
     }
 
     // MARK: - Private
@@ -381,7 +412,7 @@ struct GitChangedFile: Equatable, Hashable {
     var kind: GitChangeKind
 }
 
-enum GitChangeKind: String, Equatable, Hashable {
+enum GitChangeKind: String, Equatable, Hashable, Codable {
     case added
     case modified
     case deleted
@@ -473,9 +504,15 @@ struct GitBranchNameCommand: GitCommand {
 
 struct GitGutterDiffCommand: GitCommand {
     let relativePath: String
+    let stage: GutterHunkStage
 
     var arguments: [String] {
-        ["diff", "HEAD", "--no-color", "--no-ext-diff", "--unified=0", "--", relativePath]
+        switch stage {
+        case .staged:
+            ["diff", "--cached", "--no-color", "--no-ext-diff", "--unified=0", "--", relativePath]
+        case .unstaged:
+            ["diff", "--no-color", "--no-ext-diff", "--unified=0", "--", relativePath]
+        }
     }
 
     func parse(output: String) throws -> String { output }
@@ -573,12 +610,23 @@ private struct GitSwitchCommand: GitCommand {
 
 private struct GitCreateBranchCommand: GitCommand {
     let name: String
-    var arguments: [String] { ["switch", "-c", name] }
+    var arguments: [String] { ["switch", "-c", name, "--no-track"] }
     func parse(output: String) throws { }
 }
 
 private struct GitStashCommand: GitCommand {
     var arguments: [String] { ["stash", "--include-untracked"] }
+    func parse(output: String) throws { }
+}
+
+private struct GitStashWithMessageCommand: GitCommand {
+    let message: String
+    var arguments: [String] { ["stash", "push", "--include-untracked", "-m", message] }
+    func parse(output: String) throws { }
+}
+
+private struct GitStashPopCommand: GitCommand {
+    var arguments: [String] { ["stash", "pop"] }
     func parse(output: String) throws { }
 }
 

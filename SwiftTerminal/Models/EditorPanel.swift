@@ -1,7 +1,7 @@
-import Foundation
+import SwiftUI
 
 /// What the bottom editor panel should display.
-enum EditorPanelContent: Equatable {
+enum EditorPanelContent: Hashable, Codable {
     case file(URL)
     case diff(GitDiffReference)
 }
@@ -17,7 +17,7 @@ struct HighlightRequest: Equatable {
 final class EditorPanel {
     var content: EditorPanelContent?
     var isDirty = false
-    var isHidden = false
+    var isOpen = false
 
     /// Toggled by the header save button; observed by file editor content.
     var saveRequested = false
@@ -32,15 +32,12 @@ final class EditorPanel {
     /// Pending highlight to apply after the file loads.
     var highlightRequest: HighlightRequest?
 
-    var isOpen: Bool { content != nil && !isHidden }
     var showUnsavedAlert: Bool { pendingContent != nil }
     var canGoBack: Bool { !backStack.isEmpty }
     var canGoForward: Bool { !forwardStack.isEmpty }
 
     func toggle() {
-        if content != nil {
-            isHidden.toggle()
-        }
+        isOpen.toggle()
     }
 
     func openFile(_ url: URL) {
@@ -54,7 +51,14 @@ final class EditorPanel {
         highlightRequest = request
     }
 
-    func openDiff(_ reference: GitDiffReference) {
+    func openDiff(_ fileURL: URL, in repositoryRoot: URL, stage: GitDiffStage = .unstaged, kind: GitChangeKind = .modified) {
+        let reference = GitDiffReference(
+            repositoryRootURL: repositoryRoot,
+            fileURL: fileURL,
+            repositoryRelativePath: fileURL.relativePath(from: repositoryRoot),
+            stage: stage,
+            kind: kind
+        )
         navigate(to: .diff(reference))
     }
 
@@ -131,7 +135,7 @@ final class EditorPanel {
     private var pendingNavigation: PendingNavigation?
 
     private func navigate(to newContent: EditorPanelContent) {
-        isHidden = false
+        isOpen = true
         guard newContent != content else { return }
         if isDirty {
             pendingContent = newContent
@@ -151,7 +155,7 @@ final class EditorPanel {
             forwardStack.append(current)
         }
         content = previous
-        isHidden = false
+        isOpen = true
     }
 
     private func performForward() {
@@ -160,6 +164,6 @@ final class EditorPanel {
             backStack.append(current)
         }
         content = next
-        isHidden = false
+        isOpen = true
     }
 }

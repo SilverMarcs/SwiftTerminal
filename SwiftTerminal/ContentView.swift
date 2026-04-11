@@ -1,14 +1,16 @@
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
     @Environment(AppState.self) private var appState
+    @Query private var workspaces: [Workspace]
+    @State private var searchText = ""
 
     var body: some View {
-        @Bindable var appState = appState
-
         NavigationSplitView {
-            WorkspaceList()
+            WorkspaceListView(searchText: searchText)
                 .navigationSplitViewColumnWidth(min: 160, ideal: 200, max: 300)
+                .searchable(text: $searchText, placement: .sidebar, prompt: "Filter workspaces")
         } detail: {
             if let workspace = appState.selectedWorkspace {
                 WorkspaceDetailView(workspace: workspace)
@@ -17,22 +19,30 @@ struct ContentView: View {
                 ContentUnavailableView(
                     "No Workspace Selected",
                     systemImage: "sidebar.left",
-                    description: Text("Select or create a workspace to get started.")
+                    description: Text("Select a workspace to get started.")
                 )
             }
         }
-        .alert("Close Tab?", isPresented: $appState.showCloseConfirmation) {
-            Button("Cancel", role: .cancel) {
-                appState.tabToClose = nil
+        .inspector(isPresented: Bindable(appState).showingInspector) {
+            if let workspace = appState.selectedWorkspace {
+                InspectorView(workspace: workspace)
+                    .environment(workspace.editorPanel)
+                    .id(workspace.url)
+                    .inspectorColumnWidth(min: 240, ideal: 240, max: 360)
             }
-            Button("Close", role: .confirm) {
-                if let tab = appState.tabToClose {
-                    appState.selectedWorkspace?.closeTab(tab)
+        }
+        .focusedSceneValue(\.editorPanel, appState.selectedWorkspace?.editorPanel)
+        .focusedSceneValue(\.isMainWindow, true)
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToSession)) { notification in
+            guard let workspaceID = notification.userInfo?["workspaceID"] as? String,
+                  let terminalID = notification.userInfo?["terminalID"] as? String else { return }
+
+            if let workspace = workspaces.first(where: { $0.id.uuidString == workspaceID }) {
+                appState.selectedWorkspace = workspace
+                if let terminal = workspace.terminals.first(where: { $0.id.uuidString == terminalID }) {
+                    appState.selectedTerminal = terminal
                 }
-                appState.tabToClose = nil
             }
-        } message: {
-            Text("This tab has an active process. Are you sure you want to close it?")
         }
     }
 }

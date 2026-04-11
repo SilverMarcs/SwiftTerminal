@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 
-enum GitDiffStage: Hashable {
+enum GitDiffStage: Hashable, Codable {
     case staged
     case unstaged
     case commit(hash: String)
@@ -32,7 +32,7 @@ struct GitDiffLineNumbers: Hashable {
     var new: Int?
 }
 
-struct GitDiffReference: Hashable {
+struct GitDiffReference: Hashable, Codable {
     var repositoryRootURL: URL
     var fileURL: URL
     var repositoryRelativePath: String
@@ -56,41 +56,77 @@ enum GutterChangeKind: Hashable {
     }
 }
 
+enum GutterHunkStage: Hashable {
+    case staged
+    case unstaged
+}
+
+struct GutterChangeMarker: Hashable {
+    var kind: GutterChangeKind
+    var stage: GutterHunkStage
+
+    var color: NSColor {
+        switch stage {
+        case .staged:
+            switch kind {
+            case .added: .systemGreen
+            case .modified: .systemBlue
+            case .deleted: .systemRed
+            }
+        case .unstaged:
+            kind.color
+        }
+    }
+}
+
 struct GutterDiffHunk {
     var newStart: Int
     var newCount: Int
     var oldStart: Int
     var oldCount: Int
     var kind: GutterChangeKind
+    var stage: GutterHunkStage
     var oldContent: String
+    var header: String
+    var patchText: String
 }
 
 struct GutterDiffResult {
-    var markers: [Int: GutterChangeKind]
+    var markers: [Int: GutterChangeMarker]
     var hunks: [GutterDiffHunk]
     static let empty = GutterDiffResult(markers: [:], hunks: [])
 }
 
 enum GutterDiffParser {
-    static func parse(_ raw: String) -> GutterDiffResult {
+    static func parse(_ raw: String, stage: GutterHunkStage) -> GutterDiffResult {
         guard !raw.isEmpty else { return .empty }
 
-        var markers: [Int: GutterChangeKind] = [:]
+        var markers: [Int: GutterChangeMarker] = [:]
         var hunks: [GutterDiffHunk] = []
         let lines = raw.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         var index = 0
+        var fileHeaderLines: [String] = []
+
+        while index < lines.count && !lines[index].hasPrefix("@@") {
+            fileHeaderLines.append(lines[index])
+            index += 1
+        }
+        let fileHeader = fileHeaderLines.joined(separator: "\n")
 
         while index < lines.count {
             let line = lines[index]
             guard line.hasPrefix("@@") else { index += 1; continue }
             guard let header = GutterHunkHeader(line) else { index += 1; continue }
+            let headerLine = line
             index += 1
 
             var removedLines: [String] = []
             var addedLines: [String] = []
+            var rawHunkLines: [String] = [headerLine]
 
             while index < lines.count && !lines[index].hasPrefix("@@") && !lines[index].hasPrefix("diff ") {
                 let hunkLine = lines[index]
+                rawHunkLines.append(hunkLine)
                 if hunkLine.hasPrefix("-") && !hunkLine.hasPrefix("---") {
                     removedLines.append(String(hunkLine.dropFirst()))
                 } else if hunkLine.hasPrefix("+") && !hunkLine.hasPrefix("+++") {
@@ -111,21 +147,37 @@ enum GutterDiffParser {
             }
 
             if kind == .deleted {
-                markers[max(header.newStart, 1)] = .deleted
+                markers[max(header.newStart, 1)] = GutterChangeMarker(kind: .deleted, stage: stage)
             } else {
                 for lineNum in header.newStart..<(header.newStart + header.newCount) {
-                    markers[lineNum] = kind
+                    markers[lineNum] = GutterChangeMarker(kind: kind, stage: stage)
                 }
             }
 
+            let patchText = fileHeader + "\n" + rawHunkLines.joined(separator: "\n") + "\n"
             hunks.append(GutterDiffHunk(
                 newStart: header.newStart, newCount: header.newCount,
                 oldStart: header.oldStart, oldCount: header.oldCount,
-                kind: kind, oldContent: removedLines.joined(separator: "\n")
+                kind: kind,
+                stage: stage,
+                oldContent: removedLines.joined(separator: "\n"),
+                header: headerLine,
+                patchText: patchText
             ))
         }
 
         return GutterDiffResult(markers: markers, hunks: hunks)
+    }
+
+    static func merge(unstaged: GutterDiffResult, staged: GutterDiffResult) -> GutterDiffResult {
+        var markers = staged.markers
+        for (line, marker) in unstaged.markers {
+            markers[line] = marker
+        }
+        return GutterDiffResult(
+            markers: markers,
+            hunks: unstaged.hunks + staged.hunks
+        )
     }
 }
 
@@ -167,6 +219,8 @@ struct GitDiffPresentation {
     var lineKinds: [Int: GitDiffLineKind]
     var lineNumbers: [Int: GitDiffLineNumbers]
     var hunkSeparatorLines: Set<Int>
+
+    var firstChangedLine: Int? { lineKinds.keys.min() }
 
     init(raw: String) {
         let parsed = Self.parse(raw)
@@ -417,6 +471,23 @@ struct GitDiffCommand: GitCommand {
                 ["diff", "--no-color", "--no-ext-diff", "--", reference.repositoryRelativePath]
             case .commit(let hash):
                 ["show", "--format=", "--no-color", "--no-ext-diff", hash, "--", reference.repositoryRelativePath]
+        }
+    }
+
+    func parse(output: String) throws -> String { output }
+}
+
+struct GitFullContextDiffCommand: GitCommand {
+    let reference: GitDiffReference
+
+    var arguments: [String] {
+        switch reference.stage {
+            case .staged:
+                ["diff", "--no-color", "--no-ext-diff", "-U99999", "--cached", "--", reference.repositoryRelativePath]
+            case .unstaged:
+                ["diff", "--no-color", "--no-ext-diff", "-U99999", "--", reference.repositoryRelativePath]
+            case .commit(let hash):
+                ["show", "--format=", "--no-color", "--no-ext-diff", "-U99999", hash, "--", reference.repositoryRelativePath]
         }
     }
 

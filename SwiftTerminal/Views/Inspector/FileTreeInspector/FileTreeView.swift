@@ -2,98 +2,104 @@ import SwiftUI
 
 struct FileTreeView: View {
     let directoryURL: URL
+    @Bindable var state: FileTreeInspectorState
 
     @Environment(EditorPanel.self) private var editorPanel
-    @State private var model = FileTreeModel()
-    @State private var selectedID: FileItem.ID?
-    @State private var expandedIDs: Set<String> = []
-    @State private var savedExpandedIDs: Set<String>?
     @AppStorage("showHiddenFiles") private var showHiddenFiles = false
 
     var body: some View {
-        List(selection: $selectedID) {
-            ForEach(model.displayItems) { item in
-                FileNodeView(item: item, expandedIDs: $expandedIDs, onAction: handleAction)
+        List(selection: $state.selectedID) {
+            ForEach(state.model.displayItems) { item in
+                FileNodeView(item: item)
                     .tag(item.id)
             }
         }
+        .environment(state)
+        .environment(\.fileTreeAction, handleAction)
         .scrollContentBackground(.hidden)
         .contextMenu {
+            Button { handleAction(.newFile(directoryURL)) } label: {
+                Label("New File", systemImage: "doc.badge.plus")
+            }
+            Button { handleAction(.newFolder(directoryURL)) } label: {
+                Label("New Folder", systemImage: "folder.badge.plus")
+            }
+            Divider()
             Toggle("Show Hidden Files", isOn: $showHiddenFiles)
         }
         .safeAreaBar(edge: .bottom) {
-            FileTreeFilterBar(
-                searchText: $model.searchText,
-                showChangedOnly: $model.showChangedOnly,
-                showHiddenFiles: $showHiddenFiles,
-                onToggleChanged: toggleChangedFilter
-            )
+            SearchBar(
+                text: $state.model.searchText,
+                placeholder: "Search for Files",
+                focusTrigger: state.searchFocusTrigger,
+                onSubmit: submitSearch
+            ) {
+                Button(action: toggleChangedFilter) {
+                    Image(systemName: state.model.showChangedOnly ? "plusminus.circle.fill" : "plusminus.circle")
+                        .foregroundStyle(state.model.showChangedOnly ? Color.accentColor : .secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Show only git-changed files")
+            }
+            .padding(11)
         }
         .task(id: directoryURL) {
-            model.showHiddenFiles = showHiddenFiles
-            model.load(directoryURL: directoryURL)
-            await model.refreshGit(directoryURL: directoryURL)
+            state.model.showHiddenFiles = showHiddenFiles
+            state.model.load(directoryURL: directoryURL)
+            await state.model.refreshGit(directoryURL: directoryURL)
         }
-        .task(id: directoryURL, priority: .low) {
-            await pollGitStatus()
+        .gitPolling(id: directoryURL) {
+            await state.model.refreshGit(directoryURL: directoryURL)
         }
-        .onChange(of: model.searchText) { oldValue, newValue in
+        .onChange(of: state.model.submittedSearchText) { oldValue, newValue in
             if !newValue.isEmpty && oldValue.isEmpty {
-                // Starting a search — save expansion state and expand all
-                if savedExpandedIDs == nil {
-                    savedExpandedIDs = expandedIDs
+                if state.savedExpandedIDs == nil {
+                    state.savedExpandedIDs = state.expandedIDs
                 }
-                expandAllFolders(in: model.displayItems)
+                expandAllFolders(in: state.model.displayItems)
             } else if !newValue.isEmpty {
-                // Search text changed — expand all filtered results
-                expandAllFolders(in: model.displayItems)
-            } else if newValue.isEmpty && !oldValue.isEmpty && !model.showChangedOnly {
-                // Search cleared and no other filter active — restore
-                if let saved = savedExpandedIDs {
-                    expandedIDs = saved
-                    savedExpandedIDs = nil
+                expandAllFolders(in: state.model.displayItems)
+            } else if newValue.isEmpty && !oldValue.isEmpty && !state.model.showChangedOnly {
+                if let saved = state.savedExpandedIDs {
+                    state.expandedIDs = saved
+                    state.savedExpandedIDs = nil
                 }
             }
         }
         .onChange(of: showHiddenFiles) {
-            model.showHiddenFiles = showHiddenFiles
-            model.load(directoryURL: directoryURL)
+            state.model.showHiddenFiles = showHiddenFiles
+            state.model.load(directoryURL: directoryURL)
         }
-        .onChange(of: selectedID) { _, newID in
+        .onChange(of: state.selectedID) { _, newID in
             guard let id = newID,
-                  let item = model.findItem(id: id),
+                  let item = state.model.findItem(id: id),
                   !item.isDirectory
             else { return }
             editorPanel.openFile(item.url)
         }
     }
 
-    private func pollGitStatus() async {
-        while !Task.isCancelled {
-            try? await Task.sleep(for: .seconds(5))
-            guard !Task.isCancelled else { break }
-            await model.refreshGit(directoryURL: directoryURL)
+    private func toggleChangedFilter() {
+        if !state.model.showChangedOnly {
+            if state.savedExpandedIDs == nil {
+                state.savedExpandedIDs = state.expandedIDs
+            }
+            expandAllFolders(in: state.model.displayItems)
+        } else if state.model.submittedSearchText.isEmpty, let saved = state.savedExpandedIDs {
+            state.expandedIDs = saved
+            state.savedExpandedIDs = nil
         }
+        state.model.showChangedOnly.toggle()
     }
 
-    private func toggleChangedFilter() {
-        if !model.showChangedOnly {
-            if savedExpandedIDs == nil {
-                savedExpandedIDs = expandedIDs
-            }
-            expandAllFolders(in: model.displayItems)
-        } else if model.searchText.isEmpty, let saved = savedExpandedIDs {
-            // Only restore if search is also inactive
-            expandedIDs = saved
-            savedExpandedIDs = nil
-        }
-        model.showChangedOnly.toggle()
+    private func submitSearch() {
+        state.model.submitSearch()
     }
 
     private func expandAllFolders(in items: [FileItem]) {
         for item in items {
             if item.children != nil {
-                expandedIDs.insert(item.id)
+                state.expandedIDs.insert(item.id)
                 if let children = item.children {
                     expandAllFolders(in: children)
                 }
@@ -101,55 +107,42 @@ struct FileTreeView: View {
         }
     }
 
-    // MARK: - Context Menu Actions
+    // MARK: - Actions
 
     private func handleAction(_ action: FileTreeAction) {
         switch action {
+        case .openFile(let url):
+            editorPanel.openFile(url)
+
         case .revealInFinder(let url):
             NSWorkspace.shared.activateFileViewerSelecting([url])
 
+        case .rename(let item):
+            state.renamingID = item.id
+
+        case .commitRename(let item, let newName):
+            state.renamingID = nil
+            if let newURL = state.model.rename(url: item.url, to: newName, directoryURL: directoryURL) {
+                state.selectedID = newURL.path
+            }
+
         case .moveToTrash(let url):
-            try? FileManager.default.trashItem(at: url, resultingItemURL: nil)
-            model.load(directoryURL: directoryURL)
+            state.model.moveToTrash(url: url, directoryURL: directoryURL)
 
         case .duplicate(let url):
-            let fm = FileManager.default
-            let directory = url.deletingLastPathComponent()
-            let name = url.deletingPathExtension().lastPathComponent
-            let ext = url.pathExtension
-            var suffix = 2
-            var destination: URL
-            repeat {
-                let newName = ext.isEmpty ? "\(name) \(suffix)" : "\(name) \(suffix).\(ext)"
-                destination = directory.appendingPathComponent(newName)
-                suffix += 1
-            } while fm.fileExists(atPath: destination.path)
-            try? fm.copyItem(at: url, to: destination)
-            model.load(directoryURL: directoryURL)
+            state.model.duplicate(url: url, directoryURL: directoryURL)
 
         case .newFile(let parentURL):
-            let fm = FileManager.default
-            var destination = parentURL.appendingPathComponent("Untitled")
-            var suffix = 2
-            while fm.fileExists(atPath: destination.path) {
-                destination = parentURL.appendingPathComponent("Untitled \(suffix)")
-                suffix += 1
-            }
-            fm.createFile(atPath: destination.path, contents: nil)
-            model.load(directoryURL: directoryURL)
-            expandedIDs.insert(parentURL.path)
+            let fileURL = state.model.createNewFile(in: parentURL, directoryURL: directoryURL)
+            state.expandedIDs.insert(parentURL.path)
+            state.selectedID = fileURL.path
+            state.renamingID = fileURL.path
 
         case .newFolder(let parentURL):
-            let fm = FileManager.default
-            var destination = parentURL.appendingPathComponent("New Folder")
-            var suffix = 2
-            while fm.fileExists(atPath: destination.path) {
-                destination = parentURL.appendingPathComponent("New Folder \(suffix)")
-                suffix += 1
-            }
-            try? fm.createDirectory(at: destination, withIntermediateDirectories: false)
-            model.load(directoryURL: directoryURL)
-            expandedIDs.insert(parentURL.path)
+            let folderURL = state.model.createNewFolder(in: parentURL, directoryURL: directoryURL)
+            state.expandedIDs.insert(parentURL.path)
+            state.selectedID = folderURL.path
+            state.renamingID = folderURL.path
         }
     }
 }

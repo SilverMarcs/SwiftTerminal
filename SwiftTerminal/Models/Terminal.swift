@@ -3,17 +3,18 @@ import SwiftData
 import SwiftTerm
 
 @Model
-final class TerminalTab {
+final class Terminal {
     var id = UUID()
     var title: String = "Terminal"
     var currentDirectory: String?
     var sortOrder: Int = 0
-    var workspace: Workspace?
+    var workspace: Workspace
 
     @Attribute(.ephemeral) var hasBellNotification = false
     @Transient var localProcessTerminalView: LocalProcessTerminalView?
 
-    init(title: String = "Terminal", currentDirectory: String? = nil, sortOrder: Int = 0) {
+    init(workspace: Workspace, title: String = "Terminal", currentDirectory: String? = nil, sortOrder: Int = 0) {
+        self.workspace = workspace
         self.title = title
         self.currentDirectory = currentDirectory
         self.sortOrder = sortOrder
@@ -25,24 +26,6 @@ final class TerminalTab {
         return currentDirectory.hasPrefix(home)
             ? "~" + currentDirectory.dropFirst(home.count)
             : currentDirectory
-    }
-
-    var liveCurrentDirectory: String? {
-        guard let tv = localProcessTerminalView else { return currentDirectory }
-        let pid = tv.process.shellPid
-        guard pid > 0 else { return currentDirectory }
-
-        var pathInfo = proc_vnodepathinfo()
-        let size = MemoryLayout<proc_vnodepathinfo>.size
-        let result = proc_pidinfo(pid, PROC_PIDVNODEPATHINFO, 0, &pathInfo, Int32(size))
-        guard result == size else { return currentDirectory }
-
-        let path = withUnsafePointer(to: pathInfo.pvi_cdir.vip_path) { ptr in
-            ptr.withMemoryRebound(to: CChar.self, capacity: Int(MAXPATHLEN)) {
-                String(cString: $0)
-            }
-        }
-        return path.isEmpty ? currentDirectory : path
     }
 
     var hasChildProcess: Bool {
@@ -82,8 +65,10 @@ final class TerminalTab {
         tv.font = .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
     }
 
-    func clearNotification() {
-        hasBellNotification = false
+    func clearTerminal() {
+        guard let tv = localProcessTerminalView else { return }
+        tv.getTerminal().resetToInitialState()
+        tv.send(txt: "\u{0C}")
     }
 
     private func childProcesses() -> [(pid: pid_t, name: String)] {

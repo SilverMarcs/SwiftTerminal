@@ -2,52 +2,52 @@ import SwiftUI
 
 struct SearchInspectorView: View {
     let directoryURL: URL
+    @Bindable var state: SearchInspectorState
 
-    @Environment(AppState.self) private var appState
     @Environment(EditorPanel.self) private var editorPanel
-    @State private var model = SearchInspectorModel()
-    @State private var expandedIDs: Set<UUID> = []
-    @State private var selectedID: UUID?
-    @FocusState private var isSearchFocused: Bool
 
     var body: some View {
-        List(selection: $selectedID) {
-            ForEach(model.results) { fileResult in
+        List(selection: $state.selectedID) {
+            ForEach(state.model.results) { fileResult in
                 DisclosureGroup(isExpanded: binding(for: fileResult.id)) {
                     ForEach(fileResult.matches) { match in
                         matchRow(match)
                             .tag(match.id)
+                            .padding(.leading, -15)
                     }
                 } label: {
                     FileLabel(name: fileResult.relativePath, icon: fileResult.fileURL.fileIcon)
                 }
                 .tag(fileResult.id)
             }
+            .listRowSeparator(.hidden)
         }
         .scrollContentBackground(.hidden)
         .safeAreaBar(edge: .top) {
-            SearchField(text: $model.query) {
-                Task {
-                    await model.search(in: directoryURL)
-                    expandedIDs = Set(model.results.map(\.id))
+            SearchBar(
+                text: $state.model.query,
+                placeholder: "Search Within Files",
+                focusTrigger: state.searchFocusTrigger,
+                onSubmit: {
+                    Task {
+                        await state.model.search(in: directoryURL)
+                        state.expandedIDs = Set(state.model.results.map(\.id))
+                    }
                 }
-            }
-            .focused($isSearchFocused)
+            )
             .padding(.horizontal, 10)
             .padding(.vertical, 3)
             .padding(.top, 6)
         }
-        .onChange(of: selectedID) { _, newID in
+        .onChange(of: state.selectedID) { _, newID in
             guard let id = newID else { return }
 
-            // Check if a file result was selected
-            if let fileResult = model.results.first(where: { $0.id == id }) {
+            if let fileResult = state.model.results.first(where: { $0.id == id }) {
                 editorPanel.openFile(fileResult.fileURL)
                 return
             }
 
-            // Check if a match was selected
-            for fileResult in model.results {
+            for fileResult in state.model.results {
                 if let match = fileResult.matches.first(where: { $0.id == id }) {
                     editorPanel.openFileAndHighlight(
                         match.fileURL,
@@ -57,12 +57,6 @@ struct SearchInspectorView: View {
                     return
                 }
             }
-        }
-        .task(id: appState.searchFocusToken) {
-            guard appState.searchFocusToken != nil else { return }
-            try? await Task.sleep(for: .milliseconds(50))
-            isSearchFocused = true
-            appState.searchFocusToken = nil
         }
     }
     private func matchRow(_ match: SearchMatch) -> some View {
@@ -78,14 +72,14 @@ struct SearchInspectorView: View {
         }
     }
 
-    private func binding(for id: UUID) -> Binding<Bool> {
+    private func binding(for id: String) -> Binding<Bool> {
         Binding(
-            get: { expandedIDs.contains(id) },
+            get: { state.expandedIDs.contains(id) },
             set: { isExpanded in
                 if isExpanded {
-                    expandedIDs.insert(id)
+                    state.expandedIDs.insert(id)
                 } else {
-                    expandedIDs.remove(id)
+                    state.expandedIDs.remove(id)
                 }
             }
         )
