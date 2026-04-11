@@ -79,6 +79,7 @@ struct WorkspaceRow: View {
                     appState.selectedTerminal = nil
                 }
                 workspace.commands.forEach { $0.runner.stop() }
+                workspace.unsortedTerminals.forEach { $0.terminate() }
                 modelContext.delete(workspace)
             } label: {
                 Label("Delete", systemImage: "trash")

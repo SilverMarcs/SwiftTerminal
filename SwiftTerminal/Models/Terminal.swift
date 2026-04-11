@@ -11,7 +11,17 @@ final class Terminal {
     var workspace: Workspace
 
     @Attribute(.ephemeral) var hasBellNotification = false
-    @Transient var localProcessTerminalView: LocalProcessTerminalView?
+
+    var localProcessTerminalView: LocalProcessTerminalView? {
+        get { TerminalProcessRegistry.view(for: id) }
+        set {
+            if let newValue {
+                TerminalProcessRegistry.register(newValue, for: id)
+            } else {
+                TerminalProcessRegistry.remove(for: id)
+            }
+        }
+    }
 
     init(workspace: Workspace, title: String = "Terminal", currentDirectory: String? = nil, sortOrder: Int = 0) {
         self.workspace = workspace
