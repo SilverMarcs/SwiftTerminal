@@ -9,7 +9,20 @@
         
         
         
+        
         <item>
+            <title>Version 1.0.4</title>
+            <pubDate>Sat, 11 Apr 2026 08:38:59 +0000</pubDate>
+            <sparkle:version>6</sparkle:version>
+            <sparkle:shortVersionString>1.0.4</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.2</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/SilverMarcs/SwiftTerminal/releases/download/v1.0.4/SwiftTerminal-1.0.4.dmg"
+                length="5982730"
+                type="application/x-apple-diskimage"
+                sparkle:edSignature="3GvvQRzlWigHfUZBJUCV8MuOZTkITdp9J9VG5e7/xG2ZTLveYAoAdq1TwzHOfLZkjtaYuMWOmPwDqajcl0eSBA==" />
+        </item>
+<item>
             <title>Version 1.0.3</title>
             <pubDate>Sat, 11 Apr 2026 08:26:42 +0000</pubDate>
             <sparkle:version>5</sparkle:version>

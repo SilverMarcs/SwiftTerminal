@@ -13,29 +13,29 @@ struct GitInspectorChangesList: View {
         List(selection: $state.selectedFileID) {
             if let snapshot {
                 if !snapshot.stagedFiles.isEmpty {
-                    Section(isExpanded: $state.stagedExpanded) {
+                    DisclosureGroup(isExpanded: $state.stagedExpanded) {
                         fileRows(snapshot.stagedFiles, staged: true, snapshot: snapshot)
-                    } header: {
+                    } label: {
                         sectionHeader(
                             title: "Staged Changes",
-                            systemImage: "checkmark.circle",
-                            isExpanded: $state.stagedExpanded
+                            systemImage: "checkmark.circle"
                         )
                         .contextMenu { GitRepoContextMenu(snapshot: snapshot, onAction: handleAction) }
                     }
+                    .listRowSeparator(.hidden)
                 }
 
                 if !snapshot.unstagedFiles.isEmpty {
-                    Section(isExpanded: $state.unstagedExpanded) {
+                    DisclosureGroup(isExpanded: $state.unstagedExpanded) {
                         fileRows(snapshot.unstagedFiles, staged: false, snapshot: snapshot)
-                    } header: {
+                    } label: {
                         sectionHeader(
                             title: "Changes",
-                            systemImage: "circle.dashed",
-                            isExpanded: $state.unstagedExpanded
+                            systemImage: "circle.dashed"
                         )
                         .contextMenu { GitRepoContextMenu(snapshot: snapshot, onAction: handleAction) }
                     }
+                    .listRowSeparator(.hidden)
                 }
 
                 if !snapshot.unpushedCommits.isEmpty {
@@ -81,32 +81,15 @@ struct GitInspectorChangesList: View {
     // MARK: - Section Header
 
     @ViewBuilder
-    private func sectionHeader(title: String, systemImage: String, isExpanded: Binding<Bool>) -> some View {
-        Button {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                isExpanded.wrappedValue.toggle()
-            }
-        } label: {
-            HStack(spacing: 4) {
-                Label {
-                    Text(title)
-                } icon: {
-                    Image(systemName: systemImage)
-                    .foregroundStyle(.accent)
-                }
-                .font(.subheadline)
-                .lineLimit(1)
-                
-                Spacer(minLength: 4)
-                
-                Image(systemName: "chevron.right")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .rotationEffect(.degrees(isExpanded.wrappedValue ? 90 : 0))
-            }
-            .contentShape(Rectangle())
+    private func sectionHeader(title: String, systemImage: String) -> some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: systemImage)
+                .foregroundStyle(.accent)
         }
-        .buttonStyle(.plain)
+        .font(.subheadline)
+        .lineLimit(1)
     }
 
     // MARK: - Rows
