@@ -27,7 +27,7 @@ struct GitInspectorCommitArea: View {
             }
             .buttonStyle(.borderedProminent)
             .help(currentAction.label)
-            .disabled(currentAction == .commit && state.commitMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(currentAction == .commit && (state.commitMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || snapshot?.stagedFiles.isEmpty != false))
         }
     }
 
