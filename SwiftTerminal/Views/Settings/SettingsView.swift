@@ -12,8 +12,13 @@ struct SettingsView: View {
                 .tabItem {
                     Label("Updates", systemImage: "arrow.down.circle")
                 }
+
+            ShortcutsSettingsView()
+                .tabItem {
+                    Label("Shortcuts", systemImage: "keyboard")
+                }
         }
-        .frame(width: 480, height: 360)
+        .frame(width: 480, height: 400)
     }
 }
 
