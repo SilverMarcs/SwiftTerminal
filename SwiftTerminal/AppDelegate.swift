@@ -11,7 +11,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         center.delegate = self
         center.requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
 
-        // Remove the system "Close" (Cmd+W) from File menu so our custom Close Tab command takes priority
+        // Remove the system "Close" (Cmd+W) from File menu so our custom Close Tab command takes priority.
+        // SwiftUI can rebuild the menu after launch, so observe changes and re-strip it.
+        removeCloseMenuItem()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(menuDidChange),
+            name: NSMenu.didAddItemNotification,
+            object: nil
+        )
+    }
+
+    @objc private func menuDidChange(_ notification: Notification) {
         removeCloseMenuItem()
     }
 
@@ -19,7 +30,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private func removeCloseMenuItem() {
         guard let mainMenu = NSApplication.shared.mainMenu,
               let fileMenu = mainMenu.items.first(where: { $0.submenu?.title == "File" })?.submenu else { return }
-        for item in fileMenu.items where item.keyEquivalent == "w" && item.keyEquivalentModifierMask == .command {
+        for item in fileMenu.items where item.keyEquivalent == "w" && item.keyEquivalentModifierMask == .command
+            && item.title.localizedCaseInsensitiveContains("close") && !item.title.localizedCaseInsensitiveContains("tab") {
             fileMenu.removeItem(item)
             break
         }
