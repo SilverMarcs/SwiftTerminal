@@ -471,59 +471,70 @@ final class EditorTextView: NSTextView {
             startLineNumber = preText.components(separatedBy: "\n").count
         }
 
+        let bgWidth = max(bounds.width, enclosingScrollView?.contentSize.width ?? bounds.width) - constants.diffGutterWidth
+
         var lineNumber = startLineNumber
         var charIndex = visibleCharRange.location
         let endChar = NSMaxRange(visibleCharRange)
 
         while charIndex <= endChar && charIndex < text.length {
             let lineRange = text.lineRange(for: NSRange(location: charIndex, length: 0))
-            let glyphRange = layoutManager.glyphRange(forCharacterRange: lineRange, actualCharacterRange: nil)
+            let lineKind = diffLineKinds[lineNumber]
+            let lineNums = diffLineNumbers[lineNumber]
 
-            if glyphRange.location != NSNotFound {
-                let lineRect = drawingLineRect(
-                    for: glyphRange,
-                    layoutManager: layoutManager,
-                    textContainer: textContainer,
-                    containerOrigin: containerOrigin
-                )
+            var firstFragmentRect: NSRect?
+            enumerateLineFragmentRects(
+                for: lineRange,
+                layoutManager: layoutManager,
+                containerOrigin: containerOrigin
+            ) { fragmentRect in
+                let isVisible = fragmentRect.height > 1
+                    && fragmentRect.minY + fragmentRect.height >= rect.minY
+                    && fragmentRect.minY <= rect.maxY
+                guard isVisible else { return }
 
-                let isVisible = lineRect.height > 1
-                    && lineRect.minY + lineRect.height >= rect.minY && lineRect.minY <= rect.maxY
+                if firstFragmentRect == nil { firstFragmentRect = fragmentRect }
 
-                if isVisible {
-                    let lineKind = diffLineKinds[lineNumber]
-                    let lineNums = diffLineNumbers[lineNumber]
+                guard let kind = lineKind else { return }
 
-                    // Draw line background for changed lines
-                    if let kind = lineKind {
-                        let bgColor = kind.color.withAlphaComponent(0.12)
-                        var bgRect = lineRect
-                        bgRect.origin.x = constants.diffGutterWidth
-                        bgRect.size.width = max(bounds.width, enclosingScrollView?.contentSize.width ?? bounds.width) - constants.diffGutterWidth
-                        bgColor.setFill()
-                        bgRect.fill()
+                // Line background tint — fill across full content width per fragment.
+                let bgColor = kind.color.withAlphaComponent(0.12)
+                bgColor.setFill()
+                NSRect(
+                    x: constants.diffGutterWidth,
+                    y: fragmentRect.minY,
+                    width: bgWidth,
+                    height: fragmentRect.height
+                ).fill()
 
-                        // Also tint the gutter area
-                        let gutterBg = kind.color.withAlphaComponent(0.06)
-                        gutterBg.setFill()
-                        NSRect(x: 0, y: lineRect.minY, width: constants.diffGutterWidth, height: lineRect.height).fill()
-                    }
+                // Gutter tint per fragment.
+                let gutterBg = kind.color.withAlphaComponent(0.06)
+                gutterBg.setFill()
+                NSRect(
+                    x: 0,
+                    y: fragmentRect.minY,
+                    width: constants.diffGutterWidth,
+                    height: fragmentRect.height
+                ).fill()
 
-                    let yCenter = lineRect.minY + (lineRect.height - ("0" as NSString).size(withAttributes: lineNumAttrs).height) / 2
+                // Marker bar per fragment.
+                kind.color.setFill()
+                NSRect(
+                    x: constants.diffMarkerX,
+                    y: fragmentRect.minY,
+                    width: 3,
+                    height: fragmentRect.height
+                ).fill()
+            }
 
-                    // Single line number: prefer new, fall back to old (for removed lines)
-                    let lineNum = lineNums?.new ?? lineNums?.old
-                    if let num = lineNum {
-                        let str = "\(num)" as NSString
-                        let size = str.size(withAttributes: lineNumAttrs)
-                        str.draw(at: NSPoint(x: constants.diffNumEndX - size.width, y: yCenter), withAttributes: lineNumAttrs)
-                    }
-
-                    // Draw marker bar for changed lines
-                    if let kind = lineKind {
-                        kind.color.setFill()
-                        NSRect(x: constants.diffMarkerX, y: lineRect.minY, width: 3, height: lineRect.height).fill()
-                    }
+            // Draw the line number once on the first visual fragment.
+            if let firstRect = firstFragmentRect {
+                let yCenter = firstRect.minY + (firstRect.height - ("0" as NSString).size(withAttributes: lineNumAttrs).height) / 2
+                let lineNum = lineNums?.new ?? lineNums?.old
+                if let num = lineNum {
+                    let str = "\(num)" as NSString
+                    let size = str.size(withAttributes: lineNumAttrs)
+                    str.draw(at: NSPoint(x: constants.diffNumEndX - size.width, y: yCenter), withAttributes: lineNumAttrs)
                 }
             }
 
@@ -531,6 +542,39 @@ final class EditorTextView: NSTextView {
             let nextIndex = NSMaxRange(lineRange)
             if nextIndex <= charIndex { break }
             charIndex = nextIndex
+        }
+    }
+
+    /// Enumerates the line fragment rects (in text-view coordinates) for every
+    /// visual fragment that the given character range occupies. When soft-wrap
+    /// is on a single logical line can span multiple fragments — this lets
+    /// callers paint backgrounds, gutter tints, and marker bars on every visual
+    /// row instead of just the first.
+    private func enumerateLineFragmentRects(
+        for charRange: NSRange,
+        layoutManager: NSLayoutManager,
+        containerOrigin: NSPoint,
+        body: @escaping (NSRect) -> Void
+    ) {
+        let glyphRange = layoutManager.glyphRange(forCharacterRange: charRange, actualCharacterRange: nil)
+        guard glyphRange.location != NSNotFound else { return }
+
+        if glyphRange.length == 0 {
+            var effective = NSRange()
+            let fragRect = layoutManager.lineFragmentRect(forGlyphAt: glyphRange.location, effectiveRange: &effective)
+            guard fragRect != .zero else { return }
+            var rect = fragRect
+            rect.origin.x += containerOrigin.x
+            rect.origin.y += containerOrigin.y
+            body(rect)
+            return
+        }
+
+        layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { fragmentRect, _, _, _, _ in
+            var rect = fragmentRect
+            rect.origin.x += containerOrigin.x
+            rect.origin.y += containerOrigin.y
+            body(rect)
         }
     }
 
@@ -579,51 +623,57 @@ final class EditorTextView: NSTextView {
             let lineRange = text.lineRange(for: NSRange(location: charIndex, length: 0))
             let glyphRange = layoutManager.glyphRange(forCharacterRange: lineRange, actualCharacterRange: nil)
 
-            if glyphRange.location != NSNotFound {
-                let lineRect = drawingLineRect(
-                    for: glyphRange,
+            let isHidden = foldingManager.isLineHidden(lineNumber)
+
+            if glyphRange.location != NSNotFound && !isHidden {
+                var firstFragmentRect: NSRect?
+
+                // Enumerate all visual fragments for this logical line so that
+                // backgrounds and markers span every wrapped row.
+                enumerateLineFragmentRects(
+                    for: lineRange,
                     layoutManager: layoutManager,
-                    textContainer: textContainer,
                     containerOrigin: containerOrigin
-                )
+                ) { [self] fragmentRect in
+                    let isVisible = fragmentRect.height > 1
+                        && fragmentRect.minY + fragmentRect.height >= rect.minY
+                        && fragmentRect.minY <= rect.maxY
+                    guard isVisible else { return }
 
-                let isHidden = foldingManager.isLineHidden(lineNumber)
-                let isVisible = !isHidden && lineRect.height > 1
-                    && lineRect.minY + lineRect.height >= rect.minY && lineRect.minY <= rect.maxY
+                    if firstFragmentRect == nil { firstFragmentRect = fragmentRect }
 
-                if isVisible {
-                    // Draw current line highlight
+                    // Current line highlight — all visual rows.
                     if lineNumber == cursorLine {
                         currentLineHighlightColor.setFill()
-                        NSRect(x: 0, y: lineRect.minY, width: bounds.width, height: lineRect.height).fill()
+                        NSRect(x: 0, y: fragmentRect.minY, width: bounds.width, height: fragmentRect.height).fill()
                     }
 
-                    // Draw line number right-aligned
+                    // Git change marker bar — all visual rows.
+                    if let marker = gutterDiff.markers[lineNumber] {
+                        marker.color.setFill()
+                        NSRect(x: markerBarX, y: fragmentRect.minY, width: markerBarWidth, height: fragmentRect.height).fill()
+                    }
+                }
+
+                if let firstRect = firstFragmentRect {
+                    // Draw line number right-aligned on first fragment only.
                     let numStr = "\(lineNumber)" as NSString
                     let size = numStr.size(withAttributes: lineNumAttrs)
                     let x = lineNumEndX - size.width
-                    let y = lineRect.minY + (lineRect.height - size.height) / 2
+                    let y = firstRect.minY + (firstRect.height - size.height) / 2
                     numStr.draw(at: NSPoint(x: x, y: y), withAttributes: lineNumAttrs)
 
-                    // Draw git change marker bar
-                    if let marker = gutterDiff.markers[lineNumber] {
-                        marker.color.setFill()
-                        NSRect(x: markerBarX, y: lineRect.minY, width: markerBarWidth, height: lineRect.height).fill()
-                    }
-
-                    // Draw fold indicator
+                    // Draw fold indicator on first fragment only.
                     if foldingManager.isFoldable(lineNumber) {
                         let isFolded = foldingManager.isFolded(lineNumber)
-                        let cy = lineRect.minY + lineRect.height / 2
+                        let cy = firstRect.minY + firstRect.height / 2
 
                         let triangle = NSBezierPath()
                         if isFolded {
-                            // ▶ pointing right
                             triangle.move(to: NSPoint(x: foldCenterX - 2.5, y: cy - 4))
                             triangle.line(to: NSPoint(x: foldCenterX - 2.5, y: cy + 4))
                             triangle.line(to: NSPoint(x: foldCenterX + 3, y: cy))
                         } else {
-                            // ▼ pointing down
                             triangle.move(to: NSPoint(x: foldCenterX - 4, y: cy - 2.5))
                             triangle.line(to: NSPoint(x: foldCenterX + 4, y: cy - 2.5))
                             triangle.line(to: NSPoint(x: foldCenterX, y: cy + 3))
@@ -632,13 +682,12 @@ final class EditorTextView: NSTextView {
                         NSColor.tertiaryLabelColor.setFill()
                         triangle.fill()
 
-                        // Draw fold badge "⋯" when folded
                         if isFolded {
                             let badgeText = " ⋯ " as NSString
                             let usedRect = layoutManager.lineFragmentUsedRect(forGlyphAt: glyphRange.location, effectiveRange: nil)
                             let badgeSize = badgeText.size(withAttributes: foldBadgeAttrs)
                             let badgeX = containerOrigin.x + usedRect.maxX + 2
-                            let badgeY = lineRect.minY + (lineRect.height - badgeSize.height) / 2
+                            let badgeY = firstRect.minY + (firstRect.height - badgeSize.height) / 2
 
                             let badgeRect = NSRect(
                                 x: badgeX, y: badgeY - 1,

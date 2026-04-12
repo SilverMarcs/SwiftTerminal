@@ -2,6 +2,7 @@ import SwiftUI
 
 struct GeneralSettingsView: View {
     @AppStorage("hideTabBarWithSingleTab") private var hideTabBarWithSingleTab = false
+    @AppStorage("editorWrapLines") private var editorWrapLines = true
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
     var body: some View {
@@ -12,6 +13,14 @@ struct GeneralSettingsView: View {
                 Text("Tabs")
             } footer: {
                 Text("When enabled, the tab bar is hidden in workspaces that have a single terminal tab.")
+            }
+
+            Section {
+                Toggle("Wrap long lines", isOn: $editorWrapLines)
+            } header: {
+                Text("Editor")
+            } footer: {
+                Text("When enabled, lines that exceed the editor width wrap to the next line instead of scrolling horizontally.")
             }
 
             #if DEBUG

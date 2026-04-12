@@ -18,6 +18,7 @@ struct CodeTextEditor: NSViewRepresentable {
     private let repositoryRootURL: URL?
     private let onReloadFromDisk: (() async -> Void)?
     @Environment(\.editorFontSize) private var fontSize
+    @AppStorage("editorWrapLines") private var wrapLines: Bool = true
 
     init(
         text: Binding<String>,
@@ -133,12 +134,13 @@ struct CodeTextEditor: NSViewRepresentable {
         let bounds = container.bounds
         let minimapWidth = EditorTextViewConstants.minimapWidth
 
-        context.coordinator.scrollView?.frame = NSRect(
+        let scrollViewFrame = NSRect(
             x: 0,
             y: 0,
             width: bounds.width - minimapWidth,
             height: bounds.height
         )
+        context.coordinator.scrollView?.frame = scrollViewFrame
         context.coordinator.minimap?.frame = NSRect(
             x: bounds.width - minimapWidth,
             y: 0,
@@ -147,8 +149,56 @@ struct CodeTextEditor: NSViewRepresentable {
         )
 
         updateSharedTextView(textView)
+        applyWrapping(textView: textView, contentWidth: scrollViewFrame.width, coordinator: context.coordinator)
         updateMode(textView: textView, coordinator: context.coordinator)
         textView.needsDisplay = true
+    }
+
+    /// Toggles soft-wrap on the underlying NSTextView. When wrapping is on the
+    /// text container width tracks the scroll view's content width; otherwise
+    /// the text view is allowed to grow horizontally. Order of operations
+    /// mirrors Apple's TextEdit sample — setting the container size before
+    /// flipping `widthTracksTextView`, then explicitly resizing the text view
+    /// frame and forcing the layout manager to re-flow when state changes.
+    private func applyWrapping(textView: EditorTextView, contentWidth: CGFloat, coordinator: Coordinator) {
+        guard let textContainer = textView.textContainer else { return }
+        let layoutManager = textContainer.layoutManager
+
+        let stateChanged = coordinator.lastWrapLines != wrapLines
+        let widthChanged = coordinator.lastWrapContentWidth != contentWidth
+        coordinator.lastWrapLines = wrapLines
+        coordinator.lastWrapContentWidth = contentWidth
+
+        if wrapLines {
+            let inset = textView.textContainerInset.width * 2
+            let containerWidth = max(0, contentWidth - inset)
+            textView.minSize = NSSize(width: 0, height: 0)
+            textView.maxSize = NSSize(width: contentWidth, height: .greatestFiniteMagnitude)
+            textView.isHorizontallyResizable = false
+            textContainer.containerSize = NSSize(width: containerWidth, height: .greatestFiniteMagnitude)
+            textContainer.widthTracksTextView = true
+            textView.setFrameSize(NSSize(width: contentWidth, height: textView.frame.height))
+        } else {
+            textContainer.widthTracksTextView = false
+            textContainer.containerSize = NSSize(
+                width: CGFloat.greatestFiniteMagnitude,
+                height: CGFloat.greatestFiniteMagnitude
+            )
+            textView.isHorizontallyResizable = true
+            textView.maxSize = NSSize(
+                width: CGFloat.greatestFiniteMagnitude,
+                height: CGFloat.greatestFiniteMagnitude
+            )
+        }
+
+        if (stateChanged || widthChanged), let layoutManager, let textStorage = textView.textStorage {
+            layoutManager.textContainerChangedGeometry(textContainer)
+            let fullRange = NSRange(location: 0, length: textStorage.length)
+            layoutManager.invalidateLayout(forCharacterRange: fullRange, actualCharacterRange: nil)
+            layoutManager.ensureLayout(for: textContainer)
+            textView.needsLayout = true
+            textView.needsDisplay = true
+        }
     }
 
     private func configureSharedTextView(_ textView: EditorTextView, contentSize: NSSize) {
@@ -450,6 +500,8 @@ struct CodeTextEditor: NSViewRepresentable {
         weak var minimap: EditorMinimap?
         var isEditing = false
         var lastAppliedHighlight: HighlightRequest?
+        var lastWrapLines: Bool?
+        var lastWrapContentWidth: CGFloat?
         private var rehighlightTask: Task<Void, Never>?
 
         var presentation: GitDiffPresentation?

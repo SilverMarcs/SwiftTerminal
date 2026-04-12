@@ -27,13 +27,24 @@ struct WorkspaceListView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            Button {
-                chooseDirectoryForNewWorkspace()
-            } label: {
-                Label("New Workspace", systemImage: "plus")
+            HStack(spacing: 0) {
+                Button {
+                    chooseDirectoryForNewWorkspace()
+                } label: {
+                    Label("New Workspace", systemImage: "plus")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                SettingsLink {
+                    Image(systemName: "gearshape")
+                        .frame(width: 20, height: 20)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Settings")
             }
-            .buttonStyle(.plain)
-            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
         }
