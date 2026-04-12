@@ -63,5 +63,6 @@ struct WorkspaceListView: View {
         let workspace = Workspace(name: name, directory: url.path)
         workspace.detectProjectType()
         store.addWorkspace(workspace)
+        appState.selectedWorkspace = workspace
     }
 }
