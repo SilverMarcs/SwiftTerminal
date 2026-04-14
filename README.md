@@ -5,6 +5,10 @@
 A macOS terminal and workspace app built with SwiftUI.
 Work on multiple projects simultaneously.
 
+<a href="https://github.com/LynkSphere/SwiftTerminal/releases/latest/download/SwiftTerminal.dmg">
+  <img src="https://img.shields.io/badge/Download_for_macOS-blue?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS" />
+</a>
+
 ## Features
 
 - Workspace-based terminal sessions
