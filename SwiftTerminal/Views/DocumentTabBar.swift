@@ -13,6 +13,7 @@ struct DocumentTabBar: View {
     @State private var lastDragTranslation: CGFloat = 0
     @State private var renamingTab: Terminal?
     @State private var processNames: [UUID: String] = [:]
+    @State private var hoveredCloseTabID: UUID?
 
     var body: some View {
         let terminals = workspace.terminals
@@ -148,12 +149,20 @@ struct DocumentTabBar: View {
                     closeTerminal(terminal)
                 } label: {
                     Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .medium))
                         .foregroundStyle(.secondary)
+                        .frame(width: 16, height: 16)
+                        .background(
+                            Circle()
+                                .fill(hoveredCloseTabID == terminal.id ? AnyShapeStyle(.quaternary) : AnyShapeStyle(.clear))
+                        )
+                        .contentShape(.circle)
                 }
-                .controlSize(.small)
-                .buttonBorderShape(.circle)
-                .buttonStyle(.bordered)
-                .padding(.leading, 5)
+                .buttonStyle(.plain)
+                .onHover { isHovering in
+                    hoveredCloseTabID = isHovering ? terminal.id : (hoveredCloseTabID == terminal.id ? nil : hoveredCloseTabID)
+                }
+                .padding(.leading, 6)
             }
         }
         .buttonStyle(.plain)
