@@ -93,19 +93,15 @@ final class Terminal: Identifiable, Hashable, Codable {
     }
 
     func increaseFontSize() {
-        guard let tv = localProcessTerminalView else { return }
-        tv.font = NSFont(descriptor: tv.font.fontDescriptor, size: tv.font.pointSize + 1) ?? tv.font
+        TerminalProcessRegistry.fontSize += 0.5
     }
 
     func decreaseFontSize() {
-        guard let tv = localProcessTerminalView else { return }
-        let newSize = max(tv.font.pointSize - 1, 8)
-        tv.font = NSFont(descriptor: tv.font.fontDescriptor, size: newSize) ?? tv.font
+        TerminalProcessRegistry.fontSize -= 0.5
     }
 
     func resetFontSize() {
-        guard let tv = localProcessTerminalView else { return }
-        tv.font = .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        TerminalProcessRegistry.fontSize = TerminalProcessRegistry.defaultFontSize
     }
 
     func clearTerminal() {

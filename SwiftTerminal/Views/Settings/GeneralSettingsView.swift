@@ -1,9 +1,11 @@
+import AppKit
 import SwiftUI
 
 struct GeneralSettingsView: View {
     @AppStorage("hideTabBarWithSingleTab") private var hideTabBarWithSingleTab = false
     @AppStorage("editorWrapLines") private var editorWrapLines = true
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @AppStorage(TerminalProcessRegistry.fontSizeKey) private var terminalFontSize: Double = Double(TerminalProcessRegistry.defaultFontSize)
 
     var body: some View {
         Form {
@@ -13,6 +15,31 @@ struct GeneralSettingsView: View {
                 Text("Tabs")
             } footer: {
                 Text("When enabled, the tab bar is hidden in workspaces that have a single terminal tab.")
+            }
+
+            Section {
+                LabeledContent {
+                    HStack {
+                        Slider(
+                            value: Binding(
+                                get: { terminalFontSize },
+                                set: { terminalFontSize = (($0 * 2).rounded()) / 2 }
+                            ),
+                            in: Double(TerminalProcessRegistry.minFontSize)...Double(TerminalProcessRegistry.maxFontSize)
+                        )
+                        Text(String(format: "%.1f", terminalFontSize))
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .frame(width: 25, alignment: .trailing)
+                    }
+                } label: {
+                    Text("Font size")
+                }
+            } header: {
+                Text("Terminal")
+            }
+            .onChange(of: terminalFontSize) { _, newValue in
+                TerminalProcessRegistry.applyFontSizeToAll(CGFloat(newValue))
             }
 
             Section {

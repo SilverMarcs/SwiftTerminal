@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import SwiftTerm
 
@@ -9,6 +10,29 @@ import SwiftTerm
 /// state.
 enum TerminalProcessRegistry {
     private static var views: [UUID: LocalProcessTerminalView] = [:]
+
+    static let fontSizeKey = "terminalFontSize"
+    static let defaultFontSize: CGFloat = NSFont.systemFontSize
+    static let minFontSize: CGFloat = 8
+    static let maxFontSize: CGFloat = 20
+
+    static var fontSize: CGFloat {
+        get {
+            let stored = UserDefaults.standard.object(forKey: fontSizeKey) as? Double
+            return stored.map { CGFloat($0) } ?? defaultFontSize
+        }
+        set {
+            let clamped = min(max(newValue, minFontSize), maxFontSize)
+            UserDefaults.standard.set(Double(clamped), forKey: fontSizeKey)
+            applyFontSizeToAll(clamped)
+        }
+    }
+
+    static func applyFontSizeToAll(_ size: CGFloat) {
+        for view in views.values {
+            view.font = NSFont(descriptor: view.font.fontDescriptor, size: size) ?? view.font
+        }
+    }
 
     static func view(for id: UUID) -> LocalProcessTerminalView? {
         views[id]
