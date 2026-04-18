@@ -21,7 +21,7 @@ struct FileTreeView: View {
         .contextMenu(forSelectionType: String.self) { selectedIDs in
             if let id = selectedIDs.first,
                let item = state.model.findItem(id: id) {
-                FileTreeContextMenu(item: item)
+                FileTreeContextMenu(item: item, onAction: handleAction)
             }
         } primaryAction: { selectedIDs in
             for id in selectedIDs {

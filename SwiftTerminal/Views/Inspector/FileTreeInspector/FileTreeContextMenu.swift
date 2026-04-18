@@ -17,7 +17,7 @@ enum FileTreeAction {
 
 struct FileTreeContextMenu: View {
     let item: FileItem
-    @Environment(\.fileTreeAction) private var onAction
+    var onAction: (FileTreeAction) -> Void = { _ in }
 
     private var parentURL: URL {
         item.isDirectory ? item.url : item.url.deletingLastPathComponent()

@@ -43,6 +43,7 @@ struct BottomSheetView: View {
         switch panel.content {
         case .file(let url):
             FileEditorPanel(fileURL: url, directoryURL: directoryURL)
+                .id(url)
         case .diff(let ref):
             DiffPanel(reference: ref)
         case .none:
