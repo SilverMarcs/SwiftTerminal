@@ -16,8 +16,9 @@ struct WorkspaceDetailView: View {
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            
-            BottomSheetView(directoryURL: workspace.url)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+           BottomSheetView(directoryURL: workspace.url)
         }
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .toolbar {
