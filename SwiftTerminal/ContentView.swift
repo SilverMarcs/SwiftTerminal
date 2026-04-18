@@ -15,7 +15,7 @@ struct ContentView: View {
         } detail: {
             if let workspace = appState.selectedWorkspace {
                 WorkspaceDetailView(workspace: workspace)
-                    .id(workspace.id)
+                    // .id(workspace.id)
             } else {
                 ContentUnavailableView(
                     "No Workspace Selected",
@@ -28,8 +28,13 @@ struct ContentView: View {
             if let workspace = appState.selectedWorkspace {
                 InspectorView(workspace: workspace)
                     .environment(workspace.editorPanel)
-                    .id(workspace.url)
+                    // .id(workspace.url)
                     .inspectorColumnWidth(min: 240, ideal: 240, max: 360)
+            } else {
+                ContentUnavailableView(
+                    "No Inspector",
+                    systemImage: "sidebar.right"
+                )
             }
         }
         .focusedSceneValue(\.editorPanel, appState.selectedWorkspace?.editorPanel)

@@ -261,7 +261,7 @@ struct FileEditorPanel: View {
                 Button("Reveal in Finder") {
                     NSWorkspace.shared.activateFileViewerSelecting([fileURL])
                 }
-                Button("Open with Default App") {
+                Button("Open in Default App") {
                     NSWorkspace.shared.open(fileURL)
                 }
             }
