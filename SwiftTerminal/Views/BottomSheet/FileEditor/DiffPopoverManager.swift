@@ -44,15 +44,18 @@ enum DiffPopoverPresenter {
 
         guard !popoverLines.isEmpty else { return }
 
+        let wrapLines = UserDefaults.standard.object(forKey: "editorWrapLines") as? Bool ?? true
         let popoverWidth: CGFloat = 560
         let maxPopoverHeight: CGFloat = 250
         let headerHeight: CGFloat = 32
+        let layout = SharedDiffTextLayout.popover(wrapsLines: wrapLines)
 
         let popoverTextView = SharedDiffTextView()
+        popoverTextView.frame = NSRect(x: 0, y: 0, width: popoverWidth, height: 0)
         popoverTextView.configure(
             lines: popoverLines,
             fileExtension: textView.fileExtension,
-            layout: .popover,
+            layout: layout,
             width: popoverWidth
         )
 
@@ -60,17 +63,17 @@ enum DiffPopoverPresenter {
         if let layoutManager = popoverTextView.layoutManager, let textContainer = popoverTextView.textContainer {
             layoutManager.ensureLayout(for: textContainer)
             let usedRect = layoutManager.usedRect(for: textContainer)
-            contentHeight = usedRect.height + SharedDiffTextLayout.popover.verticalPadding * 2
+            contentHeight = usedRect.height + layout.verticalPadding * 2
         } else {
-            contentHeight = CGFloat(popoverLines.count) * 17 + SharedDiffTextLayout.popover.verticalPadding * 2
+            contentHeight = CGFloat(popoverLines.count) * 17 + layout.verticalPadding * 2
         }
 
         let scrollView = NSScrollView()
         scrollView.documentView = popoverTextView
         scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = true
-        scrollView.autohidesScrollers = true
+        scrollView.hasHorizontalScroller = false
         scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
 
         popoverTextView.frame = NSRect(x: 0, y: 0, width: popoverWidth, height: contentHeight)
@@ -98,12 +101,10 @@ enum DiffPopoverPresenter {
                                     at: rootURL
                                 )
                                 await onReload?()
-                                await MainActor.run {
-                                    popover.performClose(nil)
-                                }
                             } catch {
-                                print("Failed to discard hunk: \(error)")
+                                await DiffPopoverPresenter.showError("Discard failed: \(error.localizedDescription)")
                             }
+                            await MainActor.run { popover.performClose(nil) }
                         }
                     }
                 },
@@ -118,12 +119,10 @@ enum DiffPopoverPresenter {
                                     at: rootURL
                                 )
                                 await onReload?()
-                                await MainActor.run {
-                                    popover.performClose(nil)
-                                }
                             } catch {
-                                print("Failed to unstage hunk: \(error)")
+                                await DiffPopoverPresenter.showError("Unstage failed: \(error.localizedDescription)")
                             }
+                            await MainActor.run { popover.performClose(nil) }
                         }
                     }
                 },
@@ -138,12 +137,10 @@ enum DiffPopoverPresenter {
                                     at: rootURL
                                 )
                                 await onReload?()
-                                await MainActor.run {
-                                    popover.performClose(nil)
-                                }
                             } catch {
-                                print("Failed to stage hunk: \(error)")
+                                await DiffPopoverPresenter.showError("Stage failed: \(error.localizedDescription)")
                             }
+                            await MainActor.run { popover.performClose(nil) }
                         }
                     }
                 }
@@ -177,5 +174,15 @@ enum DiffPopoverPresenter {
 
         let anchorRect = NSRect(x: gutterWidth - 2, y: point.y - 4, width: 4, height: 8)
         popover.show(relativeTo: anchorRect, of: textView, preferredEdge: .maxX)
+    }
+
+    @MainActor
+    static func showError(_ message: String) {
+        let alert = NSAlert()
+        alert.messageText = "Git Apply Error"
+        alert.informativeText = message
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 }

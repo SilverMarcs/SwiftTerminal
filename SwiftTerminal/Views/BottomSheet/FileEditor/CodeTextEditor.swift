@@ -683,7 +683,7 @@ struct CodeTextEditor: NSViewRepresentable {
                     )
                     await onReload?()
                 } catch {
-                    print("Failed to apply hunk: \(error)")
+                    await DiffPopoverPresenter.showError("Apply failed: \(error.localizedDescription)")
                 }
             }
         }
