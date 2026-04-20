@@ -80,6 +80,14 @@ struct GitInspectorView: View {
         } message: {
             Text("Stash all staged, unstaged, and untracked changes.")
         }
+        .alert("Publish Branch?", isPresented: $state.showPushUpstreamAlert) {
+            Button("Publish") {
+                state.pushSetUpstream(directoryURL: directoryURL)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The branch \"\(snapshot?.branchName ?? "")\" does not exist on the remote. This will create a new branch on the remote and push your commits.")
+        }
         .sheet(isPresented: $state.showNewBranchSheet) {
             NewBranchSheet(directoryURL: directoryURL, state: state)
         }

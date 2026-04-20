@@ -87,6 +87,21 @@ final class GitInspectorModel {
         }
     }
 
+    func pushSetUpstream(branch: String, snapshot: GitRepositoryStatusSnapshot) async {
+        await perform {
+            try await GitRepository.shared.pushSetUpstream(branch: branch, at: snapshot.repositoryRootURL)
+        }
+    }
+
+    func remoteURL(snapshot: GitRepositoryStatusSnapshot) async -> String? {
+        do {
+            return try await GitRepository.shared.remoteURL(at: snapshot.repositoryRootURL)
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
     func pull(snapshot: GitRepositoryStatusSnapshot) async {
         await perform {
             try await GitRepository.shared.pull(at: snapshot.repositoryRootURL)

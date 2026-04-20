@@ -14,6 +14,11 @@ struct GitInspectorCommitArea: View {
         return .commit
     }
 
+    private var needsUpstream: Bool {
+        guard let snapshot else { return false }
+        return !snapshot.hasTrackingBranch && currentAction == .push
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 6) {
             TextField("Commit message", text: $state.commitMessage, axis: .vertical)
@@ -44,6 +49,10 @@ struct GitInspectorCommitArea: View {
                 await state.refresh(directoryURL: directoryURL)
             }
         case .push:
+            if needsUpstream {
+                state.showPushUpstreamAlert = true
+                return
+            }
             state.perform(.push(snapshot), directoryURL: directoryURL)
         case .pull:
             Task {

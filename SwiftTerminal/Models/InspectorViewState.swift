@@ -57,6 +57,8 @@ final class GitInspectorState {
     var newBranchName = ""
     var showStashAlert = false
     var stashMessage = ""
+    var unpushedExpanded = true
     var stagedExpanded = true
     var unstagedExpanded = true
+    var showPushUpstreamAlert = false
 }

@@ -12,6 +12,37 @@ struct GitInspectorChangesList: View {
     var body: some View {
         List(selection: $state.selectedFileID) {
             if let snapshot {
+                if !snapshot.unpushedCommits.isEmpty {
+                    DisclosureGroup(isExpanded: $state.unpushedExpanded) {
+                        ForEach(snapshot.unpushedCommits) { commit in
+                            Label {
+                                Text(commit.message)
+                                    .lineLimit(1)
+                            } icon: {
+                                Image(systemName: "circle.fill")
+                                    .foregroundStyle(.accent)
+                            }
+                            .padding(.leading, -10)
+                            .font(.subheadline)
+                            .contextMenu {
+                                GitCommitContextMenu(commit: commit, snapshot: snapshot, onAction: handleAction)
+                            }
+                            .listRowSeparator(.hidden)
+                        }
+                    } label: {
+                        sectionHeader(
+                            title: "Unpushed Commits",
+                            systemImage: "arrow.up.circle"
+                        )
+                        .contextMenu {
+                            Button { handleAction(.push(snapshot)) } label: {
+                                Label("Push to Remote", systemImage: "arrow.up")
+                            }
+                        }
+                    }
+                    .listRowSeparator(.hidden)
+                }
+
                 if !snapshot.stagedFiles.isEmpty {
                     DisclosureGroup(isExpanded: $state.stagedExpanded) {
                         fileRows(snapshot.stagedFiles, staged: true, snapshot: snapshot)
@@ -36,26 +67,6 @@ struct GitInspectorChangesList: View {
                         .contextMenu { GitRepoContextMenu(snapshot: snapshot, onAction: handleAction) }
                     }
                     .listRowSeparator(.hidden)
-                }
-
-                if !snapshot.unpushedCommits.isEmpty {
-                    Section {
-                        ForEach(snapshot.unpushedCommits) { commit in
-                            Label {
-                                Text(commit.message)
-                                    .lineLimit(1)
-                            } icon: {
-                                Image(systemName: "circle.fill")
-                                    .foregroundStyle(.accent)
-                            }
-                            .padding(.leading, -10)
-                            .font(.subheadline)
-                            .contextMenu {
-                                GitCommitContextMenu(commit: commit, snapshot: snapshot, onAction: handleAction)
-                            }
-                            .listRowSeparator(.hidden)
-                        }
-                    }
                 }
             }
         }
@@ -145,6 +156,8 @@ struct GitInspectorChangesList: View {
         case .commit:
             // Commit is handled by the commit area; ignore from list-side menus.
             break
+        case .push(let snap) where !snap.hasTrackingBranch:
+            state.showPushUpstreamAlert = true
         default:
             state.perform(action, directoryURL: directoryURL)
         }

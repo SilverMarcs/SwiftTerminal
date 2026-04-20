@@ -83,6 +83,15 @@ extension GitInspectorState {
         }
     }
 
+    func pushSetUpstream(directoryURL: URL) {
+        guard let snapshot = currentSnapshot,
+              let branch = snapshot.branchName else { return }
+        Task {
+            await model.pushSetUpstream(branch: branch, snapshot: snapshot)
+            await refresh(directoryURL: directoryURL)
+        }
+    }
+
     func fetch(directoryURL: URL) {
         guard let snapshot = currentSnapshot else { return }
         Task {

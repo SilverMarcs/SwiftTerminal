@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct GitInspectorBranchBar: View {
@@ -77,6 +78,15 @@ struct GitInspectorBranchBar: View {
             Divider()
 
             Button {
+                openPullRequestPage()
+            } label: {
+                Label("Create PR", systemImage: "arrow.triangle.pull")
+            }
+            .disabled(snapshot?.branchName == nil || snapshot?.hasTrackingBranch != true)
+
+            Divider()
+
+            Button {
                 state.fetch(directoryURL: directoryURL)
             } label: {
                 Label("Refresh", systemImage: "arrow.clockwise")
@@ -90,6 +100,51 @@ struct GitInspectorBranchBar: View {
         .menuIndicator(.hidden)
         .fixedSize()
     }
+
+    private func openPullRequestPage() {
+        guard let snapshot, let branch = snapshot.branchName else { return }
+        Task {
+            guard let remoteURLString = await state.model.remoteURL(snapshot: snapshot),
+                  let url = pullRequestWebURL(remoteURL: remoteURLString, branch: branch) else {
+                state.model.errorMessage = "Could not determine pull request URL from remote."
+                return
+            }
+            NSWorkspace.shared.open(url)
+        }
+    }
+}
+
+// MARK: - Pull Request URL
+
+private func pullRequestWebURL(remoteURL: String, branch: String) -> URL? {
+    // Normalize remote URL to https base
+    var base = remoteURL
+    if base.hasPrefix("git@") {
+        // git@github.com:owner/repo.git → https://github.com/owner/repo
+        base = base
+            .replacingOccurrences(of: "git@", with: "https://")
+            .replacingOccurrences(of: ":", with: "/", range: base.range(of: ":", range: base.index(base.startIndex, offsetBy: 4)..<base.endIndex))
+    }
+    if base.hasSuffix(".git") {
+        base = String(base.dropLast(4))
+    }
+    base = base.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    guard let parsed = URL(string: base), let host = parsed.host() else { return nil }
+    let pathComponents = parsed.pathComponents.filter { $0 != "/" }
+    guard pathComponents.count >= 2 else { return nil }
+    let owner = pathComponents[0]
+    let repo = pathComponents[1]
+    let encodedBranch = branch.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? branch
+
+    if host.contains("github") {
+        return URL(string: "https://\(host)/\(owner)/\(repo)/pull/new/\(encodedBranch)")
+    } else if host.contains("gitlab") {
+        return URL(string: "https://\(host)/\(owner)/\(repo)/-/merge_requests/new?merge_request[source_branch]=\(encodedBranch)")
+    } else if host.contains("bitbucket") {
+        return URL(string: "https://\(host)/\(owner)/\(repo)/pull-requests/new?source=\(encodedBranch)")
+    }
+    return nil
 }
 
 struct NewBranchSheet: View {

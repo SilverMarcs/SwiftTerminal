@@ -19,9 +19,12 @@ actor GitRepository {
                     let entries = try await self.executor.execute(GitStatusCommand(), at: repositoryRootURL)
 
                     async let branchName = try? self.executor.execute(GitBranchNameCommand(), at: repositoryRootURL)
-                    async let unpushedCommits = self.fetchUnpushedCommits(at: repositoryRootURL)
-                    async let remoteAheadCount = (try? self.executor.execute(GitRemoteAheadCountCommand(), at: repositoryRootURL)) ?? 0
+                    async let hasTracking = self.checkHasTrackingBranch(at: repositoryRootURL)
                     async let localBranches = (try? self.executor.execute(GitLocalBranchesCommand(), at: repositoryRootURL)) ?? []
+
+                    let tracking = await hasTracking
+                    async let unpushedCommits = self.fetchUnpushedCommits(at: repositoryRootURL, hasTrackingBranch: tracking)
+                    async let remoteAheadCount = tracking ? ((try? self.executor.execute(GitRemoteAheadCountCommand(), at: repositoryRootURL)) ?? 0) : 0
 
                     var stagedFiles: [GitChangedFile] = []
                     var unstagedFiles: [GitChangedFile] = []
@@ -44,7 +47,8 @@ actor GitRepository {
                         stagedFiles: stagedFiles,
                         unstagedFiles: unstagedFiles,
                         unpushedCommits: await unpushedCommits,
-                        remoteAheadCount: await remoteAheadCount
+                        remoteAheadCount: await remoteAheadCount,
+                        hasTrackingBranch: tracking
                     )
                 }
             }
@@ -223,6 +227,14 @@ actor GitRepository {
         try await self.executor.execute(GitPushCommand(), at: repositoryRootURL)
     }
 
+    func pushSetUpstream(branch: String, at repositoryRootURL: URL) async throws {
+        try await self.executor.execute(GitPushSetUpstreamCommand(branch: branch), at: repositoryRootURL)
+    }
+
+    func remoteURL(at repositoryRootURL: URL) async throws -> String {
+        try await self.executor.execute(GitRemoteURLCommand(), at: repositoryRootURL)
+    }
+
     func pull(at repositoryRootURL: URL) async throws {
         try await self.executor.execute(GitPullCommand(), at: repositoryRootURL)
     }
@@ -253,10 +265,29 @@ actor GitRepository {
 
     // MARK: - Private
 
-    private func fetchUnpushedCommits(at repositoryRootURL: URL) async -> [GitUnpushedCommit] {
-        guard let commitEntries = try? await self.executor.execute(
-            GitUnpushedCommitListCommand(), at: repositoryRootURL
-        ) else { return [] }
+    private func checkHasTrackingBranch(at repositoryRootURL: URL) async -> Bool {
+        do {
+            _ = try await self.executor.execute(GitTrackingBranchCommand(), at: repositoryRootURL)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    private func fetchUnpushedCommits(at repositoryRootURL: URL, hasTrackingBranch: Bool) async -> [GitUnpushedCommit] {
+        let commitEntries: [(hash: String, message: String)]
+        if hasTrackingBranch {
+            guard let entries = try? await self.executor.execute(
+                GitUnpushedCommitListCommand(), at: repositoryRootURL
+            ) else { return [] }
+            commitEntries = entries
+        } else {
+            guard let entries = try? await self.executor.execute(
+                GitLocalOnlyCommitListCommand(), at: repositoryRootURL
+            ) else { return [] }
+            commitEntries = entries
+        }
+        guard !commitEntries.isEmpty else { return [] }
 
         return await withTaskGroup(of: (Int, GitUnpushedCommit).self) { group in
             for (index, entry) in commitEntries.enumerated() {
@@ -404,6 +435,7 @@ struct GitRepositoryStatusSnapshot: Equatable {
     var unstagedFiles: [GitChangedFile]
     var unpushedCommits: [GitUnpushedCommit]
     var remoteAheadCount: Int
+    var hasTrackingBranch: Bool
 
     var isDirty: Bool {
         !stagedFiles.isEmpty || !unstagedFiles.isEmpty
@@ -591,6 +623,26 @@ struct GitPushCommand: GitCommand {
     func parse(output: String) throws { }
 }
 
+private struct GitPushSetUpstreamCommand: GitCommand {
+    let branch: String
+    var arguments: [String] { ["push", "--set-upstream", "origin", branch] }
+    func parse(output: String) throws { }
+}
+
+private struct GitRemoteURLCommand: GitCommand {
+    var arguments: [String] { ["remote", "get-url", "origin"] }
+    func parse(output: String) throws -> String {
+        output.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+private struct GitTrackingBranchCommand: GitCommand {
+    var arguments: [String] { ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"] }
+    func parse(output: String) throws -> String {
+        output.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
 struct GitPullCommand: GitCommand {
     var arguments: [String] { ["pull"] }
     func parse(output: String) throws { }
@@ -654,6 +706,22 @@ private struct GitRemoteAheadCountCommand: GitCommand {
 private struct GitUnpushedCommitListCommand: GitCommand {
     var arguments: [String] {
         ["log", "@{u}..HEAD", "--pretty=format:%H%x00%s"]
+    }
+
+    func parse(output: String) throws -> [(hash: String, message: String)] {
+        let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        return trimmed.split(separator: "\n", omittingEmptySubsequences: true).compactMap { line in
+            let parts = line.split(separator: "\0", maxSplits: 1)
+            guard parts.count == 2 else { return nil }
+            return (hash: String(parts[0]), message: String(parts[1]))
+        }
+    }
+}
+
+private struct GitLocalOnlyCommitListCommand: GitCommand {
+    var arguments: [String] {
+        ["log", "--not", "--remotes", "--pretty=format:%H%x00%s"]
     }
 
     func parse(output: String) throws -> [(hash: String, message: String)] {
