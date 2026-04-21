@@ -65,14 +65,14 @@ struct GitInspectorBranchBar: View {
                 state.stashMessage = ""
                 state.showStashAlert = true
             } label: {
-                Label("Stash All...", systemImage: "tray.and.arrow.down")
+                Label("Stash All Changes", systemImage: "tray.and.arrow.down")
             }
             .disabled(snapshot?.isDirty != true)
 
             Button {
                 state.applyLatestStash(directoryURL: directoryURL)
             } label: {
-                Label("Apply Stash", systemImage: "tray.and.arrow.up")
+                Label("Apply Lates Stash", systemImage: "tray.and.arrow.up")
             }
 
             Divider()
@@ -80,7 +80,7 @@ struct GitInspectorBranchBar: View {
             Button {
                 openPullRequestPage()
             } label: {
-                Label("Create PR", systemImage: "arrow.triangle.pull")
+                Label("Create Pull Request", systemImage: "arrow.triangle.pull")
             }
             .disabled(snapshot?.branchName == nil || snapshot?.hasTrackingBranch != true)
 

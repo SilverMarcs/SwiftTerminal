@@ -35,12 +35,6 @@ struct GitInspectorView: View {
             .padding()
             .animation(.easeInOut(duration: 0.2), value: activeBanner)
         }
-        .overlay {
-            if state.model.isLoading && state.model.snapshots.isEmpty {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
         .task(id: directoryURL) {
             await state.refresh(directoryURL: directoryURL)
             if state.selectedRepoURL == nil {

@@ -110,7 +110,7 @@ final class GitInspectorModel {
     }
 
     func fetch(snapshot: GitRepositoryStatusSnapshot) async {
-        await perform(successLabel: "Fetched latest changes") {
+        await perform {
             try await GitRepository.shared.fetch(at: snapshot.repositoryRootURL)
         }
     }
