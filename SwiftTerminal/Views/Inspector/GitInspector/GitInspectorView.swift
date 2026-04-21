@@ -83,6 +83,11 @@ struct GitInspectorView: View {
         } message: {
             Text("The branch \"\(snapshot?.branchName ?? "")\" does not exist on the remote. This will create a new branch on the remote and push your commits.")
         }
+        .alert("Cannot Apply Stash", isPresented: $state.showStashConflictAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("The stash cannot be applied cleanly because it conflicts with your current changes. Commit or discard your changes first, then try again.")
+        }
         .sheet(isPresented: $state.showNewBranchSheet) {
             NewBranchSheet(directoryURL: directoryURL, state: state)
         }

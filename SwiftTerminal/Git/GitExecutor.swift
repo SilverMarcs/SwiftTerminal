@@ -19,6 +19,12 @@ struct GitExecutor: Sendable {
         return try command.parse(output: result.standardOutput)
     }
 
+    func run(arguments: [String], stdinData: Data, at directoryURL: URL) async throws -> (exitCode: Int32, stderr: String) {
+        let result = try await self.run(arguments: arguments, at: directoryURL, stdinData: stdinData)
+        let stderr = result.standardError.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (result.terminationStatus, stderr)
+    }
+
     func runRawData(arguments: [String], at directoryURL: URL) async throws -> Data {
         let result = try await runBinary(arguments: arguments, at: directoryURL)
         guard result.terminationStatus == 0 else {
@@ -28,7 +34,7 @@ struct GitExecutor: Sendable {
         return result.standardOutput
     }
 
-    private func run(arguments: [String], at directoryURL: URL) async throws -> ExecutionResult {
+    private func run(arguments: [String], at directoryURL: URL, stdinData: Data? = nil) async throws -> ExecutionResult {
         let process = Process()
         process.executableURL = self.executableURL
         process.arguments = arguments
@@ -38,6 +44,13 @@ struct GitExecutor: Sendable {
         let standardErrorPipe = Pipe()
         process.standardOutput = standardOutputPipe
         process.standardError = standardErrorPipe
+
+        if let stdinData {
+            let stdinPipe = Pipe()
+            process.standardInput = stdinPipe
+            stdinPipe.fileHandleForWriting.write(stdinData)
+            stdinPipe.fileHandleForWriting.closeFile()
+        }
 
         var environment = ProcessInfo.processInfo.environment
         environment["GIT_TERMINAL_PROMPT"] = "0"

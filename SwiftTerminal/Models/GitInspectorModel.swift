@@ -143,6 +143,10 @@ final class GitInspectorModel {
         }
     }
 
+    func canApplyStashCleanly(snapshot: GitRepositoryStatusSnapshot) async -> Bool {
+        await GitRepository.shared.canStashApplyCleanly(at: snapshot.repositoryRootURL)
+    }
+
     func applyLatestStash(snapshot: GitRepositoryStatusSnapshot) async {
         await perform(successLabel: "Stash applied") {
             try await GitRepository.shared.stashPop(at: snapshot.repositoryRootURL)

@@ -259,6 +259,23 @@ actor GitRepository {
         try await self.executor.execute(GitStashWithMessageCommand(message: message), at: repositoryRootURL)
     }
 
+    func canStashApplyCleanly(at repositoryRootURL: URL) async -> Bool {
+        do {
+            let diffData = try await self.executor.runRawData(
+                arguments: ["stash", "show", "-p"],
+                at: repositoryRootURL
+            )
+            let result = try await self.executor.run(
+                arguments: ["apply", "--check"],
+                stdinData: diffData,
+                at: repositoryRootURL
+            )
+            return result.exitCode == 0
+        } catch {
+            return false
+        }
+    }
+
     func stashPop(at repositoryRootURL: URL) async throws {
         try await self.executor.execute(GitStashPopCommand(), at: repositoryRootURL)
     }
@@ -689,7 +706,7 @@ private struct GitStashWithMessageCommand: GitCommand {
 }
 
 private struct GitStashPopCommand: GitCommand {
-    var arguments: [String] { ["stash", "pop"] }
+    var arguments: [String] { ["stash", "pop", "--index"] }
     func parse(output: String) throws { }
 }
 

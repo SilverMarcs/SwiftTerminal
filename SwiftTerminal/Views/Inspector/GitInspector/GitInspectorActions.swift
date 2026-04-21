@@ -78,6 +78,11 @@ extension GitInspectorState {
     func applyLatestStash(directoryURL: URL) {
         guard let snapshot = currentSnapshot else { return }
         Task {
+            let canApply = await model.canApplyStashCleanly(snapshot: snapshot)
+            guard canApply else {
+                showStashConflictAlert = true
+                return
+            }
             await model.applyLatestStash(snapshot: snapshot)
             await refresh(directoryURL: directoryURL)
         }

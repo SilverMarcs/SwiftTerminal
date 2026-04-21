@@ -61,4 +61,5 @@ final class GitInspectorState {
     var stagedExpanded = true
     var unstagedExpanded = true
     var showPushUpstreamAlert = false
+    var showStashConflictAlert = false
 }
