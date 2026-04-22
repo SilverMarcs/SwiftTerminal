@@ -10,6 +10,7 @@ struct GitInspectorCommitArea: View {
         guard let snapshot else { return .commit }
         if !snapshot.stagedFiles.isEmpty { return .commit }
         if !snapshot.unpushedCommits.isEmpty { return .push }
+        if !snapshot.hasTrackingBranch { return .push }
         if snapshot.remoteAheadCount > 0 { return .pull }
         return .commit
     }

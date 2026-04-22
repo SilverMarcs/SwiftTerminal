@@ -23,7 +23,8 @@ actor GitRepository {
                     async let localBranches = (try? self.executor.execute(GitLocalBranchesCommand(), at: repositoryRootURL)) ?? []
 
                     let tracking = await hasTracking
-                    async let unpushedCommits = self.fetchUnpushedCommits(at: repositoryRootURL, hasTrackingBranch: tracking)
+                    let branch = await branchName
+                    async let unpushedCommits = self.fetchUnpushedCommits(at: repositoryRootURL, hasTrackingBranch: tracking, branchName: branch)
                     async let remoteAheadCount = tracking ? ((try? self.executor.execute(GitRemoteAheadCountCommand(), at: repositoryRootURL)) ?? 0) : 0
 
                     var stagedFiles: [GitChangedFile] = []
@@ -42,7 +43,7 @@ actor GitRepository {
 
                     return GitRepositoryStatusSnapshot(
                         repositoryRootURL: repositoryRootURL,
-                        branchName: await branchName,
+                        branchName: branch,
                         localBranches: await localBranches,
                         stagedFiles: stagedFiles,
                         unstagedFiles: unstagedFiles,
@@ -307,7 +308,7 @@ actor GitRepository {
         }
     }
 
-    private func fetchUnpushedCommits(at repositoryRootURL: URL, hasTrackingBranch: Bool) async -> [GitUnpushedCommit] {
+    private func fetchUnpushedCommits(at repositoryRootURL: URL, hasTrackingBranch: Bool, branchName: String?) async -> [GitUnpushedCommit] {
         let commitEntries: [(hash: String, message: String)]
         if hasTrackingBranch {
             guard let entries = try? await self.executor.execute(
@@ -316,7 +317,7 @@ actor GitRepository {
             commitEntries = entries
         } else {
             guard let entries = try? await self.executor.execute(
-                GitLocalOnlyCommitListCommand(), at: repositoryRootURL
+                GitLocalOnlyCommitListCommand(branchName: branchName), at: repositoryRootURL
             ) else { return [] }
             commitEntries = entries
         }
@@ -775,8 +776,15 @@ private struct GitUnpushedCommitListCommand: GitCommand {
 }
 
 private struct GitLocalOnlyCommitListCommand: GitCommand {
+    var branchName: String?
+
     var arguments: [String] {
-        ["log", "--not", "--remotes", "--pretty=format:%H%x00%s"]
+        var args = ["log", "HEAD", "--not"]
+        if let branchName {
+            args += ["--exclude=\(branchName)", "--branches"]
+        }
+        args += ["--remotes", "--pretty=format:%H%x00%s"]
+        return args
     }
 
     func parse(output: String) throws -> [(hash: String, message: String)] {
