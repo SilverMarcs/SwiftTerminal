@@ -258,14 +258,16 @@ final class Chat: Identifiable, Hashable, Codable {
                     toolCallId: toolUpdate.toolCallId,
                     title: toolUpdate.title ?? toolUpdate.kind?.rawValue.capitalized ?? "Tool",
                     kind: toolUpdate.kind,
-                    status: toolUpdate.status ?? .completed
+                    status: toolUpdate.status ?? .completed,
+                    diff: Self.firstDiff(in: toolUpdate.content)
                 )
             case .toolCallUpdate(let details):
                 currentAssistant?.updateToolCall(
                     id: details.toolCallId,
                     title: details.title,
                     kind: details.kind,
-                    status: details.status
+                    status: details.status,
+                    diff: details.content.flatMap(Self.firstDiff)
                 )
             case .sessionInfoUpdate(let info):
                 if let newTitle = info.title {
@@ -344,14 +346,16 @@ final class Chat: Identifiable, Hashable, Codable {
                 toolCallId: update.toolCallId,
                 title: update.title ?? update.kind?.rawValue.capitalized ?? "Tool",
                 kind: update.kind,
-                status: update.status ?? .pending
+                status: update.status ?? .pending,
+                diff: Self.firstDiff(in: update.content)
             )
         case .toolCallUpdate(let details):
             getOrCreateTurnMessage().updateToolCall(
                 id: details.toolCallId,
                 title: details.title,
                 kind: details.kind,
-                status: details.status
+                status: details.status,
+                diff: details.content.flatMap(Self.firstDiff)
             )
         default:
             break
@@ -431,5 +435,12 @@ final class Chat: Identifiable, Hashable, Codable {
 
     private func scheduleSave() {
         workspace?.store?.scheduleSave()
+    }
+
+    private static func firstDiff(in content: [ToolCallContent]) -> ToolCallDiff? {
+        for item in content {
+            if case .diff(let diff) = item { return diff }
+        }
+        return nil
     }
 }

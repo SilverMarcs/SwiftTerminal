@@ -2,7 +2,11 @@ import SwiftUI
 import ACP
 
 struct AssistantMessageView: View {
+    @AppStorage("fontSize") private var fontSize: Double = 13
+
     let message: Message
+
+    @State private var measuredHeight: CGFloat = 0
 
     private var chat: Chat { message.chat! }
     private var session: ACPSession { chat.session }
@@ -13,17 +17,18 @@ struct AssistantMessageView: View {
             AssistantLabel(provider: chat.provider)
 
             VStack(alignment: .leading, spacing: 8) {
-                ForEach(groupedBlocks) { group in
-                    switch group.type {
-                    case .text:
-                        MDView(content: group.blocks[0].text, isStreaming: session.isProcessing && isLastMessage)
-                            .transaction { $0.animation = nil }
-                    case .toolCalls:
-                        ToolCallsButton(items: group.blocks)
-                    case .thought:
-                        EmptyView()
-                    }
+                AssistantBlocksRepresentable(
+                    blocks: message.blocks,
+                    fontSize: fontSize,
+                    cachedHeight: message.height,
+                    calculatedHeight: $measuredHeight
+                )
+                .frame(height: message.height > 0 ? message.height : nil, alignment: .top)
+                .onChange(of: measuredHeight) { _, newHeight in
+                    guard newHeight > 0, message.height != newHeight else { return }
+                    message.height = newHeight
                 }
+                .transaction { $0.animation = nil }
 
                 if session.isProcessing && isLastMessage {
                     ProgressView()
@@ -36,35 +41,5 @@ struct AssistantMessageView: View {
         .transaction { $0.animation = nil }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.trailing, 30)
-    }
-
-    private var groupedBlocks: [BlockGroup] {
-        var groups: [BlockGroup] = []
-        for block in message.blocks {
-            if block.isToolCall {
-                if let last = groups.last, last.type == .toolCalls {
-                    groups[groups.count - 1].blocks.append(block)
-                } else {
-                    groups.append(BlockGroup(type: .toolCalls, blocks: [block]))
-                }
-            } else if block.isThought {
-                groups.append(BlockGroup(type: .thought, blocks: [block]))
-            } else {
-                groups.append(BlockGroup(type: .text, blocks: [block]))
-            }
-        }
-        return groups
-    }
-}
-
-private struct BlockGroup: Identifiable {
-    let id = UUID()
-    var type: GroupType
-    var blocks: [MessageBlock]
-
-    enum GroupType {
-        case text
-        case toolCalls
-        case thought
     }
 }

@@ -1,3 +1,4 @@
+// A wild penguin appeared.
 import Foundation
 
 enum CheckpointError: LocalizedError {

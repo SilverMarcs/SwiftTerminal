@@ -14,6 +14,7 @@ final class Message: Identifiable, Codable {
     var timestamp: Date = Date()
     var turnIndex: Int = 0
     var blocksData: Data?
+    var height: CGFloat = 0
 
     @ObservationIgnored
     weak var chat: Chat?
@@ -26,7 +27,7 @@ final class Message: Identifiable, Codable {
     // MARK: - Codable
 
     private enum CodingKeys: String, CodingKey {
-        case id, role, timestamp, turnIndex, blocksData
+        case id, role, timestamp, turnIndex, blocksData, height
     }
 
     init(from decoder: Decoder) throws {
@@ -36,6 +37,7 @@ final class Message: Identifiable, Codable {
         self.timestamp = try c.decodeIfPresent(Date.self, forKey: .timestamp) ?? Date()
         self.turnIndex = try c.decodeIfPresent(Int.self, forKey: .turnIndex) ?? 0
         self.blocksData = try c.decodeIfPresent(Data.self, forKey: .blocksData)
+        self.height = try c.decodeIfPresent(CGFloat.self, forKey: .height) ?? 0
     }
 
     func encode(to encoder: Encoder) throws {
@@ -45,6 +47,7 @@ final class Message: Identifiable, Codable {
         try c.encode(timestamp, forKey: .timestamp)
         try c.encode(turnIndex, forKey: .turnIndex)
         try c.encodeIfPresent(blocksData, forKey: .blocksData)
+        try c.encode(height, forKey: .height)
     }
 
     // MARK: - Blocks
@@ -73,24 +76,44 @@ final class Message: Identifiable, Codable {
         blocks = b
     }
 
-    func addToolCall(toolCallId: String, title: String, kind: ToolKind?, status: ToolStatus) {
+    func addToolCall(
+        toolCallId: String,
+        title: String,
+        kind: ToolKind?,
+        status: ToolStatus,
+        diff: ToolCallDiff? = nil
+    ) {
         var b = blocks
         b.append(MessageBlock(
             type: .toolCall,
             toolCallId: toolCallId,
             toolTitle: title,
             toolKind: kind,
-            toolStatus: status
+            toolStatus: status,
+            diffPath: diff?.path,
+            diffOldText: diff?.oldText,
+            diffNewText: diff?.newText
         ))
         blocks = b
     }
 
-    func updateToolCall(id: String, title: String?, kind: ToolKind?, status: ToolStatus?) {
+    func updateToolCall(
+        id: String,
+        title: String?,
+        kind: ToolKind?,
+        status: ToolStatus?,
+        diff: ToolCallDiff? = nil
+    ) {
         var b = blocks
         if let idx = b.lastIndex(where: { $0.toolCallId == id }) {
             if let s = status { b[idx].toolStatus = s }
             if let t = title { b[idx].toolTitle = t }
             if let k = kind { b[idx].toolKind = k }
+            if let d = diff {
+                b[idx].diffPath = d.path
+                b[idx].diffOldText = d.oldText
+                b[idx].diffNewText = d.newText
+            }
         }
         blocks = b
     }

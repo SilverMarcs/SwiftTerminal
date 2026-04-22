@@ -1,7 +1,7 @@
 import Foundation
 import ACP
 
-struct MessageBlock: Codable, Identifiable {
+struct MessageBlock: Codable, Identifiable, Sendable {
     var id = UUID()
     var type: BlockType
     var text: String = ""
@@ -10,6 +10,10 @@ struct MessageBlock: Codable, Identifiable {
     var toolTitle: String?
     var toolKind: ToolKind?
     var toolStatus: ToolStatus?
+
+    var diffPath: String?
+    var diffOldText: String?
+    var diffNewText: String?
 
     enum BlockType: String, Codable {
         case text
@@ -23,5 +27,11 @@ struct MessageBlock: Codable, Identifiable {
 
     var toolSymbolName: String {
         toolKind?.symbolName ?? "wrench.and.screwdriver"
+    }
+
+    var hasDiff: Bool { diffPath != nil && diffNewText != nil }
+
+    var isEditWithDiff: Bool {
+        isToolCall && toolKind == .edit && hasDiff && (diffOldText?.isEmpty == false)
     }
 }

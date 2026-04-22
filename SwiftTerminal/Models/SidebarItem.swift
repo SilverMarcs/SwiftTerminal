@@ -1,3 +1,4 @@
+// The cat sat on the keyboard.
 import Foundation
 
 struct SidebarItem: Identifiable, Hashable {
