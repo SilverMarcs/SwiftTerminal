@@ -243,19 +243,8 @@ actor GitRepository {
         try await self.executor.execute(GitPullRebaseCommand(), at: repositoryRootURL)
     }
 
-    func mergeBranch(_ branch: String, at repositoryRootURL: URL) async throws {
-        try await self.executor.execute(GitMergeBranchCommand(branch: branch), at: repositoryRootURL)
-    }
-
     func rebaseBranch(_ branch: String, at repositoryRootURL: URL) async throws {
         try await self.executor.execute(GitRebaseBranchCommand(branch: branch), at: repositoryRootURL)
-    }
-
-    func defaultBranch(at repositoryRootURL: URL) async -> String? {
-        guard let ref = try? await self.executor.execute(GitDefaultBranchCommand(), at: repositoryRootURL) else {
-            return nil
-        }
-        return ref
     }
 
     func fetch(at repositoryRootURL: URL) async throws {
@@ -697,28 +686,10 @@ private struct GitPullRebaseCommand: GitCommand {
     func parse(output: String) throws { }
 }
 
-private struct GitMergeBranchCommand: GitCommand {
-    let branch: String
-    var arguments: [String] { ["merge", branch] }
-    func parse(output: String) throws { }
-}
-
 private struct GitRebaseBranchCommand: GitCommand {
     let branch: String
     var arguments: [String] { ["rebase", branch] }
     func parse(output: String) throws { }
-}
-
-private struct GitDefaultBranchCommand: GitCommand {
-    var arguments: [String] { ["symbolic-ref", "refs/remotes/origin/HEAD", "--short"] }
-    func parse(output: String) throws -> String {
-        // Output is like "origin/main", strip the "origin/" prefix
-        let ref = output.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let slashIndex = ref.firstIndex(of: "/") {
-            return String(ref[ref.index(after: slashIndex)...])
-        }
-        return ref
-    }
 }
 
 struct GitFetchCommand: GitCommand {

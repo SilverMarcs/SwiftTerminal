@@ -107,18 +107,18 @@ extension GitInspectorState {
         }
     }
 
-    func syncWithBaseBranch(using strategy: SyncStrategy, directoryURL: URL) {
+    func syncWithBranch(_ branch: String, directoryURL: URL) {
         guard let snapshot = currentSnapshot else { return }
         Task {
-            await model.syncWithBaseBranch(using: strategy, snapshot: snapshot)
+            await model.syncWithBranch(branch, snapshot: snapshot)
             await refresh(directoryURL: directoryURL)
         }
     }
 
-    func syncWithRemote(using strategy: SyncStrategy, directoryURL: URL) {
+    func syncWithRemote(directoryURL: URL) {
         guard let snapshot = currentSnapshot else { return }
         Task {
-            await model.syncWithRemote(using: strategy, snapshot: snapshot)
+            await model.syncWithRemote(snapshot: snapshot)
             await refresh(directoryURL: directoryURL)
         }
     }

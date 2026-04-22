@@ -65,6 +65,5 @@ final class GitInspectorState {
     var showRenameCommitAlert = false
     var renameCommitMessage = ""
     var showUndoLastCommitAlert = false
-    var showSyncWithBaseDialog = false
-    var showSyncWithRemoteDialog = false
+    var showSyncWithBranchSheet = false
 }

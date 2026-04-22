@@ -87,14 +87,14 @@ struct GitInspectorBranchBar: View {
 //            Divider()
 
             Button {
-                state.showSyncWithBaseDialog = true
+                state.showSyncWithBranchSheet = true
             } label: {
-                Label("Sync with Base Branch", systemImage: "arrow.triangle.merge")
+                Label("Sync with Branch", systemImage: "arrow.triangle.merge")
             }
             .disabled(snapshot?.hasTrackingBranch != true)
 
             Button {
-                state.showSyncWithRemoteDialog = true
+                state.syncWithRemote(directoryURL: directoryURL)
             } label: {
                 Label("Sync with Remote", systemImage: "arrow.2.squarepath")
             }
@@ -170,5 +170,42 @@ private func pullRequestWebURL(remoteURL: String, branch: String) -> URL? {
         return URL(string: "https://\(host)/\(owner)/\(repo)/pull-requests/new?source=\(encodedBranch)")
     }
     return nil
+}
+
+struct SyncWithBranchSheet: View {
+    let directoryURL: URL
+    @Bindable var state: GitInspectorState
+    @State private var selectedBranch: String?
+
+    private var branches: [String] {
+        guard let snapshot = state.currentSnapshot else { return [] }
+        return snapshot.localBranches.filter { $0 != snapshot.branchName }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List(branches, id: \.self, selection: $selectedBranch) { branch in
+                Text(branch)
+            }
+            .navigationTitle("Sync with Branch")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        state.showSyncWithBranchSheet = false
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Sync") {
+                        if let branch = selectedBranch {
+                            state.showSyncWithBranchSheet = false
+                            state.syncWithBranch(branch, directoryURL: directoryURL)
+                        }
+                    }
+                    .disabled(selectedBranch == nil)
+                }
+            }
+        }
+        .frame(width: 280, height: 320)
+    }
 }
 
