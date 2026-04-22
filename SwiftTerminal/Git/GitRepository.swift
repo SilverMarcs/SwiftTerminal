@@ -62,6 +62,10 @@ actor GitRepository {
         }
     }
 
+    func initializeRepository(at directoryURL: URL) async throws {
+        try await self.executor.execute(GitInitCommand(), at: directoryURL)
+    }
+
     func changedFileURLs(in directoryURL: URL) async throws -> Set<URL> {
         let snapshots = try await self.statusSnapshots(in: directoryURL)
         return Set(
@@ -650,6 +654,11 @@ struct GitCommitCommand: GitCommand {
     let message: String
     var arguments: [String] { ["commit", "-m", message] }
     func parse(output: String) throws -> String { output }
+}
+
+private struct GitInitCommand: GitCommand {
+    var arguments: [String] { ["init"] }
+    func parse(output: String) throws { }
 }
 
 struct GitPushCommand: GitCommand {

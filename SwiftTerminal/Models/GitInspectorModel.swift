@@ -179,6 +179,12 @@ final class GitInspectorModel {
         }
     }
 
+    func initializeRepository(at directoryURL: URL) async {
+        await perform(successLabel: "Repository initialized") {
+            try await GitRepository.shared.initializeRepository(at: directoryURL)
+        }
+    }
+
     // MARK: - Private
 
     @discardableResult

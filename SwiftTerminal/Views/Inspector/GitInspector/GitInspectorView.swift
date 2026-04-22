@@ -7,7 +7,43 @@ struct GitInspectorView: View {
 
     private var snapshot: GitRepositoryStatusSnapshot? { state.currentSnapshot }
 
+    private var hasRepository: Bool {
+        !state.model.snapshots.isEmpty
+    }
+
     var body: some View {
+        if hasRepository {
+            repositoryView
+        } else {
+            initializeView
+        }
+    }
+
+    private var initializeView: some View {
+        ContentUnavailableView {
+            Label("No Repository", systemImage: "arrow.triangle.branch")
+        } description: {
+            Text("This folder is not a Git repository.")
+        } actions: {
+            Button("Initialize Repository") {
+                Task {
+                    await state.model.initializeRepository(at: directoryURL)
+                    await state.refresh(directoryURL: directoryURL)
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task(id: directoryURL) {
+            await state.refresh(directoryURL: directoryURL)
+        }
+        .watchFileSystem(at: directoryURL) {
+            Task { await state.refresh(directoryURL: directoryURL) }
+        }
+    }
+
+    private var repositoryView: some View {
         GitInspectorChangesList(
             directoryURL: directoryURL,
             state: state,
