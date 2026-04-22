@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0896F7692F829B9C0024299A /* ACP in Frameworks */ = {isa = PBXBuildFile; productRef = 0896F7682F829B9C0024299A /* ACP */; };
 		08BEFC282F74722D009C370D /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 08BEFC272F74722D009C370D /* SwiftTerm */; };
 		08BEFC2A2F74722D009C370E /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 08BEFC292F74722D009C370E /* Sparkle */; };
 		08BEFC322F74722D009C3710 /* Highlightr in Frameworks */ = {isa = PBXBuildFile; productRef = 08BEFC312F74722D009C3710 /* Highlightr */; };
@@ -29,6 +30,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0896F7692F829B9C0024299A /* ACP in Frameworks */,
 				08BEFC282F74722D009C370D /* SwiftTerm in Frameworks */,
 				08BEFC2A2F74722D009C370E /* Sparkle in Frameworks */,
 				08BEFC322F74722D009C3710 /* Highlightr in Frameworks */,
@@ -74,6 +76,7 @@
 			);
 			name = SwiftTerminal;
 			packageProductDependencies = (
+				0896F7682F829B9C0024299A /* ACP */,
 				08BEFC272F74722D009C370D /* SwiftTerm */,
 				08BEFC292F74722D009C370E /* Sparkle */,
 				08BEFC312F74722D009C3710 /* Highlightr */,
@@ -107,6 +110,7 @@
 			mainGroup = 08D10C412F64897100754649;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				0896F7672F829B9C0024299A /* XCRemoteSwiftPackageReference "swift-acp" */,
 				08BEFC262F74722D009C370D /* XCRemoteSwiftPackageReference "SwiftTerm" */,
 				08BEFC2B2F74722D009C370E /* XCRemoteSwiftPackageReference "Sparkle" */,
 				08BEFC302F74722D009C3710 /* XCRemoteSwiftPackageReference "Highlightr" */,
@@ -402,6 +406,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		0896F7672F829B9C0024299A /* XCRemoteSwiftPackageReference "swift-acp" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/wiedymi/swift-acp";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 		08BEFC262F74722D009C370D /* XCRemoteSwiftPackageReference "SwiftTerm" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/SilverMarcs/SwiftTerm";
@@ -429,6 +441,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		0896F7682F829B9C0024299A /* ACP */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0896F7672F829B9C0024299A /* XCRemoteSwiftPackageReference "swift-acp" */;
+			productName = ACP;
+		};
 		08BEFC272F74722D009C370D /* SwiftTerm */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 08BEFC262F74722D009C370D /* XCRemoteSwiftPackageReference "SwiftTerm" */;

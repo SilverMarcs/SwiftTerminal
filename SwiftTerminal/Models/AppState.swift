@@ -4,6 +4,7 @@ import SwiftUI
 final class AppState {
     var selectedWorkspace: Workspace?
     var selectedTerminal: Terminal?
+    var selectedSession: Chat?
 
     // Inspector state
     var showingInspector = true

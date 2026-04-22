@@ -6,19 +6,16 @@ struct WorkspaceDetailView: View {
     @State private var showingScratchPad = false
 
     var body: some View {
-        VStack(spacing: 0) {
-           DocumentTabBar(workspace: workspace)
-                   
-            if let terminal = appState.selectedTerminal {
-                TerminalContainerRepresentable(
-                    tab: terminal, 
-                    appState: appState
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        Group {
+            if let chat = appState.selectedSession {
+                ACPView(chat: chat)
+                    // .id(chat.id)
+            } else {
+                terminalContent
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-           BottomSheetView(directoryURL: workspace.url)
+            BottomSheetView(directoryURL: workspace.url)
         }
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .toolbar {
@@ -70,6 +67,20 @@ struct WorkspaceDetailView: View {
                 Text("\"\(name)\" is still running in this tab. Are you sure you want to close it?")
             } else {
                 Text("A process is still running in this tab. Are you sure you want to close it?")
+            }
+        }
+    }
+
+    private var terminalContent: some View {
+        VStack(spacing: 0) {
+            DocumentTabBar(workspace: workspace)
+
+            if let terminal = appState.selectedTerminal {
+                TerminalContainerRepresentable(
+                    tab: terminal,
+                    appState: appState
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
     }

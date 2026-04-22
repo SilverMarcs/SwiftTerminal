@@ -50,7 +50,10 @@ final class WorkspaceStore {
         do {
             let data = try Data(contentsOf: fileURL)
             let payload = try JSONDecoder().decode(StorePayload.self, from: data)
-            for ws in payload.workspaces { ws.store = self }
+            for ws in payload.workspaces {
+                ws.store = self
+                for chat in ws.chats { chat.workspace = ws }
+            }
             workspaces = payload.workspaces
             didLoad = true
         } catch {
@@ -107,6 +110,11 @@ final class WorkspaceStore {
                     _ = cmd.command
                     _ = cmd.isDefault
                 }
+                for chat in ws.chats {
+                    _ = chat.title
+                    _ = chat.turnCount
+                    _ = chat.acpSessionId
+                }
             }
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
@@ -131,6 +139,9 @@ final class WorkspaceStore {
         }
         for terminal in workspace.terminals {
             terminal.terminate()
+        }
+        for chat in workspace.chats {
+            chat.disconnect()
         }
         workspaces.removeAll { $0.id == workspace.id }
         scheduleSave()

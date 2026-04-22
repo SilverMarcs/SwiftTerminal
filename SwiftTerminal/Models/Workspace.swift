@@ -12,6 +12,7 @@ final class Workspace: Identifiable, Hashable, Codable {
 
     private(set) var terminals: [Terminal]
     private(set) var commands: [CommandEntry]
+    private(set) var chats: [Chat]
 
     @ObservationIgnored
     weak var store: WorkspaceStore?
@@ -43,13 +44,14 @@ final class Workspace: Identifiable, Hashable, Codable {
         self.scratchPad = ""
         self.terminals = []
         self.commands = []
+        self.chats = []
     }
 
     // MARK: - Codable
 
     private enum CodingKeys: String, CodingKey {
         case id, name, directory, projectTypeRaw, scratchPad
-        case terminals, commands
+        case terminals, commands, chats
     }
 
     init(from decoder: Decoder) throws {
@@ -61,8 +63,10 @@ final class Workspace: Identifiable, Hashable, Codable {
         self.scratchPad = try c.decodeIfPresent(String.self, forKey: .scratchPad) ?? ""
         self.terminals = try c.decodeIfPresent([Terminal].self, forKey: .terminals) ?? []
         self.commands = try c.decodeIfPresent([CommandEntry].self, forKey: .commands) ?? []
+        self.chats = try c.decodeIfPresent([Chat].self, forKey: .chats) ?? []
         for t in terminals { t.workspace = self }
         for cmd in commands { cmd.workspace = self }
+        for chat in chats { chat.workspace = self }
     }
 
     func encode(to encoder: Encoder) throws {
@@ -74,6 +78,7 @@ final class Workspace: Identifiable, Hashable, Codable {
         try c.encode(scratchPad, forKey: .scratchPad)
         try c.encode(terminals, forKey: .terminals)
         try c.encode(commands, forKey: .commands)
+        try c.encode(chats, forKey: .chats)
     }
 
     // MARK: - Hashable
@@ -145,6 +150,33 @@ final class Workspace: Identifiable, Hashable, Codable {
     func removeCommand(_ entry: CommandEntry) {
         CommandRunner.remove(for: entry.id)
         commands.removeAll { $0.id == entry.id }
+        store?.scheduleSave()
+    }
+
+    // MARK: - Session Management
+
+    func appendChat(_ chat: Chat) {
+        chat.workspace = self
+        chats.append(chat)
+        store?.scheduleSave()
+    }
+
+    @discardableResult
+    func addSession(title: String = "New Chat", provider: AgentProvider = .codex) -> Chat {
+        let tracked = Chat(
+            title: title,
+            provider: provider,
+            sortOrder: chats.count
+        )
+        tracked.workspace = self
+        chats.append(tracked)
+        store?.scheduleSave()
+        return tracked
+    }
+
+    func removeSession(_ session: Chat) {
+        session.disconnect()
+        chats.removeAll { $0.id == session.id }
         store?.scheduleSave()
     }
 }

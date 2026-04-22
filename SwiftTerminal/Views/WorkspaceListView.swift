@@ -17,14 +17,52 @@ struct WorkspaceListView: View {
         return store.workspaces.filter { $0.name.localizedStandardContains(searchText) }
     }
 
-    var body: some View {
-        List(selection: Bindable(appState).selectedWorkspace) {
-            ForEach(visibleWorkspaces) { workspace in
-                WorkspaceRow(workspace: workspace)
-                    .tag(workspace)
+    private var sidebarItems: [SidebarItem] {
+        visibleWorkspaces.map { SidebarItem.forWorkspace($0) }
+    }
+
+    private var sidebarSelection: Binding<String?> {
+        Binding(
+            get: {
+                if let session = appState.selectedSession,
+                   let workspace = appState.selectedWorkspace,
+                   workspace.chats.contains(where: { $0.id == session.id }) {
+                    return "s:\(session.id.uuidString)"
+                } else if let workspace = appState.selectedWorkspace {
+                    return "w:\(workspace.id.uuidString)"
+                }
+                return nil
+            },
+            set: { newValue in
+                guard let id = newValue else {
+                    appState.selectedWorkspace = nil
+                    appState.selectedSession = nil
+                    return
+                }
+                if id.hasPrefix("w:") {
+                    let uuidStr = String(id.dropFirst(2))
+                    appState.selectedWorkspace = store.workspaces.first { $0.id.uuidString == uuidStr }
+                    appState.selectedSession = nil
+                } else if id.hasPrefix("s:") {
+                    let uuidStr = String(id.dropFirst(2))
+                    for workspace in store.workspaces {
+                        if let session = workspace.chats.first(where: { $0.id.uuidString == uuidStr }) {
+                            appState.selectedWorkspace = workspace
+                            appState.selectedSession = session
+                            return
+                        }
+                    }
+                }
             }
-            .onMove { source, destination in
-                store.moveWorkspaces(from: source, to: destination)
+        )
+    }
+
+    var body: some View {
+        List(sidebarItems, children: \.children, selection: sidebarSelection) { item in
+            if let workspace = item.workspace {
+                WorkspaceRow(workspace: workspace)
+            } else if let session = item.chat {
+                SessionSidebarRow(session: session)
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -67,5 +105,40 @@ struct WorkspaceListView: View {
         workspace.detectProjectType()
         store.addWorkspace(workspace)
         appState.selectedWorkspace = workspace
+    }
+}
+
+// MARK: - Session Sidebar Row
+
+struct SessionSidebarRow: View {
+    let session: Chat
+    @Environment(AppState.self) private var appState
+
+    var body: some View {
+        Label {
+            Text(session.title)
+                .lineLimit(1)
+        } icon: {
+            Image(session.provider.imageName)
+                .foregroundStyle(session.isActive ? session.provider.color : .primary)
+        }
+        .contextMenu {
+            if session.isActive {
+                Button {
+                    session.disconnect()
+                } label: {
+                    Label("Disconnect", systemImage: "bolt.slash")
+                }
+            }
+
+            Button(role: .destructive) {
+                if appState.selectedSession?.id == session.id {
+                    appState.selectedSession = nil
+                }
+                session.workspace?.removeSession(session)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
     }
 }
