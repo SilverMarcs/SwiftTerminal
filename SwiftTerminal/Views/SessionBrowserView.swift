@@ -8,11 +8,11 @@ struct SessionBrowserView: View {
     @AppStorage("defaultChatMode") private var defaultChatMode: AgentProvider = .claude
 
     private var regularChats: [Chat] {
-        workspace.chats.filter { !$0.isArchived }
+        workspace.chats.filter { !$0.isArchived }.sorted { $0.date > $1.date }
     }
 
     private var archivedChats: [Chat] {
-        workspace.chats.filter { $0.isArchived }
+        workspace.chats.filter { $0.isArchived }.sorted { $0.date > $1.date }
     }
 
     var body: some View {
@@ -71,6 +71,33 @@ struct SessionBrowserView: View {
         }
     }
 
+    static func shortRelative(from date: Date, now: Date = Date()) -> String {
+        let interval = max(0, now.timeIntervalSince(date))
+        if interval < 60 { return "now" }
+
+        let components = Calendar.current.dateComponents(
+            [.month, .weekOfYear, .day, .hour, .minute],
+            from: date,
+            to: now
+        )
+
+        var parts: [String] = []
+        let pairs: [(Int?, String)] = [
+            (components.month, "mo"),
+            (components.weekOfYear, "w"),
+            (components.day, "d"),
+            (components.hour, "h"),
+            (components.minute, "m")
+        ]
+        for (value, suffix) in pairs {
+            guard parts.count < 2, let v = value, v > 0 else { continue }
+            parts.append("\(v)\(suffix)")
+        }
+
+        if parts.isEmpty { return "now" }
+        return parts.joined(separator: " ") + " ago"
+    }
+
     private func storedSessionRow(_ chat: Chat) -> some View {
         Button {
             appState.selectedSession = chat
@@ -89,7 +116,7 @@ struct SessionBrowserView: View {
                                     .foregroundStyle(.tertiary)
                             }
 
-                            Text(chat.date, style: .relative)
+                            Text(Self.shortRelative(from: chat.date))
                                 .font(.caption2)
                                 .foregroundStyle(.quaternary)
                         }
@@ -103,7 +130,10 @@ struct SessionBrowserView: View {
 
                 Spacer()
 
-                if chat.isActive {
+                if chat.session.isProcessing {
+                    ProgressView()
+                        .controlSize(.small)
+                } else if chat.isActive {
                     Circle()
                         .fill(.green)
                         .frame(width: 6, height: 6)

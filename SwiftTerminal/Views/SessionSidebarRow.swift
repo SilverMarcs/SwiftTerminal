@@ -38,7 +38,9 @@ struct SessionSidebarRow: View {
                     Label("Disconnect", systemImage: "bolt.slash")
                 }
             }
-
+            
+            Divider()
+            
             Button {
                 if appState.selectedSession?.id == session.id {
                     appState.selectedSession = nil
@@ -47,8 +49,6 @@ struct SessionSidebarRow: View {
             } label: {
                 Label("Archive", systemImage: "archivebox")
             }
-
-            Divider()
 
             Button(role: .destructive) {
                 if appState.selectedSession?.id == session.id {

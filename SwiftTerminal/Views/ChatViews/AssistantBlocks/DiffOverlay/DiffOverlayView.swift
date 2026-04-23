@@ -111,7 +111,7 @@ final class DiffOverlayView: NSView {
             headerContainer.topAnchor.constraint(equalTo: topAnchor),
             headerContainer.heightAnchor.constraint(equalToConstant: 24),
 
-            pathIcon.leadingAnchor.constraint(equalTo: headerContainer.leadingAnchor, constant: 4),
+            pathIcon.leadingAnchor.constraint(equalTo: headerContainer.leadingAnchor),
             pathIcon.centerYAnchor.constraint(equalTo: headerContainer.centerYAnchor),
 
             pathLabel.leadingAnchor.constraint(equalTo: pathIcon.trailingAnchor, constant: 6),
@@ -162,11 +162,17 @@ final class DiffOverlayView: NSView {
 
         pathLabel.stringValue = (spec.path as NSString).lastPathComponent
 
-        let rawLines = UnifiedDiff.lines(oldText: spec.oldText, newText: spec.newText)
+        let allLines = UnifiedDiff.lines(oldText: spec.oldText, newText: spec.newText)
+        let rawLines: [SharedDiffLine] = {
+            if let cap = spec.maxLines, allLines.count > cap {
+                return Array(allLines.prefix(cap))
+            }
+            return allLines
+        }()
         let lines = Self.trimCommonLeadingWhitespace(rawLines)
 
-        let added = lines.filter { $0.kind == .added }.count
-        let removed = lines.filter { $0.kind == .removed }.count
+        let added = allLines.filter { $0.kind == .added }.count
+        let removed = allLines.filter { $0.kind == .removed }.count
         let statsText = NSMutableAttributedString()
         if added > 0 {
             statsText.append(NSAttributedString(

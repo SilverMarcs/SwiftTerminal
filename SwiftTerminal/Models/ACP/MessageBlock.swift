@@ -34,4 +34,8 @@ struct MessageBlock: Codable, Identifiable, Sendable {
     var isEditWithDiff: Bool {
         isToolCall && toolKind == .edit && hasDiff && (diffOldText?.isEmpty == false)
     }
+
+    var isWriteWithContent: Bool {
+        isToolCall && hasDiff && (diffOldText == nil || diffOldText?.isEmpty == true)
+    }
 }

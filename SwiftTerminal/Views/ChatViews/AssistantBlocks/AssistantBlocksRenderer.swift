@@ -41,6 +41,7 @@ struct DiffOverlaySpec: Sendable {
     let newText: String
     let status: ToolCallItemStatus
     let reservedHeight: CGFloat
+    let maxLines: Int?
 }
 
 // MARK: - Overlay attribute keys
@@ -148,12 +149,18 @@ struct AssistantBlocksRenderer: Sendable {
                 let diffID = nextDiffID
                 nextDiffID += 1
 
+                let isWrite = block.isWriteWithContent
+                let maxLines: Int? = isWrite ? 10 : nil
+
                 let headerHeight: CGFloat = 24
                 let diffFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
                 let lineHeight = ceil(diffFont.ascender - diffFont.descender + diffFont.leading)
                 let unifiedLines = UnifiedDiff.lines(oldText: block.diffOldText, newText: block.diffNewText ?? "")
-                let totalLines = max(1, unifiedLines.count)
-                let diffHeight = headerHeight + 12 + CGFloat(totalLines) * lineHeight
+                let renderedLineCount: Int = {
+                    if let cap = maxLines { return min(cap, max(1, unifiedLines.count)) }
+                    return max(1, unifiedLines.count)
+                }()
+                let diffHeight = headerHeight + 12 + CGFloat(renderedLineCount) * lineHeight
 
                 let placeholder = Self.diffPlaceholderAttributedString(height: diffHeight, diffID: diffID)
                 let start = output.length
@@ -167,7 +174,8 @@ struct AssistantBlocksRenderer: Sendable {
                     oldText: block.diffOldText,
                     newText: block.diffNewText ?? "",
                     status: Self.mapStatus(block.toolStatus),
-                    reservedHeight: diffHeight
+                    reservedHeight: diffHeight,
+                    maxLines: maxLines
                 ))
 
             }
@@ -199,7 +207,7 @@ struct AssistantBlocksRenderer: Sendable {
             if block.isThought { continue }
             if block.isText && block.text.isEmpty { continue }
 
-            if block.isEditWithDiff {
+            if block.isEditWithDiff || block.isWriteWithContent {
                 groups.append(Group(kind: .editDiff, blocks: [block]))
             } else if block.isToolCall {
                 if let last = groups.last, last.kind == .toolCalls {

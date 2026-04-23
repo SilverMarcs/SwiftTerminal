@@ -10,6 +10,7 @@ struct SidebarItem: Identifiable, Hashable {
     static func forWorkspace(_ workspace: Workspace) -> SidebarItem {
         let sessionChildren = workspace.chats
             .filter { !$0.isArchived }
+            .sorted { $0.date > $1.date }
             .map { forSession($0) }
         return SidebarItem(
             id: "w:\(workspace.id.uuidString)",
