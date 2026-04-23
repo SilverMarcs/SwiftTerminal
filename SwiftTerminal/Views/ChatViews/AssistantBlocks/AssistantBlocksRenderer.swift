@@ -151,7 +151,7 @@ struct AssistantBlocksRenderer: Sendable {
                 let headerHeight: CGFloat = 24
                 let diffFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
                 let lineHeight = ceil(diffFont.ascender - diffFont.descender + diffFont.leading)
-                let unifiedLines = DiffOverlayView.unifiedDiffLines(oldText: block.diffOldText, newText: block.diffNewText ?? "")
+                let unifiedLines = UnifiedDiff.lines(oldText: block.diffOldText, newText: block.diffNewText ?? "")
                 let totalLines = max(1, unifiedLines.count)
                 let diffHeight = headerHeight + 12 + CGFloat(totalLines) * lineHeight
 
