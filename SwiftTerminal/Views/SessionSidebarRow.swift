@@ -62,5 +62,28 @@ struct SessionSidebarRow: View {
         .renameAction {
             isRenaming = true
         }
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            Button {
+                if appState.selectedSession?.id == session.id {
+                    appState.selectedSession = nil
+                }
+                session.isArchived = true
+            } label: {
+                Label("Archive", systemImage: "archivebox")
+            }
+            .labelStyle(.iconOnly)
+            .tint(.orange)
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive) {
+                if appState.selectedSession?.id == session.id {
+                    appState.selectedSession = nil
+                }
+                session.workspace?.removeSession(session)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+            .labelStyle(.iconOnly)
+        }
     }
 }

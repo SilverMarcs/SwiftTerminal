@@ -103,6 +103,7 @@ final class Chat: Identifiable, Hashable, Codable {
         pm.blocks = [MessageBlock(type: .text, text: text)]
         pm.chat = self
         messages.append(pm)
+        date = Date()
 
         if session.isConnected {
             session.send(text)
