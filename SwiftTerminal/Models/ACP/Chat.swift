@@ -9,12 +9,13 @@ final class Chat: Identifiable, Hashable, Codable {
     var acpSessionId: String?
     var provider: AgentProvider = .codex
     var permissionMode: PermissionMode = .bypassPermissions
-    var model: AgentModel = .claudeSonnet
+    var model: AgentModel = .claudeOpus
     var date: Date = Date()
     var sortOrder: Int = 0
     var turnCount: Int = 0
     var isArchived: Bool = false
 
+    var plan: [PlanEntry] = []
     private(set) var messages: [Message] = []
     private(set) var checkpoints: [Checkpoint] = []
 
@@ -49,7 +50,7 @@ final class Chat: Identifiable, Hashable, Codable {
 
     private enum CodingKeys: String, CodingKey {
         case id, title, acpSessionId, provider, permissionMode, model, date, sortOrder, turnCount, isArchived
-        case messages, checkpoints
+        case plan, messages, checkpoints
     }
 
     init(from decoder: Decoder) throws {
@@ -64,6 +65,7 @@ final class Chat: Identifiable, Hashable, Codable {
         self.sortOrder = try c.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 0
         self.turnCount = try c.decodeIfPresent(Int.self, forKey: .turnCount) ?? 0
         self.isArchived = try c.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
+        self.plan = try c.decodeIfPresent([PlanEntry].self, forKey: .plan) ?? []
         self.messages = try c.decodeIfPresent([Message].self, forKey: .messages) ?? []
         self.checkpoints = try c.decodeIfPresent([Checkpoint].self, forKey: .checkpoints) ?? []
         for msg in messages { msg.chat = self }
@@ -81,6 +83,7 @@ final class Chat: Identifiable, Hashable, Codable {
         try c.encode(sortOrder, forKey: .sortOrder)
         try c.encode(turnCount, forKey: .turnCount)
         try c.encode(isArchived, forKey: .isArchived)
+        try c.encode(plan, forKey: .plan)
         try c.encode(messages, forKey: .messages)
         try c.encode(checkpoints, forKey: .checkpoints)
     }
@@ -99,6 +102,7 @@ final class Chat: Identifiable, Hashable, Codable {
         session.provider = provider
         session.permissionMode = permissionMode
         session.model = model
+        session.plan = plan
         session.setWorkingDirectory(directory)
         wireLiveCallbacks()
 
@@ -266,6 +270,14 @@ final class Chat: Identifiable, Hashable, Codable {
                 status: details.status,
                 diff: details.content.flatMap(Self.firstDiff)
             )
+        case .usageUpdate(let usage):
+            session.usedTokens = usage.used
+            session.contextSize = usage.size
+        case .plan(let updatedPlan):
+            plan = updatedPlan.entries
+            session.plan = updatedPlan.entries
+        case .availableCommandsUpdate(let commands):
+            session.availableCommands = commands
         default:
             break
         }

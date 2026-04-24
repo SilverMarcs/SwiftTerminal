@@ -107,7 +107,19 @@ struct ACPView: View {
                 }
             }
             .safeAreaBar(edge: .bottom) {
-                ACPInputArea(chat: chat)
+                VStack(spacing: 8) {
+                    if let prompt = session.delegate.pendingPermission {
+                        Divider()
+                        PermissionPromptView(prompt: prompt)
+                            .padding(.horizontal, 16)
+                    }
+                    if !chat.plan.isEmpty {
+                        Divider()
+                        PlanView(entries: chat.plan)
+                            .padding(.horizontal, 16)
+                    }
+                    ACPInputArea(chat: chat)
+                }
             }
             .imageDropHandler(chat: chat)
             .onChange(of: messages.count) {
