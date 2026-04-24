@@ -3,7 +3,7 @@ import SwiftUI
 @Observable
 final class AppState {
     var selectedWorkspace: Workspace?
-    var selectedSession: Chat?
+    var selectedChat: Chat?
 
     // Sidebar expansion state
     var expandedWorkspaceIDs: Set<String> = []

@@ -2,8 +2,8 @@ import Foundation
 import Observation
 import SwiftUI
 
-/// Persists `Workspace` objects (and their saved commands / chat sessions) to a
-/// JSON file in `~/Library/Application Support/SwiftTerminal/`.
+/// Persists `Workspace` objects (and their saved commands / chats) to a JSON
+/// file in `~/Library/Application Support/SwiftTerminal/`.
 ///
 /// Mutations through `addWorkspace`/`deleteWorkspace`/`moveWorkspace` save
 /// directly. Property edits made through `Bindable(workspace).name` etc. are

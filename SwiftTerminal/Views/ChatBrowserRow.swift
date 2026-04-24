@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct SessionBrowserRow: View {
+struct ChatBrowserRow: View {
     let chat: Chat
     let workspace: Workspace
     var onSelect: () -> Void
@@ -9,7 +9,7 @@ struct SessionBrowserRow: View {
 
     var body: some View {
         Button {
-            appState.selectedSession = chat
+            appState.selectedChat = chat
             onSelect()
         } label: {
             HStack {
@@ -25,7 +25,7 @@ struct SessionBrowserRow: View {
                                     .foregroundStyle(.secondary)
                             }
 
-                            Text(SessionBrowserView.shortRelative(from: chat.date))
+                            Text(ChatBrowserView.shortRelative(from: chat.date))
                                 .font(.caption2)
                                 .foregroundStyle(.tertiary)
                         }
@@ -71,10 +71,10 @@ struct SessionBrowserRow: View {
             }
 
             Button(role: .destructive) {
-                if appState.selectedSession?.id == chat.id {
-                    appState.selectedSession = nil
+                if appState.selectedChat?.id == chat.id {
+                    appState.selectedChat = nil
                 }
-                workspace.removeSession(chat)
+                workspace.removeChat(chat)
             } label: {
                 Label("Delete", systemImage: "trash")
             }

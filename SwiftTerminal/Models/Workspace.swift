@@ -134,7 +134,7 @@ final class Workspace: Identifiable, Hashable, Codable {
         }
     }
 
-    // MARK: - Session Management
+    // MARK: - Chat Management
 
     func appendChat(_ chat: Chat) {
         chat.workspace = self
@@ -143,22 +143,22 @@ final class Workspace: Identifiable, Hashable, Codable {
     }
 
     @discardableResult
-    func addSession(title: String = "New Chat", provider: AgentProvider = .codex, permissionMode: PermissionMode = .bypassPermissions) -> Chat {
-        let tracked = Chat(
+    func addChat(title: String = "New Chat", provider: AgentProvider = .codex, permissionMode: PermissionMode = .bypassPermissions) -> Chat {
+        let chat = Chat(
             title: title,
             provider: provider,
             permissionMode: permissionMode,
             sortOrder: chats.count
         )
-        tracked.workspace = self
-        chats.append(tracked)
+        chat.workspace = self
+        chats.append(chat)
         store?.scheduleSave()
-        return tracked
+        return chat
     }
 
-    func removeSession(_ session: Chat) {
-        session.disconnect()
-        chats.removeAll { $0.id == session.id }
+    func removeChat(_ chat: Chat) {
+        chat.disconnect()
+        chats.removeAll { $0.id == chat.id }
         store?.scheduleSave()
     }
 }

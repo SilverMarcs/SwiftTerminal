@@ -38,10 +38,10 @@ struct WorkspaceRow: View {
             Menu {
                 ForEach(AgentProvider.allCases, id: \.self) { provider in
                     Button {
-                        let tracked = workspace.addSession(provider: provider, permissionMode: defaultPermissionMode)
+                        let chat = workspace.addChat(provider: provider, permissionMode: defaultPermissionMode)
                         appState.expandedWorkspaceIDs.insert("w:\(workspace.id.uuidString)")
                         appState.selectedWorkspace = workspace
-                        appState.selectedSession = tracked
+                        appState.selectedChat = chat
                     } label: {
                         Label(provider.rawValue, image: provider.imageName)
                     }
@@ -49,10 +49,10 @@ struct WorkspaceRow: View {
             } label: {
                 Label("New Chat", systemImage: "plus")
             } primaryAction: {
-                let tracked = workspace.addSession(provider: defaultChatMode, permissionMode: defaultPermissionMode)
+                let chat = workspace.addChat(provider: defaultChatMode, permissionMode: defaultPermissionMode)
                 appState.expandedWorkspaceIDs.insert("w:\(workspace.id.uuidString)")
                 appState.selectedWorkspace = workspace
-                appState.selectedSession = tracked
+                appState.selectedChat = chat
             }
             
             Divider()
@@ -89,7 +89,7 @@ struct WorkspaceRow: View {
             Button(role: .destructive) {
                 if appState.selectedWorkspace === workspace {
                     appState.selectedWorkspace = nil
-                    appState.selectedSession = nil
+                    appState.selectedChat = nil
                 }
                 store.deleteWorkspace(workspace)
             } label: {

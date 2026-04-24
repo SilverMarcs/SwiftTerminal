@@ -1,4 +1,3 @@
-// The cat sat on the keyboard.
 import Foundation
 
 struct SidebarItem: Identifiable, Hashable {
@@ -8,23 +7,23 @@ struct SidebarItem: Identifiable, Hashable {
     let children: [SidebarItem]?
 
     static func forWorkspace(_ workspace: Workspace) -> SidebarItem {
-        let sessionChildren = workspace.chats
+        let chatChildren = workspace.chats
             .filter { !$0.isArchived }
             .sorted { $0.date > $1.date }
-            .map { forSession($0) }
+            .map { forChat($0) }
         return SidebarItem(
             id: "w:\(workspace.id.uuidString)",
             workspace: workspace,
             chat: nil,
-            children: sessionChildren.isEmpty ? nil : sessionChildren
+            children: chatChildren.isEmpty ? nil : chatChildren
         )
     }
 
-    static func forSession(_ session: Chat) -> SidebarItem {
+    static func forChat(_ chat: Chat) -> SidebarItem {
         SidebarItem(
-            id: "s:\(session.id.uuidString)",
+            id: "c:\(chat.id.uuidString)",
             workspace: nil,
-            chat: session,
+            chat: chat,
             children: nil
         )
     }

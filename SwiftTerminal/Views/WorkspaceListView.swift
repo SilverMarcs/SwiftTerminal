@@ -20,10 +20,10 @@ struct WorkspaceListView: View {
     private var sidebarSelection: Binding<String?> {
         Binding(
             get: {
-                if let session = appState.selectedSession,
+                if let chat = appState.selectedChat,
                    let workspace = appState.selectedWorkspace,
-                   workspace.chats.contains(where: { $0.id == session.id }) {
-                    return "s:\(session.id.uuidString)"
+                   workspace.chats.contains(where: { $0.id == chat.id }) {
+                    return "c:\(chat.id.uuidString)"
                 } else if let workspace = appState.selectedWorkspace {
                     return "w:\(workspace.id.uuidString)"
                 }
@@ -32,19 +32,19 @@ struct WorkspaceListView: View {
             set: { newValue in
                 guard let id = newValue else {
                     appState.selectedWorkspace = nil
-                    appState.selectedSession = nil
+                    appState.selectedChat = nil
                     return
                 }
                 if id.hasPrefix("w:") {
                     let uuidStr = String(id.dropFirst(2))
                     appState.selectedWorkspace = store.workspaces.first { $0.id.uuidString == uuidStr }
-                    appState.selectedSession = nil
-                } else if id.hasPrefix("s:") {
+                    appState.selectedChat = nil
+                } else if id.hasPrefix("c:") {
                     let uuidStr = String(id.dropFirst(2))
                     for workspace in store.workspaces {
-                        if let session = workspace.chats.first(where: { $0.id.uuidString == uuidStr }) {
+                        if let chat = workspace.chats.first(where: { $0.id.uuidString == uuidStr }) {
                             appState.selectedWorkspace = workspace
-                            appState.selectedSession = session
+                            appState.selectedChat = chat
                             return
                         }
                     }
@@ -67,12 +67,12 @@ struct WorkspaceListView: View {
                         }
                     }
                 )) {
-                    let sessions = workspace.chats
+                    let chats = workspace.chats
                         .filter { !$0.isArchived }
                         .sorted { $0.date > $1.date }
-                    ForEach(sessions) { session in
-                        SessionSidebarRow(session: session)
-                            .tag("s:\(session.id.uuidString)")
+                    ForEach(chats) { chat in
+                        ChatSidebarRow(chat: chat)
+                            .tag("c:\(chat.id.uuidString)")
                     }
                 } label: {
                     WorkspaceRow(workspace: workspace)

@@ -10,7 +10,7 @@ struct WorkspaceDetailView: View {
     }
 
     private var navigationSubtitle: String {
-        guard let chat = appState.selectedSession, chat.usedTokens > 0 else {
+        guard let chat = appState.selectedChat, chat.usedTokens > 0 else {
             return directorySubtitle
         }
         return "\(formatTokens(chat.usedTokens)) / \(formatTokens(chat.contextSize))"
@@ -29,11 +29,11 @@ struct WorkspaceDetailView: View {
 
     var body: some View {
         Group {
-            if let chat = appState.selectedSession {
+            if let chat = appState.selectedChat {
                 ACPView(chat: chat)
                     // .id(chat.id)
             } else {
-                SessionBrowserView(workspace: workspace)
+                ChatBrowserView(workspace: workspace)
                     // .id(workspace.id)
             }
         }

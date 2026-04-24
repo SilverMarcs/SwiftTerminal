@@ -51,14 +51,14 @@ struct CheckpointService {
 
     static func captureCheckpoint(
         workspace: URL,
-        sessionId: String,
+        chatId: String,
         turn: Int
     ) async throws -> [RepoSnapshot] {
         let repos = discoverGitRepos(in: workspace)
         var snapshots: [RepoSnapshot] = []
 
         for repo in repos {
-            let refName = checkpointRef(sessionId: sessionId, turn: turn)
+            let refName = checkpointRef(chatId: chatId, turn: turn)
             try await captureRepoCheckpoint(repo: repo.path, refName: refName)
             snapshots.append(RepoSnapshot(relativePath: repo.relativePath, isShadow: false, refName: refName))
         }
@@ -66,7 +66,7 @@ struct CheckpointService {
         let rootIsGit = repos.contains { $0.relativePath.isEmpty }
         if !rootIsGit {
             let shadowGitDir = try await ensureShadowRepo(in: workspace, excluding: repos)
-            let refName = checkpointRef(sessionId: sessionId, turn: turn)
+            let refName = checkpointRef(chatId: chatId, turn: turn)
             try await captureShadowCheckpoint(workspace: workspace, shadowGitDir: shadowGitDir, refName: refName)
             snapshots.append(RepoSnapshot(relativePath: "", isShadow: true, refName: refName))
         }
@@ -97,7 +97,7 @@ struct CheckpointService {
 
     static func deleteCheckpoints(
         workspace: URL,
-        sessionId: String,
+        chatId: String,
         afterTurn: Int,
         throughTurn: Int
     ) async {
@@ -107,7 +107,7 @@ struct CheckpointService {
         let hasShadow = FileManager.default.fileExists(atPath: shadowGitDir.path)
 
         for turn in (afterTurn + 1)...throughTurn {
-            let ref = checkpointRef(sessionId: sessionId, turn: turn)
+            let ref = checkpointRef(chatId: chatId, turn: turn)
             for repo in repos {
                 try? await runGit(args: ["update-ref", "-d", ref], cwd: repo.path)
             }
@@ -145,8 +145,8 @@ struct CheckpointService {
 
     // MARK: - Ref Naming
 
-    private static func checkpointRef(sessionId: String, turn: Int) -> String {
-        let encoded = Data(sessionId.utf8).base64EncodedString()
+    private static func checkpointRef(chatId: String, turn: Int) -> String {
+        let encoded = Data(chatId.utf8).base64EncodedString()
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "=", with: "")

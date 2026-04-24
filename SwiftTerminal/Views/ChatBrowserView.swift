@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct SessionBrowserView: View {
+struct ChatBrowserView: View {
     let workspace: Workspace
     var onSelect: (() -> Void)?
 
@@ -20,14 +20,14 @@ struct SessionBrowserView: View {
         List {
             if !regularChats.isEmpty {
                 ForEach(regularChats) { chat in
-                    SessionBrowserRow(chat: chat, workspace: workspace, onSelect: { onSelect?() })
+                    ChatBrowserRow(chat: chat, workspace: workspace, onSelect: { onSelect?() })
                 }
             }
 
             if !archivedChats.isEmpty {
                 Section("Archived") {
                     ForEach(archivedChats) { chat in
-                        SessionBrowserRow(chat: chat, workspace: workspace, onSelect: { onSelect?() })
+                        ChatBrowserRow(chat: chat, workspace: workspace, onSelect: { onSelect?() })
                     }
                 }
             }
@@ -35,7 +35,7 @@ struct SessionBrowserView: View {
         .overlay {
             if workspace.chats.isEmpty {
                 ContentUnavailableView {
-                    Label("No Sessions", systemImage: "bubble.left.and.bubble.right")
+                    Label("No Chats", systemImage: "bubble.left.and.bubble.right")
                 } description: {
                     Text("Start a new chat to begin.")
                 } actions: {
@@ -54,9 +54,9 @@ struct SessionBrowserView: View {
         Menu {
             ForEach(AgentProvider.allCases, id: \.self) { provider in
                 Button {
-                    let chat = workspace.addSession(provider: provider, permissionMode: defaultPermissionMode)
+                    let chat = workspace.addChat(provider: provider, permissionMode: defaultPermissionMode)
                     appState.expandedWorkspaceIDs.insert("w:\(workspace.id.uuidString)")
-                    appState.selectedSession = chat
+                    appState.selectedChat = chat
                     onSelect?()
                 } label: {
                     Label(provider.rawValue, image: provider.imageName)
@@ -65,9 +65,9 @@ struct SessionBrowserView: View {
         } label: {
             Label("New Chat", systemImage: "plus")
         } primaryAction: {
-            let chat = workspace.addSession(provider: defaultChatMode, permissionMode: defaultPermissionMode)
+            let chat = workspace.addChat(provider: defaultChatMode, permissionMode: defaultPermissionMode)
             appState.expandedWorkspaceIDs.insert("w:\(workspace.id.uuidString)")
-            appState.selectedSession = chat
+            appState.selectedChat = chat
             onSelect?()
         }
     }

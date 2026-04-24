@@ -195,7 +195,7 @@ final class Chat: Identifiable, Hashable, Codable {
             do {
                 let snapshots = try await CheckpointService.captureCheckpoint(
                     workspace: URL(fileURLWithPath: dir),
-                    sessionId: self.checkpointNamespace,
+                    chatId: self.checkpointNamespace,
                     turn: self.turnCount
                 )
                 var checkpoint = Checkpoint(turnIndex: self.turnCount)
@@ -225,7 +225,7 @@ final class Chat: Identifiable, Hashable, Codable {
                     do {
                         let snapshots = try await CheckpointService.captureCheckpoint(
                             workspace: URL(fileURLWithPath: dir),
-                            sessionId: self.checkpointNamespace,
+                            chatId: self.checkpointNamespace,
                             turn: 0
                         )
                         var checkpoint = Checkpoint(turnIndex: 0)
@@ -348,7 +348,7 @@ final class Chat: Identifiable, Hashable, Codable {
         if let dir = workspace?.directory {
             await CheckpointService.deleteCheckpoints(
                 workspace: URL(fileURLWithPath: dir),
-                sessionId: checkpointNamespace,
+                chatId: checkpointNamespace,
                 afterTurn: restoreToTurn,
                 throughTurn: turnCount
             )

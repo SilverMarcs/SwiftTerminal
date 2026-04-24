@@ -1,7 +1,7 @@
 import SwiftUI
 
-struct SessionSidebarRow: View {
-    let session: Chat
+struct ChatSidebarRow: View {
+    let chat: Chat
     @Environment(AppState.self) private var appState
 
     @State private var isRenaming = false
@@ -10,19 +10,19 @@ struct SessionSidebarRow: View {
     var body: some View {
         Label {
             if isRenaming {
-                TextField("Chat Name", text: Bindable(session).title)
+                TextField("Chat Name", text: Bindable(chat).title)
                     .textFieldStyle(.plain)
                     .focused($isNameFieldFocused)
                     .onSubmit { isRenaming = false }
                     .onExitCommand { isRenaming = false }
                     .onAppear { isNameFieldFocused = true }
             } else {
-                Text(session.displayTitle)
+                Text(chat.displayTitle)
                     .lineLimit(1)
             }
         } icon: {
-            Image(session.provider.imageName)
-                .foregroundStyle(session.isActive ? session.provider.color : .primary)
+            Image(chat.provider.imageName)
+                .foregroundStyle(chat.isActive ? chat.provider.color : .primary)
         }
         .contextMenu {
             Button {
@@ -31,30 +31,30 @@ struct SessionSidebarRow: View {
                 Label("Rename", systemImage: "pencil")
             }
 
-            if session.isActive {
+            if chat.isActive {
                 Button {
-                    session.disconnect()
+                    chat.disconnect()
                 } label: {
                     Label("Disconnect", systemImage: "bolt.slash")
                 }
             }
 
             Divider()
-            
+
             Button {
-                if appState.selectedSession?.id == session.id {
-                    appState.selectedSession = nil
+                if appState.selectedChat?.id == chat.id {
+                    appState.selectedChat = nil
                 }
-                session.isArchived = true
+                chat.isArchived = true
             } label: {
                 Label("Archive", systemImage: "archivebox")
             }
 
             Button(role: .destructive) {
-                if appState.selectedSession?.id == session.id {
-                    appState.selectedSession = nil
+                if appState.selectedChat?.id == chat.id {
+                    appState.selectedChat = nil
                 }
-                session.workspace?.removeSession(session)
+                chat.workspace?.removeChat(chat)
             } label: {
                 Label("Delete", systemImage: "trash")
             }
@@ -64,10 +64,10 @@ struct SessionSidebarRow: View {
         }
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             Button {
-                if appState.selectedSession?.id == session.id {
-                    appState.selectedSession = nil
+                if appState.selectedChat?.id == chat.id {
+                    appState.selectedChat = nil
                 }
-                session.isArchived = true
+                chat.isArchived = true
             } label: {
                 Label("Archive", systemImage: "archivebox")
             }
@@ -76,10 +76,10 @@ struct SessionSidebarRow: View {
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
-                if appState.selectedSession?.id == session.id {
-                    appState.selectedSession = nil
+                if appState.selectedChat?.id == chat.id {
+                    appState.selectedChat = nil
                 }
-                session.workspace?.removeSession(session)
+                chat.workspace?.removeChat(chat)
             } label: {
                 Label("Delete", systemImage: "trash")
             }

@@ -40,9 +40,9 @@ struct AppCommands: Commands {
             CommandGroup(after: .newItem) {
                 Button {
                     guard let workspace = appState.selectedWorkspace else { return }
-                    let chat = workspace.addSession(provider: defaultChatMode, permissionMode: defaultPermissionMode)
+                    let chat = workspace.addChat(provider: defaultChatMode, permissionMode: defaultPermissionMode)
                     appState.expandedWorkspaceIDs.insert("w:\(workspace.id.uuidString)")
-                    appState.selectedSession = chat
+                    appState.selectedChat = chat
                 } label: {
                     Label("New Chat", systemImage: "plus.bubble")
                 }
