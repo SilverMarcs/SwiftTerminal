@@ -21,7 +21,7 @@ struct CommandsInspectorView: View {
             Group {
                 if let terminal = state.selectedCommand {
                     CommandTerminalOutputView(terminal: terminal)
-                        .id(terminal.id)
+                        // .id(terminal.id)
                 } else {
                     Color.clear
                 }

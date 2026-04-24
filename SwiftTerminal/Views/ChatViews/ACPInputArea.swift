@@ -12,38 +12,6 @@ struct ACPInputArea: View {
             || !chat.pendingAttachments.isEmpty
     }
 
-    private var attributedPrompt: Binding<AttributedString> {
-        Binding(
-            get: {
-                var attributed = AttributedString(chat.prompt)
-                attributed.foregroundColor = .primary
-                highlightCommand(in: &attributed)
-                return attributed
-            },
-            set: { newValue in
-                chat.prompt = String(newValue.characters)
-            }
-        )
-    }
-
-    private func highlightCommand(in text: inout AttributedString) {
-        let plain = String(text.characters)
-        guard plain.hasPrefix("/") else { return }
-
-        let afterSlash = plain.dropFirst()
-        let token = String(afterSlash.prefix(while: { !$0.isWhitespace })).lowercased()
-        guard !token.isEmpty else { return }
-
-        let matched = session.availableCommands.contains { $0.name.lowercased() == token }
-        guard matched else { return }
-
-        let commandLength = 1 + token.count // "/" + command name
-        let startIndex = text.startIndex
-        let endIndex = text.index(startIndex, offsetByCharacters: commandLength)
-        text[startIndex..<endIndex].foregroundColor = .accentColor
-        text[startIndex..<endIndex].font = .body.bold()
-    }
-
     var body: some View {
         GlassEffectContainer {
             HStack(alignment: .bottom) {
@@ -55,7 +23,7 @@ struct ACPInputArea: View {
                         AttachmentThumbnails(chat: chat)
                     }
 
-                    TextEditor(text: attributedPrompt)
+                    TextEditor(text: $chat.prompt)
                         .padding(.leading, -4)
                         .frame(maxHeight: 350)
                         .fixedSize(horizontal: false, vertical: true)

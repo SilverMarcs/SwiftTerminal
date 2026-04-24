@@ -16,7 +16,15 @@ struct SearchInspectorView: View {
                             .padding(.leading, -15)
                     }
                 } label: {
-                    FileLabel(name: fileResult.relativePath, icon: fileResult.fileURL.fileIcon)
+                    FileLabel(name: fileResult.fileName, icon: fileResult.fileURL.fileIcon) {
+                        if let disambiguator = fileResult.disambiguator {
+                            Text(disambiguator)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+                    }
                 }
                 .tag(fileResult.id)
             }

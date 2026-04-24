@@ -53,9 +53,9 @@ final class ACPSession {
         sessionId = nil
         isConnected = false
         Task {
-            if let clientToTerminate, let sessionToClose {
-                _ = try? await clientToTerminate.closeSession(sessionId: sessionToClose)
-            }
+            // if let clientToTerminate, let sessionToClose {
+                // _ = try? await clientToTerminate.closeSession(sessionId: sessionToClose)
+            // }
             await clientToTerminate?.terminate()
         }
     }
