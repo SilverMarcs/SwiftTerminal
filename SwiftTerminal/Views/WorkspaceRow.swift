@@ -86,6 +86,16 @@ struct WorkspaceRow: View {
             }
 
             Divider()
+            Button {
+                for chat in workspace.chats where chat.isActive {
+                    chat.disconnect()
+                }
+            } label: {
+                Label("Disconnect All", systemImage: "bolt.slash")
+            }
+            .disabled(!workspace.chats.contains(where: { $0.isActive }))
+
+            Divider()
             Button(role: .destructive) {
                 if appState.selectedWorkspace === workspace {
                     appState.selectedWorkspace = nil

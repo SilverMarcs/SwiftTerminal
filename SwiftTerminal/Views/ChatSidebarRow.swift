@@ -31,13 +31,12 @@ struct ChatSidebarRow: View {
                 Label("Rename", systemImage: "pencil")
             }
 
-            if chat.isActive {
-                Button {
-                    chat.disconnect()
-                } label: {
-                    Label("Disconnect", systemImage: "bolt.slash")
-                }
+            Button {
+                chat.disconnect()
+            } label: {
+                Label("Disconnect", systemImage: "bolt.slash")
             }
+            .disabled(!chat.isActive)
 
             Divider()
 
@@ -73,6 +72,15 @@ struct ChatSidebarRow: View {
             }
             .labelStyle(.iconOnly)
             .tint(.orange)
+
+            Button {
+                chat.disconnect()
+            } label: {
+                Label("Disconnect", systemImage: "bolt.slash")
+            }
+            .labelStyle(.iconOnly)
+            .tint(.yellow)
+            .disabled(!chat.isActive)
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {

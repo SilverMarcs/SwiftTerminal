@@ -39,6 +39,7 @@ struct WorkspaceListView: View {
                     let uuidStr = String(id.dropFirst(2))
                     appState.selectedWorkspace = store.workspaces.first { $0.id.uuidString == uuidStr }
                     appState.selectedChat = nil
+                    appState.expandedWorkspaceIDs.insert(id)
                 } else if id.hasPrefix("c:") {
                     let uuidStr = String(id.dropFirst(2))
                     for workspace in store.workspaces {
