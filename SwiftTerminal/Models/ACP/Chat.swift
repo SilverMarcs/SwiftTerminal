@@ -15,6 +15,8 @@ final class Chat: Identifiable, Hashable, Codable {
     var turnCount: Int = 0
     var isArchived: Bool = false
 
+    var usedTokens: Int = 0
+    var contextSize: Int = 0
     var plan: [PlanEntry] = []
     private(set) var messages: [Message] = []
     private(set) var checkpoints: [Checkpoint] = []
@@ -50,7 +52,7 @@ final class Chat: Identifiable, Hashable, Codable {
 
     private enum CodingKeys: String, CodingKey {
         case id, title, acpSessionId, provider, permissionMode, model, date, sortOrder, turnCount, isArchived
-        case plan, messages, checkpoints
+        case usedTokens, contextSize, plan, messages, checkpoints
     }
 
     init(from decoder: Decoder) throws {
@@ -65,6 +67,8 @@ final class Chat: Identifiable, Hashable, Codable {
         self.sortOrder = try c.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 0
         self.turnCount = try c.decodeIfPresent(Int.self, forKey: .turnCount) ?? 0
         self.isArchived = try c.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
+        self.usedTokens = try c.decodeIfPresent(Int.self, forKey: .usedTokens) ?? 0
+        self.contextSize = try c.decodeIfPresent(Int.self, forKey: .contextSize) ?? 0
         self.plan = try c.decodeIfPresent([PlanEntry].self, forKey: .plan) ?? []
         self.messages = try c.decodeIfPresent([Message].self, forKey: .messages) ?? []
         self.checkpoints = try c.decodeIfPresent([Checkpoint].self, forKey: .checkpoints) ?? []
@@ -83,6 +87,8 @@ final class Chat: Identifiable, Hashable, Codable {
         try c.encode(sortOrder, forKey: .sortOrder)
         try c.encode(turnCount, forKey: .turnCount)
         try c.encode(isArchived, forKey: .isArchived)
+        try c.encode(usedTokens, forKey: .usedTokens)
+        try c.encode(contextSize, forKey: .contextSize)
         try c.encode(plan, forKey: .plan)
         try c.encode(messages, forKey: .messages)
         try c.encode(checkpoints, forKey: .checkpoints)
@@ -102,6 +108,8 @@ final class Chat: Identifiable, Hashable, Codable {
         session.provider = provider
         session.permissionMode = permissionMode
         session.model = model
+        session.usedTokens = usedTokens
+        session.contextSize = contextSize
         session.plan = plan
         session.setWorkingDirectory(directory)
         wireLiveCallbacks()
@@ -271,6 +279,8 @@ final class Chat: Identifiable, Hashable, Codable {
                 diff: details.content.flatMap(Self.firstDiff)
             )
         case .usageUpdate(let usage):
+            usedTokens = usage.used
+            contextSize = usage.size
             session.usedTokens = usage.used
             session.contextSize = usage.size
         case .plan(let updatedPlan):

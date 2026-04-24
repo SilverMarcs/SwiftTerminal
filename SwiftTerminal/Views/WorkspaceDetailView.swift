@@ -10,14 +10,10 @@ struct WorkspaceDetailView: View {
     }
 
     private var navigationSubtitle: String {
-        guard let chat = appState.selectedSession else {
+        guard let chat = appState.selectedSession, chat.usedTokens > 0 else {
             return directorySubtitle
         }
-        let session = chat.session
-        guard session.usedTokens > 0 else {
-            return directorySubtitle
-        }
-        return "\(formatTokens(session.usedTokens)) / \(formatTokens(session.contextSize))"
+        return "\(formatTokens(chat.usedTokens)) / \(formatTokens(chat.contextSize))"
     }
 
     private func formatTokens(_ count: Int) -> String {
