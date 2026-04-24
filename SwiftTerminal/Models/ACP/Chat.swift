@@ -26,9 +26,10 @@ final class Chat: Identifiable, Hashable, Codable {
     private var currentTurnMessage: Message?
 
     @ObservationIgnored
-    var pendingInput: String?
+    var pendingContent: [ContentBlock]?
 
     var prompt: String = ""
+    var pendingAttachments: [ChatAttachment] = []
 
     var isActive: Bool { session.isConnected }
 
@@ -98,17 +99,40 @@ final class Chat: Identifiable, Hashable, Codable {
         }
     }
 
-    func sendMessage(_ text: String) {
+    func sendMessage(_ text: String, attachments: [ChatAttachment] = []) {
+        var msgBlocks: [MessageBlock] = []
+        if !text.isEmpty {
+            msgBlocks.append(MessageBlock(type: .text, text: text))
+        }
+        for a in attachments {
+            msgBlocks.append(MessageBlock(
+                type: .image,
+                imageData: a.data,
+                imageMimeType: a.mimeType
+            ))
+        }
+        guard !msgBlocks.isEmpty else { return }
+
         let pm = Message(role: .user, turnIndex: turnCount + 1)
-        pm.blocks = [MessageBlock(type: .text, text: text)]
+        pm.blocks = msgBlocks
         pm.chat = self
         messages.append(pm)
         date = Date()
 
+        var content: [ContentBlock] = []
+        if !text.isEmpty {
+            content.append(.text(TextContent(text: text)))
+        }
+        for a in attachments {
+            content.append(.image(ImageContent(data: a.base64, mimeType: a.mimeType)))
+        }
+
+        pendingAttachments.removeAll()
+
         if session.isConnected {
-            session.send(text)
+            session.send(content: content)
         } else {
-            pendingInput = text
+            pendingContent = content
             connectIfNeeded()
         }
         scheduleSave()
@@ -159,9 +183,9 @@ final class Chat: Identifiable, Hashable, Codable {
             self.date = Date()
             self.scheduleSave()
 
-            if let text = self.pendingInput {
-                self.pendingInput = nil
-                self.session.send(text)
+            if let content = self.pendingContent {
+                self.pendingContent = nil
+                self.session.send(content: content)
             }
 
             if self.turnCount == 0 && !self.checkpoints.contains(where: { $0.turnIndex == 0 }) {

@@ -50,6 +50,7 @@ struct ACPView: View {
             .safeAreaBar(edge: .bottom) {
                 ACPInputArea(chat: chat)
             }
+            .imageDropHandler(chat: chat)
             .overlay {
                 if isPreparingInitialScroll {
                     ZStack {

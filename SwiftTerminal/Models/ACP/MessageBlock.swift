@@ -15,15 +15,20 @@ struct MessageBlock: Codable, Identifiable, Sendable {
     var diffOldText: String?
     var diffNewText: String?
 
+    var imageData: Data?
+    var imageMimeType: String?
+
     enum BlockType: String, Codable {
         case text
         case thought
         case toolCall
+        case image
     }
 
     var isText: Bool { type == .text }
     var isThought: Bool { type == .thought }
     var isToolCall: Bool { type == .toolCall }
+    var isImage: Bool { type == .image }
 
     var toolSymbolName: String {
         toolKind?.symbolName ?? "wrench.and.screwdriver"

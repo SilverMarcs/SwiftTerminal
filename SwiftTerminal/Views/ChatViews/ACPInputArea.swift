@@ -6,27 +6,38 @@ struct ACPInputArea: View {
 
     private var session: ACPSession { chat.session }
 
+    private var canSend: Bool {
+        !chat.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || !chat.pendingAttachments.isEmpty
+    }
+
     var body: some View {
         GlassEffectContainer {
             HStack(alignment: .bottom) {
-                ACPInputMenu()
+                ACPInputMenu(chat: chat)
                     .offset(y: -1)
 
-                ZStack(alignment: .leading) {
-                    if chat.prompt.isEmpty {
-                        Text("Message \(chat.provider.rawValue)...")
-                            .padding(.leading, 1)
-                            .foregroundStyle(.placeholder)
+                VStack(alignment: .leading) {
+                    if !chat.pendingAttachments.isEmpty {
+                        AttachmentThumbnails(chat: chat)
                     }
-
+                    
                     TextEditor(text: $chat.prompt)
                         .padding(.leading, -4)
                         .frame(maxHeight: 350)
                         .fixedSize(horizontal: false, vertical: true)
                         .scrollContentBackground(.hidden)
                         .focused($isFocused)
+                        .overlay(alignment: .leading) {
+                             if chat.prompt.isEmpty {
+                                 Text("Message \(chat.provider.rawValue)...")
+                                    .padding(.leading, 1)
+                                    .foregroundStyle(.placeholder)
+                                    .allowsHitTesting(false)
+                             }  
+                        }
+                       .font(.body)                 
                 }
-                .font(.body)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 3)
                 .padding(6)
@@ -43,12 +54,13 @@ struct ACPInputArea: View {
                 .tint(session.isProcessing ? .red : .accent)
                 .buttonStyle(.borderedProminent)
                 .buttonBorderShape(.circle)
-                .disabled(!session.isProcessing && (chat.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || session.isConnecting))
+                .disabled(!session.isProcessing && (!canSend || session.isConnecting))
                 .offset(y: -2)
                 .keyboardShortcut(session.isProcessing ? "d" : .return, modifiers: [.command])
             }
             .padding(12)
         }
+        .imagePasteHandler(chat: chat)
         .toolbar {
             ToolbarItem(placement: .keyboard) {
                Button("Focus") {
@@ -64,38 +76,9 @@ struct ACPInputArea: View {
 
     private func send() {
         let text = chat.prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
+        let attachments = chat.pendingAttachments
+        guard !text.isEmpty || !attachments.isEmpty else { return }
         chat.prompt = ""
-        chat.sendMessage(text)
-    }
-}
-
-// MARK: - Input Menu
-
-private struct ACPInputMenu: View {
-    var body: some View {
-        Menu {
-            Group {
-                Button {
-                } label: {
-                    Label("Photos Library", systemImage: "photo.on.rectangle.angled")
-                }
-
-                Button {
-                } label: {
-                    Label("Attach Files", systemImage: "paperclip")
-                }
-            }
-            .labelStyle(.titleAndIcon)
-        } label: {
-            Image(systemName: "plus.circle.fill")
-                .foregroundStyle(.secondary, .clear)
-                .font(.largeTitle).fontWeight(.semibold)
-                .glassEffect()
-        }
-        .menuStyle(.button)
-        .buttonStyle(.plain)
-        .menuIndicator(.hidden)
-        .fixedSize()
+        chat.sendMessage(text, attachments: attachments)
     }
 }

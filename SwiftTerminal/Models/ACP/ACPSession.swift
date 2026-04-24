@@ -57,8 +57,8 @@ final class ACPSession {
         }
     }
 
-    func send(_ text: String) {
-        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+    func send(content: [ContentBlock]) {
+        guard !content.isEmpty else { return }
         guard let client, let sessionId else {
             error = "Not connected"
             return
@@ -68,7 +68,6 @@ final class ACPSession {
 
         Task {
             do {
-                let content: [ContentBlock] = [.text(TextContent(text: text))]
                 _ = try await client.sendPrompt(sessionId: sessionId, content: content)
                 isProcessing = false
                 await onTurnComplete?()
