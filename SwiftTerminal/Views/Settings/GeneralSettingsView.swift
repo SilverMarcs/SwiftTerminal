@@ -2,7 +2,6 @@ import AppKit
 import SwiftUI
 
 struct GeneralSettingsView: View {
-    @AppStorage("hideTabBarWithSingleTab") private var hideTabBarWithSingleTab = false
     @AppStorage("hideSettingsButton") private var hideSettingsButton = false
     @AppStorage("editorWrapLines") private var editorWrapLines = true
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
@@ -11,7 +10,6 @@ struct GeneralSettingsView: View {
     var body: some View {
         Form {
             Section("Appearance") {
-                Toggle("Hide tab bar when only one tab is open", isOn: $hideTabBarWithSingleTab)
                 Toggle("Hide settings button from sidebar", isOn: $hideSettingsButton)
             }
 

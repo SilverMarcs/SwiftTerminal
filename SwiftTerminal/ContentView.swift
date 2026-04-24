@@ -2,7 +2,6 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(AppState.self) private var appState
-    @Environment(WorkspaceStore.self) private var store
     @State private var searchText = ""
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var showingOnboarding = false
@@ -47,17 +46,6 @@ struct ContentView: View {
         .task {
             if !hasCompletedOnboarding {
                 showingOnboarding = true
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .navigateToSession)) { notification in
-            guard let workspaceID = notification.userInfo?["workspaceID"] as? String,
-                  let terminalID = notification.userInfo?["terminalID"] as? String else { return }
-
-            if let workspace = store.workspaces.first(where: { $0.id.uuidString == workspaceID }) {
-                appState.selectedWorkspace = workspace
-                if let terminal = workspace.terminals.first(where: { $0.id.uuidString == terminalID }) {
-                    appState.selectedTerminal = terminal
-                }
             }
         }
     }

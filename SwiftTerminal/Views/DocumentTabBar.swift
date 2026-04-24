@@ -1,3 +1,8 @@
+// Preserved for future UI reference after the terminal-tab UI was removed.
+// This view depends on `Workspace.terminals` and `AppState.selectedTerminal`,
+// neither of which exist anymore — uncomment and wire back up if tabs return.
+
+/*
 import SwiftUI
 
 struct DocumentTabBar: View {
@@ -195,12 +200,10 @@ struct DocumentTabBar: View {
             return 0
         }
         if original < current {
-            // Dragged tab moved right; tabs in (original, current] shift left to make room
             if index > original && index <= current {
                 return -tabStride
             }
         } else if original > current {
-            // Dragged tab moved left; tabs in [current, original) shift right
             if index >= current && index < original {
                 return tabStride
             }
@@ -225,15 +228,10 @@ struct DocumentTabBar: View {
         let delta = translation - lastDragTranslation
         lastDragTranslation = translation
 
-        // Update the dragged tab's offset instantly so it tracks the cursor.
-        // Clamp so the tab can never leave the bounds of the strip.
         let minOffset = -CGFloat(originalIdx) * tabStride
         let maxOffset = CGFloat(count - 1 - originalIdx) * tabStride
         dragOffset = min(max(dragOffset + delta, minOffset), maxOffset)
 
-        // Compute which slot the dragged tab is currently sitting in. When this
-        // changes we animate the displacement of the other tabs only — the
-        // dragged tab itself stays glued to the cursor.
         let stepsMoved = Int((dragOffset / tabStride).rounded())
         let newCurrent = max(0, min(count - 1, originalIdx + stepsMoved))
         if newCurrent != dragCurrentIndex {
@@ -253,9 +251,6 @@ struct DocumentTabBar: View {
 
         lastDragTranslation = 0
 
-        // Commit the reorder, compensate the offset for the layout shift, and
-        // animate the dragged tab into its final slot — all in one transaction
-        // so the dragged tab slides smoothly to rest instead of snapping.
         withAnimation(.snappy(duration: 0.22)) {
             if originalIdx != currentIdx {
                 let sorted = workspace.terminals
@@ -318,3 +313,4 @@ struct DocumentTabBar: View {
         workspace.closeTerminal(terminal)
     }
 }
+*/

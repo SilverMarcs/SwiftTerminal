@@ -10,7 +10,6 @@ final class Workspace: Identifiable, Hashable, Codable {
     var projectTypeRaw: String
     var scratchPad: String
 
-    private(set) var terminals: [Terminal]
     private(set) var commands: [Terminal]
     private(set) var chats: [Chat]
 
@@ -42,7 +41,6 @@ final class Workspace: Identifiable, Hashable, Codable {
         self.directory = directory
         self.projectTypeRaw = ProjectType.unknown.rawValue
         self.scratchPad = ""
-        self.terminals = []
         self.commands = []
         self.chats = []
     }
@@ -51,7 +49,7 @@ final class Workspace: Identifiable, Hashable, Codable {
 
     private enum CodingKeys: String, CodingKey {
         case id, name, directory, projectTypeRaw, scratchPad
-        case terminals, commands, chats
+        case commands, chats
     }
 
     init(from decoder: Decoder) throws {
@@ -61,10 +59,8 @@ final class Workspace: Identifiable, Hashable, Codable {
         self.directory = try c.decode(String.self, forKey: .directory)
         self.projectTypeRaw = try c.decodeIfPresent(String.self, forKey: .projectTypeRaw) ?? ProjectType.unknown.rawValue
         self.scratchPad = try c.decodeIfPresent(String.self, forKey: .scratchPad) ?? ""
-        self.terminals = try c.decodeIfPresent([Terminal].self, forKey: .terminals) ?? []
         self.commands = try c.decodeIfPresent([Terminal].self, forKey: .commands) ?? []
         self.chats = try c.decodeIfPresent([Chat].self, forKey: .chats) ?? []
-        for t in terminals { t.workspace = self }
         for cmd in commands { cmd.workspace = self }
         for chat in chats { chat.workspace = self }
     }
@@ -76,7 +72,6 @@ final class Workspace: Identifiable, Hashable, Codable {
         try c.encode(directory, forKey: .directory)
         try c.encode(projectTypeRaw, forKey: .projectTypeRaw)
         try c.encode(scratchPad, forKey: .scratchPad)
-        try c.encode(terminals, forKey: .terminals)
         try c.encode(commands, forKey: .commands)
         try c.encode(chats, forKey: .chats)
     }
@@ -89,41 +84,6 @@ final class Workspace: Identifiable, Hashable, Codable {
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
-    }
-
-    // MARK: - Terminal Management
-
-    @discardableResult
-    func addTerminal(currentDirectory: String? = nil, after current: Terminal? = nil) -> Terminal {
-        let tab = Terminal(workspace: self, currentDirectory: currentDirectory ?? directory)
-        if let current, let idx = terminals.firstIndex(where: { $0 === current }) {
-            terminals.insert(tab, at: idx + 1)
-        } else {
-            terminals.append(tab)
-        }
-        store?.scheduleSave()
-        return tab
-    }
-
-    func closeTerminal(_ tab: Terminal) {
-        tab.terminate()
-        terminals.removeAll { $0.id == tab.id }
-        store?.scheduleSave()
-    }
-
-    func reorderTerminals(_ newOrder: [Terminal]) {
-        terminals = newOrder
-        store?.scheduleSave()
-    }
-
-    func terminalBefore(_ terminal: Terminal) -> Terminal? {
-        guard let idx = terminals.firstIndex(where: { $0 === terminal }), idx > 0 else { return nil }
-        return terminals[idx - 1]
-    }
-
-    func terminalAfter(_ terminal: Terminal) -> Terminal? {
-        guard let idx = terminals.firstIndex(where: { $0 === terminal }), idx + 1 < terminals.count else { return nil }
-        return terminals[idx + 1]
     }
 
     // MARK: - Command Management

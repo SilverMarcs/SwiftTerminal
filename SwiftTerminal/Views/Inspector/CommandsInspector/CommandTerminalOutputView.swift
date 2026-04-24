@@ -2,7 +2,6 @@ import SwiftUI
 
 struct CommandTerminalOutputView: View {
     let terminal: Terminal
-    @Environment(AppState.self) private var appState
 
     private let barHeight: CGFloat = 26
 
@@ -50,7 +49,7 @@ struct CommandTerminalOutputView: View {
             .padding(.top, 5)
             // .frame(height: 36)
 
-            TerminalContainerRepresentable(tab: terminal, appState: appState)
+            TerminalContainerRepresentable(tab: terminal)
         }
     }
 }

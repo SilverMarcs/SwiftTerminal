@@ -2,9 +2,8 @@ import Foundation
 import Observation
 import SwiftUI
 
-/// Persists `Workspace` objects (and their `Terminal` children — both ad-hoc
-/// tabs and saved commands) to a JSON file in
-/// `~/Library/Application Support/SwiftTerminal/`.
+/// Persists `Workspace` objects (and their saved commands / chat sessions) to a
+/// JSON file in `~/Library/Application Support/SwiftTerminal/`.
 ///
 /// Mutations through `addWorkspace`/`deleteWorkspace`/`moveWorkspace` save
 /// directly. Property edits made through `Bindable(workspace).name` etc. are
@@ -102,10 +101,6 @@ final class WorkspaceStore {
                 _ = ws.directory
                 _ = ws.projectTypeRaw
                 _ = ws.scratchPad
-                for t in ws.terminals {
-                    _ = t.title
-                    _ = t.currentDirectory
-                }
                 for cmd in ws.commands {
                     _ = cmd.title
                     _ = cmd.currentDirectory
@@ -140,9 +135,6 @@ final class WorkspaceStore {
     func deleteWorkspace(_ workspace: Workspace) {
         for cmd in workspace.commands {
             cmd.terminate()
-        }
-        for terminal in workspace.terminals {
-            terminal.terminate()
         }
         for chat in workspace.chats {
             chat.disconnect()

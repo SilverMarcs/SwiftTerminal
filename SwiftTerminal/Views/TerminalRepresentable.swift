@@ -1,12 +1,11 @@
 import SwiftUI
 import SwiftTerm
 
-/// Displays a single terminal tab's view inside a SwiftUI hierarchy.
-/// The `LocalProcessTerminalView` is retained by `TerminalTab` so it survives
-/// tab switches without being destroyed/recreated.
+/// Displays a single terminal's view inside a SwiftUI hierarchy.
+/// The `LocalProcessTerminalView` is retained by `TerminalProcessRegistry` so it
+/// survives view rebuilds without being destroyed/recreated.
 struct TerminalContainerRepresentable: NSViewRepresentable {
     let tab: Terminal
-    let appState: AppState
 
     func makeNSView(context: Context) -> NSView {
         let container = NSView(frame: .zero)
@@ -22,7 +21,7 @@ struct TerminalContainerRepresentable: NSViewRepresentable {
             terminalView = existing
             coordinator.register(existing, for: tab)
         } else {
-            terminalView = coordinator.createTerminalView(for: tab, appState: appState)
+            terminalView = coordinator.createTerminalView(for: tab)
         }
 
         terminalView.processDelegate = coordinator
@@ -64,24 +63,8 @@ struct TerminalContainerRepresentable: NSViewRepresentable {
             viewMap[ObjectIdentifier(view)] = (id: tab.id, tab: tab)
         }
 
-        func createTerminalView(for tab: Terminal, appState: AppState) -> LocalProcessTerminalView {
+        func createTerminalView(for tab: Terminal) -> LocalProcessTerminalView {
             let tv = LocalProcessTerminalView(frame: .zero)
-            tv.onBell = { [weak tab, weak tv, weak appState] in
-                Task { @MainActor in
-                    guard let tab else { return }
-                    let isSelected = appState?.selectedTerminal === tab
-                    let isVisible = isSelected && (tv.map { !$0.isHidden && $0.window != nil } ?? false)
-                    if !isVisible {
-                        tab.hasBellNotification = true
-                    }
-                    AppDelegate.bounceDockIcon()
-                    AppDelegate.updateBadge(count: 1)
-                    if let workspaceID = tab.workspace?.id {
-                        AppDelegate.sendNotification(workspaceID: workspaceID, terminalID: tab.id)
-                    }
-                }
-            }
-
             tv.configureNativeColors()
             tv.getTerminal().setCursorStyle(.blinkBar)
             tv.font = NSFont(descriptor: tv.font.fontDescriptor, size: TerminalProcessRegistry.fontSize) ?? tv.font

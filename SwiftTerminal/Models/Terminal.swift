@@ -23,10 +23,6 @@ final class Terminal: Identifiable, Hashable, Codable {
     @ObservationIgnored
     weak var workspace: Workspace?
 
-    /// Not encoded; reset per launch.
-    @ObservationIgnored
-    var hasBellNotification = false
-
     var localProcessTerminalView: LocalProcessTerminalView? {
         get { TerminalProcessRegistry.view(for: id) }
         set {

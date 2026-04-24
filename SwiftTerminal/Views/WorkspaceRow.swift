@@ -11,9 +11,6 @@ struct WorkspaceRow: View {
     @State private var isRenaming = false
     @FocusState private var isNameFieldFocused: Bool
 
-    @State private var busyCount = 0
-    @State private var hasBell = false
-
     var body: some View {
         HStack(spacing: 8) {
             if workspace.projectType != .unknown {
@@ -35,15 +32,6 @@ struct WorkspaceRow: View {
             } else {
                 Text(workspace.name)
                     .lineLimit(1)
-            }
-        }
-        .badge(hasBell ? Text("") : Text(busyCount > 0 ? "\(busyCount)" : ""))
-        .badgeProminence(hasBell ? .increased : .standard)
-        .task {
-            while !Task.isCancelled {
-                busyCount = workspace.terminals.filter(\.hasChildProcess).count
-                hasBell = workspace.terminals.contains(where: \.hasBellNotification)
-                try? await Task.sleep(for: .seconds(2))
             }
         }
         .contextMenu {
@@ -101,7 +89,6 @@ struct WorkspaceRow: View {
             Button(role: .destructive) {
                 if appState.selectedWorkspace === workspace {
                     appState.selectedWorkspace = nil
-                    appState.selectedTerminal = nil
                     appState.selectedSession = nil
                 }
                 store.deleteWorkspace(workspace)
