@@ -6,6 +6,9 @@ final class AppState {
     var selectedTerminal: Terminal?
     var selectedSession: Chat?
 
+    // Sidebar expansion state
+    var expandedWorkspaceIDs: Set<String> = []
+
     // Inspector state
     var showingInspector = true
 

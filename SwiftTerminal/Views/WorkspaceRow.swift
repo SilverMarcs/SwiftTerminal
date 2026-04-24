@@ -50,6 +50,7 @@ struct WorkspaceRow: View {
                 ForEach(AgentProvider.allCases, id: \.self) { provider in
                     Button {
                         let tracked = workspace.addSession(provider: provider)
+                        appState.expandedWorkspaceIDs.insert("w:\(workspace.id.uuidString)")
                         appState.selectedWorkspace = workspace
                         appState.selectedSession = tracked
                     } label: {
@@ -60,6 +61,7 @@ struct WorkspaceRow: View {
                 Label("New Chat", systemImage: "plus")
             } primaryAction: {
                 let tracked = workspace.addSession(provider: defaultChatMode)
+                appState.expandedWorkspaceIDs.insert("w:\(workspace.id.uuidString)")
                 appState.selectedWorkspace = workspace
                 appState.selectedSession = tracked
             }

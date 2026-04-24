@@ -54,6 +54,7 @@ struct SessionBrowserView: View {
             ForEach(AgentProvider.allCases, id: \.self) { provider in
                 Button {
                     let chat = workspace.addSession(provider: provider)
+                    appState.expandedWorkspaceIDs.insert("w:\(workspace.id.uuidString)")
                     appState.selectedSession = chat
                     onSelect?()
                 } label: {
@@ -64,6 +65,7 @@ struct SessionBrowserView: View {
             Label("New Chat", systemImage: "plus")
         } primaryAction: {
             let chat = workspace.addSession(provider: defaultChatMode)
+            appState.expandedWorkspaceIDs.insert("w:\(workspace.id.uuidString)")
             appState.selectedSession = chat
             onSelect?()
         }

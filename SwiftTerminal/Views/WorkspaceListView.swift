@@ -17,10 +17,6 @@ struct WorkspaceListView: View {
         return store.workspaces.filter { $0.name.localizedStandardContains(searchText) }
     }
 
-    private var sidebarItems: [SidebarItem] {
-        visibleWorkspaces.map { SidebarItem.forWorkspace($0) }
-    }
-
     private var sidebarSelection: Binding<String?> {
         Binding(
             get: {
@@ -58,11 +54,30 @@ struct WorkspaceListView: View {
     }
 
     var body: some View {
-        List(sidebarItems, children: \.children, selection: sidebarSelection) { item in
-            if let workspace = item.workspace {
-                WorkspaceRow(workspace: workspace)
-            } else if let session = item.chat {
-                SessionSidebarRow(session: session)
+        List(selection: sidebarSelection) {
+            ForEach(visibleWorkspaces) { workspace in
+                let workspaceID = "w:\(workspace.id.uuidString)"
+                DisclosureGroup(isExpanded: Binding(
+                    get: { appState.expandedWorkspaceIDs.contains(workspaceID) },
+                    set: { isExpanded in
+                        if isExpanded {
+                            appState.expandedWorkspaceIDs.insert(workspaceID)
+                        } else {
+                            appState.expandedWorkspaceIDs.remove(workspaceID)
+                        }
+                    }
+                )) {
+                    let sessions = workspace.chats
+                        .filter { !$0.isArchived }
+                        .sorted { $0.date > $1.date }
+                    ForEach(sessions) { session in
+                        SessionSidebarRow(session: session)
+                            .tag("s:\(session.id.uuidString)")
+                    }
+                } label: {
+                    WorkspaceRow(workspace: workspace)
+                        .tag(workspaceID)
+                }
             }
         }
         .environment(\.sidebarRowSize, .medium)
