@@ -214,7 +214,7 @@ final class DiffOverlayView: NSView {
         let digits = maxLineNumber > 0 ? String(maxLineNumber) : "0"
         let font = NSFont.monospacedDigitSystemFont(ofSize: lineNumberFontSize, weight: .regular)
         let digitsWidth = (digits as NSString).size(withAttributes: [.font: font]).width
-        let gutterWidth = ceil(digitsWidth) + 12
+        let gutterWidth = ceil(digitsWidth) + 10
 
         return SharedDiffTextLayout(
             gutterWidth: gutterWidth,

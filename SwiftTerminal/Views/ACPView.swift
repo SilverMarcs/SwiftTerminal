@@ -3,6 +3,8 @@ import SwiftUI
 struct ACPView: View {
     let chat: Chat
 
+    @State private var isPreparingInitialScroll = true
+
     private var session: ACPSession { chat.session }
     private var messages: [Message] { chat.messages }
 
@@ -48,10 +50,30 @@ struct ACPView: View {
             .safeAreaBar(edge: .bottom) {
                 ACPInputArea(chat: chat)
             }
+            .overlay {
+                if isPreparingInitialScroll {
+                    ZStack {
+                        Rectangle()
+                            .fill(.background)
+                        ProgressView()
+                            .controlSize(.large)
+                    }
+                    .ignoresSafeArea(edges: .vertical)
+                }
+            }
             .onChange(of: messages.count) {
+                guard !isPreparingInitialScroll else { return }
                 withAnimation {
                     proxy.scrollTo("bottom", anchor: .bottom)
                 }
+            }
+            .task(id: chat.id) {
+                isPreparingInitialScroll = true
+                try? await Task.sleep(for: .milliseconds(50))
+                proxy.scrollTo("bottom", anchor: .bottom)
+                try? await Task.sleep(for: .milliseconds(100))
+                guard !Task.isCancelled else { return }
+                isPreparingInitialScroll = false
             }
         }
     }

@@ -48,7 +48,7 @@ struct AssistantMessageView: View {
                         .controlSize(.small)
                 }
             }
-            .padding(.leading, 25)
+            .padding(.leading, 22)
         }
         .contentShape(.rect)
         .transaction { $0.animation = nil }
