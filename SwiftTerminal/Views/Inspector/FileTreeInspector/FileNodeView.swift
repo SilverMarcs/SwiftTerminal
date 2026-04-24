@@ -19,12 +19,12 @@ struct FileNodeView: View {
             )) {
                 ForEach(item.children!) { child in
                     FileNodeView(item: child)
-                        .tag(child.id)
                 }
             } label: {
                 FileRowView(item: item)
                     .contextMenu { FileTreeContextMenu(item: item) }
             }
+            .tag(item.id)
             .listRowSeparator(.hidden)
         } else {
             FileRowView(item: item)

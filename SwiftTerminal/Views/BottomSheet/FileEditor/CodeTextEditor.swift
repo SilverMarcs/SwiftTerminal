@@ -13,6 +13,7 @@ struct CodeTextEditor: NSViewRepresentable {
     }
 
     private let text: Binding<String>?
+    private let documentID: AnyHashable?
     let fileExtension: String
     private let mode: Mode
     private let repositoryRootURL: URL?
@@ -25,6 +26,7 @@ struct CodeTextEditor: NSViewRepresentable {
 
     init(
         text: Binding<String>,
+        documentID: AnyHashable,
         fileExtension: String,
         gutterDiff: GutterDiffResult,
         highlightRequest: HighlightRequest?,
@@ -32,6 +34,7 @@ struct CodeTextEditor: NSViewRepresentable {
         onReloadFromDisk: (() async -> Void)? = nil
     ) {
         self.text = text
+        self.documentID = documentID
         self.fileExtension = fileExtension
         self.mode = .editable(gutterDiff: gutterDiff, highlightRequest: highlightRequest)
         self.repositoryRootURL = repositoryRootURL
@@ -46,6 +49,7 @@ struct CodeTextEditor: NSViewRepresentable {
         onReload: @escaping () async -> Void
     ) {
         text = nil
+        documentID = nil
         self.fileExtension = fileExtension
         repositoryRootURL = nil
         onReloadFromDisk = nil
@@ -111,9 +115,7 @@ struct CodeTextEditor: NSViewRepresentable {
         context.coordinator.minimap = minimap
 
         scrollView.contentView.postsBoundsChangedNotifications = true
-        NotificationCenter.default.addObserver(
-            context.coordinator,
-            selector: #selector(Coordinator.scrollDidChange(_:)),
+        context.coordinator.installScrollObserver(
             name: NSView.boundsDidChangeNotification,
             object: scrollView.contentView
         )
@@ -323,6 +325,7 @@ struct CodeTextEditor: NSViewRepresentable {
 
     private func updateMode(textView: EditorTextView, coordinator: Coordinator) {
         let colorSchemeChanged = coordinator.lastIsDark != isDark
+        let documentChanged = coordinator.lastDocumentID != documentID
 
         switch mode {
         case .editable(let gutterDiff, let highlightRequest):
@@ -338,7 +341,7 @@ struct CodeTextEditor: NSViewRepresentable {
             coordinator.updateMinimapMarkers(gutterDiff: gutterDiff, text: textView.string)
 
             if let text, !coordinator.isEditing,
-               textView.string != text.wrappedValue || colorSchemeChanged {
+               textView.string != text.wrappedValue || colorSchemeChanged || documentChanged {
                 let ranges = textView.selectedRanges
                 let highlighted = SyntaxHighlighter.highlight(
                     text.wrappedValue,
@@ -359,6 +362,18 @@ struct CodeTextEditor: NSViewRepresentable {
                         lineNumber: highlightRequest.lineNumber,
                         columnRange: highlightRequest.columnRange
                     )
+                }
+            } else if documentChanged {
+                coordinator.lastAppliedHighlight = nil
+                Task { @MainActor in
+                    textView.setSelectedRange(NSRange(location: 0, length: 0))
+                    if let scrollView = coordinator.scrollView {
+                        scrollView.contentView.setBoundsOrigin(.zero)
+                        scrollView.reflectScrolledClipView(scrollView.contentView)
+                        coordinator.minimap?.updateViewport(from: scrollView)
+                    } else {
+                        textView.scrollToLine(1)
+                    }
                 }
             }
 
@@ -389,6 +404,7 @@ struct CodeTextEditor: NSViewRepresentable {
             coordinator.updateMinimapMarkers(lineKinds: presentation.lineKinds, text: presentation.string)
         }
 
+        coordinator.lastDocumentID = documentID
         coordinator.lastIsDark = isDark
     }
 
@@ -520,6 +536,7 @@ struct CodeTextEditor: NSViewRepresentable {
         weak var minimap: EditorMinimap?
         var isEditing = false
         var lastAppliedHighlight: HighlightRequest?
+        var lastDocumentID: AnyHashable?
         var lastWrapLines: Bool?
         var lastWrapContentWidth: CGFloat?
         var lastIsDark: Bool?
@@ -531,14 +548,31 @@ struct CodeTextEditor: NSViewRepresentable {
         var onReload: (() async -> Void)?
         private var newLineToHunkIndex: [Int: Int] = [:]
         private var oldLineToHunkIndex: [Int: Int] = [:]
+        private var scrollObserver: NSObjectProtocol?
 
         init(parent: CodeTextEditor) {
             self.parent = parent
         }
 
-        @objc func scrollDidChange(_ notification: Notification) {
-            guard let scrollView else { return }
-            minimap?.updateViewport(from: scrollView)
+        deinit {
+            if let scrollObserver {
+                NotificationCenter.default.removeObserver(scrollObserver)
+            }
+            rehighlightTask?.cancel()
+        }
+
+        func installScrollObserver(name: NSNotification.Name, object: Any?) {
+            if let scrollObserver {
+                NotificationCenter.default.removeObserver(scrollObserver)
+            }
+            scrollObserver = NotificationCenter.default.addObserver(
+                forName: name,
+                object: object,
+                queue: .main
+            ) { [weak self] _ in
+                guard let self, let scrollView = self.scrollView else { return }
+                self.minimap?.updateViewport(from: scrollView)
+            }
         }
 
         func updateMinimapMarkers(gutterDiff: GutterDiffResult, text: String) {

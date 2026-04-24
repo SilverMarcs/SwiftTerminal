@@ -49,6 +49,14 @@ struct ACPInputArea: View {
             }
             .padding(12)
         }
+        .toolbar {
+            ToolbarItem(placement: .keyboard) {
+               Button("Focus") {
+                   isFocused = true
+               }
+               .keyboardShortcut("l")
+            }
+        }
         .task {
             isFocused = true
         }

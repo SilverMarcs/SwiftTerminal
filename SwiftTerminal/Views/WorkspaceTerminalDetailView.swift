@@ -9,7 +9,7 @@ struct WorkspaceTerminalDetailView: View {
         Group {
             if let chat = appState.selectedSession {
                 ACPView(chat: chat)
-                    .id(chat.id)
+                    // .id(chat.id)
             } else {
                 terminalContent
             }

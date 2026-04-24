@@ -100,6 +100,7 @@ struct FileEditorPanel: View {
             if isLoaded {
                 CodeTextEditor(
                     text: $content,
+                    documentID: fileURL,
                     fileExtension: fileURL.pathExtension.lowercased(),
                     gutterDiff: gutterDiff,
                     highlightRequest: panel.highlightRequest,
@@ -124,7 +125,7 @@ struct FileEditorPanel: View {
         .task(id: fileURL) {
             loadFile()
         }
-        .watchFileSystem(at: fileURL.deletingLastPathComponent()) {
+        .watchFileSystem(at: fileURL.deletingLastPathComponent(), id: fileURL) {
             reloadIfChanged()
         }
         .onChange(of: hasUnsavedChanges) { _, dirty in
@@ -334,4 +335,3 @@ struct FileEditorPanel: View {
         return state
     }
 }
-

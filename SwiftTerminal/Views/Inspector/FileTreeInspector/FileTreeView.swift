@@ -12,7 +12,6 @@ struct FileTreeView: View {
         List(selection: $state.selectedID) {
             ForEach(state.model.displayItems) { item in
                 FileNodeView(item: item)
-                    .tag(item.id)
             }
         }
         .environment(state)
