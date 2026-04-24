@@ -27,7 +27,7 @@ APP_BUNDLE=$(echo "$DERIVED_DATA"/$APP_NAME-*/Build/Products/Debug/$APP_NAME.app
 APP_BIN="$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
 run_app() {
-  "$APP_BIN" &
+  "$APP_BIN" </dev/null &
   APP_PID=$!
   trap "kill $APP_PID 2>/dev/null" EXIT
   wait $APP_PID
