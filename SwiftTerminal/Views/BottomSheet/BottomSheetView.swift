@@ -5,18 +5,15 @@ struct BottomSheetView: View {
     @Environment(EditorPanel.self) private var panel
     @Environment(\.colorScheme) var colorScheme
     @AppStorage("editorPanelHeight") private var panelHeight: Double = 250
-    @State private var measuredHeaderHeight: CGFloat = 0
-
-    /// 1px drag border + measured header from PanelLayout.
-    private var collapsedHeight: CGFloat { 1 + measuredHeaderHeight }
 
     var body: some View {
         VStack(spacing: 0) {
             dragBorder
             content
         }
-        .frame(maxHeight: panel.isOpen ? panelHeight : collapsedHeight, alignment: .top)
-        .onPreferenceChange(PanelHeaderHeightKey.self) { measuredHeaderHeight = $0 }
+        .frame(maxHeight: panel.isOpen ? panelHeight : 0, alignment: .top)
+        .clipped()
+        .allowsHitTesting(panel.isOpen)
         .background(.bar)
     }
 
