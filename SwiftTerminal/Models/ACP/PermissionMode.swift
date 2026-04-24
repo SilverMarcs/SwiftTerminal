@@ -10,6 +10,10 @@ enum PermissionMode: String, Codable, CaseIterable, Identifiable {
     /// Claude: "acceptEdits", Codex: falls back to "auto"
     case acceptEdits
 
+    /// Planning mode — no actual tool execution.
+    /// Claude: "plan", Codex: "read-only"
+    case plan
+
     /// Bypass all permission checks.
     /// Claude: "bypassPermissions", Codex: "full-access"
     case bypassPermissions
@@ -20,6 +24,7 @@ enum PermissionMode: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .standard: return "Default"
         case .acceptEdits: return "Accept Edits"
+        case .plan: return "Plan"
         case .bypassPermissions: return "Bypass Permissions"
         }
     }
@@ -28,6 +33,7 @@ enum PermissionMode: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .standard: return "lock.shield"
         case .acceptEdits: return "pencil.and.outline"
+        case .plan: return "list.clipboard"
         case .bypassPermissions: return "bolt.shield"
         }
     }
@@ -36,6 +42,7 @@ enum PermissionMode: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .standard: return "Prompts for dangerous operations"
         case .acceptEdits: return "Auto-accept file edits"
+        case .plan: return "Plan only, no tool execution"
         case .bypassPermissions: return "Skip all permission checks"
         }
     }
@@ -45,6 +52,7 @@ enum PermissionMode: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .standard: return "default"
         case .acceptEdits: return "acceptEdits"
+        case .plan: return "plan"
         case .bypassPermissions: return "bypassPermissions"
         }
     }
@@ -54,6 +62,7 @@ enum PermissionMode: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .standard: return "auto"
         case .acceptEdits: return "auto"
+        case .plan: return "read-only"
         case .bypassPermissions: return "full-access"
         }
     }

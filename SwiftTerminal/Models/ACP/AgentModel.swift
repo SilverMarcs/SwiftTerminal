@@ -44,7 +44,7 @@ enum AgentModel: String, Codable, CaseIterable, Identifiable {
 
     static func defaultModel(for provider: AgentProvider) -> AgentModel {
         switch provider {
-        case .claude: return .claudeSonnet
+        case .claude: return .claudeOpus
         case .codex: return .gpt54
         }
     }

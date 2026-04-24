@@ -2,14 +2,34 @@ import Foundation
 import ACP
 import ACPModel
 
+@Observable
 final class ACPSessionDelegate: ClientDelegate, @unchecked Sendable {
+
+    var pendingPermission: PermissionPrompt?
 
     // MARK: - Permissions
 
-    /// Called when the agent requests permission for a tool call.
-    /// Wire this up to a UI prompt later for non-bypass permission modes.
     func handlePermissionRequest(request: RequestPermissionRequest) async throws -> RequestPermissionResponse {
-        return RequestPermissionResponse(outcome: PermissionOutcome(cancelled: true))
+        let prompt = PermissionPrompt(
+            toolName: request.toolCall.title ?? "Tool",
+            options: request.options
+        )
+
+        await MainActor.run {
+            self.pendingPermission = prompt
+        }
+
+        let optionId = await prompt.waitForResponse()
+
+        await MainActor.run {
+            self.pendingPermission = nil
+        }
+
+        if let optionId {
+            return RequestPermissionResponse(outcome: PermissionOutcome(optionId: optionId))
+        } else {
+            return RequestPermissionResponse(outcome: PermissionOutcome(cancelled: true))
+        }
     }
 
     // MARK: - File System
@@ -42,6 +62,30 @@ final class ACPSessionDelegate: ClientDelegate, @unchecked Sendable {
 
     func handleTerminalRelease(terminalId: TerminalId, sessionId: String) async throws -> ReleaseTerminalResponse {
         throw ACPDelegateError.notSupported
+    }
+}
+
+@Observable
+final class PermissionPrompt: Identifiable {
+    let id = UUID()
+    let toolName: String
+    let options: [PermissionOption]
+    private var continuation: CheckedContinuation<String?, Never>?
+
+    init(toolName: String, options: [PermissionOption]) {
+        self.toolName = toolName
+        self.options = options
+    }
+
+    func waitForResponse() async -> String? {
+        await withCheckedContinuation { continuation in
+            self.continuation = continuation
+        }
+    }
+
+    func respond(optionId: String?) {
+        continuation?.resume(returning: optionId)
+        continuation = nil
     }
 }
 

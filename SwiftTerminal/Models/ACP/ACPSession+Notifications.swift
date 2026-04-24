@@ -27,9 +27,17 @@ extension ACPSession {
 
     @MainActor
     private func handleUpdate(_ update: SessionUpdate) {
-        // Drop updates streamed back by the agent while replaying a resumed
-        // session — our persisted messages are the source of truth.
-        if isReplaying { return }
+        if isReplaying {
+            // During replay, only allow session metadata updates through —
+            // message content and plan state are already persisted locally.
+            switch update {
+            case .availableCommandsUpdate, .configOptionUpdate, .usageUpdate,
+                 .sessionInfoUpdate, .currentModeUpdate:
+                break
+            default:
+                return
+            }
+        }
         onSessionUpdate?(update)
     }
 }

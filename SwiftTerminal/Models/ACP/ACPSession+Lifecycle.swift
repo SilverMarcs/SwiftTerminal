@@ -55,9 +55,22 @@ extension ACPSession {
             isConnecting = false
             onConnected?()
         } catch {
+            // Session no longer exists on the agent side (e.g. process was
+            // killed, disk state cleared). Fall back to a fresh session so the
+            // user isn't left stuck.
             isReplaying = false
-            isConnecting = false
-            self.error = error.localizedDescription
+            do {
+                let fallbackClient: Client
+                if let existing = client {
+                    fallbackClient = existing
+                } else {
+                    fallbackClient = try await launchAndInitialize()
+                }
+                try await createNewSession(client: fallbackClient)
+            } catch {
+                isConnecting = false
+                self.error = error.localizedDescription
+            }
         }
     }
 

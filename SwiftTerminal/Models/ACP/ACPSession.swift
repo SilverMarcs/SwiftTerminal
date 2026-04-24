@@ -10,7 +10,11 @@ final class ACPSession {
     var error: String?
     var provider: AgentProvider = .codex
     var permissionMode: PermissionMode = .bypassPermissions
-    var model: AgentModel = .claudeSonnet
+    var model: AgentModel = .claudeOpus
+    var usedTokens: Int = 0
+    var contextSize: Int = 0
+    var plan: [PlanEntry] = []
+    var availableCommands: [AvailableCommand] = []
 
     var onTurnComplete: (() async -> Void)?
     var onConnected: (() -> Void)?
