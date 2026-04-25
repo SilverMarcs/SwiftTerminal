@@ -3,6 +3,7 @@ import AppKit
 
 struct UserMessageView: View {
     let message: Message
+    @State private var showRevertConfirmation = false
 
     private var chat: Chat { message.chat! }
 
@@ -38,6 +39,14 @@ struct UserMessageView: View {
 
             revertButton
         }
+        .alert("Revert to this message?", isPresented: $showRevertConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Revert", role: .confirm) {
+                Task { await chat.revert(toBeforeTurn: message.turnIndex) }
+            }
+        } message: {
+            Text("This will remove all messages after this point.")
+        }
         .padding(.leading, 160)
     }
 
@@ -46,7 +55,7 @@ struct UserMessageView: View {
         let turn = message.turnIndex
         if turn >= 1 && chat.turnCount >= turn {
             Button {
-                Task { await chat.revert(toBeforeTurn: turn) }
+                showRevertConfirmation = true
             } label: {
                 Label("Revert to this message", systemImage: "arrow.uturn.backward")
             }

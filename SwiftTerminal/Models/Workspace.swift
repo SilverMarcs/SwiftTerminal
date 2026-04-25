@@ -116,6 +116,25 @@ final class Workspace: Identifiable, Hashable, Codable {
         store?.scheduleSave()
     }
 
+    var hasRunningTerminals: Bool {
+        commands.contains { $0.localProcessTerminalView != nil }
+    }
+
+    func killAllRunningTerminals() {
+        for cmd in commands {
+            cmd.terminate()
+        }
+    }
+
+    func removeAllCommands() {
+        inspectorState.selectedCommand = nil
+        for cmd in commands {
+            cmd.terminate()
+        }
+        commands.removeAll()
+        store?.scheduleSave()
+    }
+
     /// Selects the command in the inspector and sends its `runScript`.
     /// If the terminal view hasn't been created yet, switches to the Commands
     /// tab so the view renders and spawns the shell; otherwise runs in place

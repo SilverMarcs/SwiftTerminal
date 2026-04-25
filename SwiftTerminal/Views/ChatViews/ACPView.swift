@@ -87,6 +87,14 @@ struct ACPView: View {
                         ProgressView()
                             .controlSize(.large)
                     }
+                } else if messages.isEmpty {
+                    Image(chat.provider.imageName)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 128, height: 128)
+                        .foregroundStyle(chat.provider.color.gradient)
+                        .opacity(0.5)
+                        .allowsHitTesting(false)
                 }
             }
             .safeAreaBar(edge: .bottom) {

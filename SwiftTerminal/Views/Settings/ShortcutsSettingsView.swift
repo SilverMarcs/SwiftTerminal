@@ -9,18 +9,18 @@ struct ShortcutsSettingsView: View {
                 LabeledContent("Find in Files", value: "⇧⌘ F")
             }
 
-            Section("Terminal") {
-                LabeledContent("New Tab", value: "⌘ T")
-                LabeledContent("New Tab in Workspace", value: "⌘ N")
-                LabeledContent("Select Previous Tab", value: "⇧⌘ [")
-                LabeledContent("Select Next Tab", value: "⇧⌘ ]")
-                LabeledContent("Clear Terminal", value: "⌘ K")
+            Section("Chat") {
+                LabeledContent("New Chat", value: "⌘ N")
+                LabeledContent("Focus Input", value: "⌘ L")
+                LabeledContent("Paste Text & Images", value: "⌘ V")
+                LabeledContent("Send Message", value: "⌘ ⏎")
+                LabeledContent("Stop Streaming", value: "⌘ D")
             }
 
             Section("View") {
-                LabeledContent("Zoom In", value: "⌘ +")
-                LabeledContent("Zoom Out", value: "⌘ -")
-                LabeledContent("Actual Size", value: "⌘ 0")
+                // LabeledContent("Zoom In", value: "⌘ +")
+                // LabeledContent("Zoom Out", value: "⌘ -")
+                // LabeledContent("Actual Size", value: "⌘ 0")
                 LabeledContent("Toggle Editor Panel", value: "⌘ J")
                 LabeledContent("Show/Hide Hidden Files", value: "⇧⌘ .")
             }

@@ -89,9 +89,16 @@ struct WorkspaceRow: View {
             Button {
                 workspace.disconnectAllActiveChats()
             } label: {
-                Label("Disconnect All", systemImage: "bolt.slash")
+                Label("Disconnect All Chats", systemImage: "bolt.slash")
             }
             .disabled(!workspace.hasActiveChats)
+
+            Button {
+                workspace.killAllRunningTerminals()
+            } label: {
+                Label("Kill All Terminals", systemImage: "xmark.octagon")
+            }
+            .disabled(!workspace.hasRunningTerminals)
 
             Divider()
             Button(role: .destructive) {

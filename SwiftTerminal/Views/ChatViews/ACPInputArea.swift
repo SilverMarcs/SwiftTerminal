@@ -67,11 +67,13 @@ struct ACPInputArea: View {
                Button("Focus") {
                    isFocused = true
                }
-               .keyboardShortcut("l")
+               .keyboardShortcut("l", modifiers: .command)
             }
         }
-        .task {
-            isFocused = true
+        .onAppear {
+            DispatchQueue.main.asyncAfter(.now + 0.1) {}
+                isFocused = true
+            }
         }
     }
 

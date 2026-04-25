@@ -3,6 +3,7 @@ import SwiftUI
 struct CommandsInspectorView: View {
     let workspace: Workspace
     @Environment(AppState.self) private var appState
+    // @State private var showKillAllAlert = false
 
     var body: some View {
         @Bindable var state = workspace.inspectorState
@@ -37,6 +38,14 @@ struct CommandsInspectorView: View {
 
                 Spacer()
 
+                // Button {
+                //     showKillAllAlert = true
+                // } label: {
+                //     Image(systemName: "xmark")
+                // }
+                // .buttonStyle(.borderless)
+                // .disabled(workspace.commands.isEmpty)
+
                 Button {
                     let terminal = workspace.addCommand()
                     state.selectedCommand = terminal
@@ -49,5 +58,13 @@ struct CommandsInspectorView: View {
             .padding(.vertical, 6)
             .padding(.top, 7)
         }
+        // .alert("Kill all terminals?", isPresented: $showKillAllAlert) {
+        //     Button("Kill All", role: .destructive) {
+        //         workspace.removeAllCommands()
+        //     }
+        //     Button("Cancel", role: .cancel) {}
+        // } message: {
+        //     Text("This will terminate every running shell and remove all entries from the list.")
+        // }
     }
 }

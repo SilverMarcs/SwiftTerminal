@@ -123,6 +123,13 @@ struct CommandEntryRow: View {
         Divider()
 
         Button(role: .destructive) {
+            terminal.terminate()
+        } label: {
+            Label("Kill", systemImage: "xmark.octagon")
+        }
+        .disabled(terminal.localProcessTerminalView == nil)
+
+        Button(role: .destructive) {
             terminal.workspace?.removeCommand(terminal)
         } label: {
             Label("Delete", systemImage: "trash")
