@@ -71,7 +71,7 @@ struct ACPInputArea: View {
             }
         }
         .onAppear {
-            DispatchQueue.main.asyncAfter(.now + 0.1) {}
+            DispatchQueue.main.asyncAfter(.now + 0.1) {
                 isFocused = true
             }
         }
