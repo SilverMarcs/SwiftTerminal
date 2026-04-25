@@ -16,7 +16,9 @@ final class ToolCallGroupPopoverView: NSView {
         stack.translatesAutoresizingMaskIntoConstraints = false
 
         for item in items {
-            stack.addArrangedSubview(makeRow(for: item))
+            let row = makeRow(for: item)
+            stack.addArrangedSubview(row)
+            row.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         }
 
         let documentView = FlippedView()
@@ -61,30 +63,13 @@ final class ToolCallGroupPopoverView: NSView {
         row.alignment = .centerY
         row.spacing = 6
 
-        let statusImage: NSImage?
-        let statusTint: NSColor
-        switch item.status {
-        case .pending:
-            statusImage = NSImage(systemSymbolName: "clock", accessibilityDescription: nil)
-            statusTint = .secondaryLabelColor
-        case .inProgress:
-            statusImage = NSImage(systemSymbolName: "ellipsis.circle", accessibilityDescription: nil)
-            statusTint = .secondaryLabelColor
-        case .completed:
-            statusImage = NSImage(systemSymbolName: "checkmark.circle.fill", accessibilityDescription: nil)
-            statusTint = .systemGreen
-        case .failed:
-            statusImage = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: nil)
-            statusTint = .systemRed
-        }
-
-        let statusView = NSImageView(image: statusImage ?? NSImage())
-        statusView.contentTintColor = statusTint
-        statusView.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 12, weight: .regular)
-        statusView.translatesAutoresizingMaskIntoConstraints = false
+        let toolIcon = NSImageView(image: NSImage(systemSymbolName: item.symbolName, accessibilityDescription: nil) ?? NSImage())
+        toolIcon.contentTintColor = .secondaryLabelColor
+        toolIcon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 12, weight: .regular)
+        toolIcon.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            statusView.widthAnchor.constraint(equalToConstant: 14),
-            statusView.heightAnchor.constraint(equalToConstant: 14),
+            toolIcon.widthAnchor.constraint(equalToConstant: 14),
+            toolIcon.heightAnchor.constraint(equalToConstant: 14),
         ])
 
         let label = NSTextField(labelWithString: item.title)
@@ -93,9 +78,43 @@ final class ToolCallGroupPopoverView: NSView {
         label.lineBreakMode = .byTruncatingTail
         label.maximumNumberOfLines = 1
         label.cell?.wraps = false
+        label.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-        row.addArrangedSubview(statusView)
+        let statusSymbolName: String?
+        let statusTint: NSColor
+        switch item.status {
+        case .pending:
+            statusSymbolName = "clock"
+            statusTint = .secondaryLabelColor
+        case .inProgress:
+            statusSymbolName = "ellipsis"
+            statusTint = .secondaryLabelColor
+        case .completed:
+            statusSymbolName = "checkmark"
+            statusTint = .systemGreen
+        case .failed:
+            statusSymbolName = "xmark"
+            statusTint = .systemRed
+        }
+
+        row.addArrangedSubview(toolIcon)
         row.addArrangedSubview(label)
+
+        if let name = statusSymbolName,
+           let image = NSImage(systemSymbolName: name, accessibilityDescription: nil) {
+            let statusView = NSImageView(image: image)
+            statusView.contentTintColor = statusTint
+            statusView.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 11, weight: .semibold)
+            statusView.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                statusView.widthAnchor.constraint(equalToConstant: 14),
+                statusView.heightAnchor.constraint(equalToConstant: 14),
+            ])
+            statusView.setContentHuggingPriority(.required, for: .horizontal)
+            row.addArrangedSubview(statusView)
+        }
+
         return row
     }
 

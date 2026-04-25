@@ -75,9 +75,7 @@ struct TerminalContainerRepresentable: NSViewRepresentable {
             let shellBasename = (shell as NSString).lastPathComponent
             let shellName = "-" + shellBasename
             let home = FileManager.default.homeDirectoryForCurrentUser.path
-            let startingDirectory = resolvedWorkingDirectoryPath(from: tab.currentDirectory)
-                ?? tab.workspace?.directory
-                ?? home
+            let startingDirectory = resolvedWorkingDirectoryPath(from: tab.workspace?.directory) ?? home
             var env = ProcessInfo.processInfo.environment
             env["TERM"] = "xterm-256color"
             env["COLORTERM"] = "truecolor"
