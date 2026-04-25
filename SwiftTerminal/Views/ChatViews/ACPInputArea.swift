@@ -5,6 +5,7 @@ import ACPModel
 struct ACPInputArea: View {
     @Bindable var chat: Chat
     @FocusState private var isFocused: Bool
+    @Environment(AppState.self) var state
     @AppStorage("enterToSendChat") private var enterToSendChat: Bool = false
 
     private var session: ACPSession { chat.session }
@@ -114,7 +115,7 @@ struct ACPInputArea: View {
                .keyboardShortcut("l", modifiers: .command)
             }
         }
-        .task {
+        .task(id: state.selectedChat) {
                 isFocused = true
         }
     }

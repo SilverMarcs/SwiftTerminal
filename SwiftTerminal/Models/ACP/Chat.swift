@@ -183,12 +183,17 @@ final class Chat: Identifiable, Hashable, Codable {
             self?.handleLiveUpdate(update)
         }
 
+        session.delegate.onPermissionRequest = { [weak self] prompt in
+            self?.notify("Permission requested")
+        }
+
         session.onTurnComplete = { [weak self] in
             guard let self else { return }
             self.turnCount += 1
             self.date = Date()
             self.currentTurnMessage = nil
             self.scheduleSave()
+            self.notify("Finished responding")
 
             guard let dir = self.workspace?.directory else { return }
 
@@ -369,6 +374,19 @@ final class Chat: Identifiable, Hashable, Codable {
 
     private func scheduleSave() {
         workspace?.store?.scheduleSave()
+    }
+
+    // MARK: - Notifications
+
+    private func notify(_ reason: String) {
+        guard !session.isReplaying else { return }
+        guard let workspace else { return }
+        AppDelegate.sendChatNotification(
+            workspaceTitle: workspace.name,
+            body: reason,
+            workspaceID: workspace.id,
+            chatID: id
+        )
     }
 
     // MARK: - Helpers

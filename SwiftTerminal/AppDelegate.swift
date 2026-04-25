@@ -1,6 +1,55 @@
 import AppKit
+import UserNotifications
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+extension Notification.Name {
+    static let navigateToChat = Notification.Name("navigateToChat")
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        let center = UNUserNotificationCenter.current()
+        center.delegate = self
+        center.requestAuthorization(options: [.alert, .sound]) { _, _ in }
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let userInfo = response.notification.request.content.userInfo
+        if let workspaceID = userInfo["workspaceID"] as? String,
+           let chatID = userInfo["chatID"] as? String {
+            NSApplication.shared.activate(ignoringOtherApps: true)
+            NotificationCenter.default.post(
+                name: .navigateToChat,
+                object: nil,
+                userInfo: ["workspaceID": workspaceID, "chatID": chatID]
+            )
+        }
+        completionHandler()
+    }
+
+    static func sendChatNotification(workspaceTitle: String, body: String, workspaceID: UUID, chatID: UUID) {
+        DispatchQueue.main.async {
+            guard !NSApp.isActive else { return }
+            let content = UNMutableNotificationContent()
+            content.title = workspaceTitle
+            content.body = body
+            content.sound = .default
+            content.userInfo = [
+                "workspaceID": workspaceID.uuidString,
+                "chatID": chatID.uuidString,
+            ]
+            let request = UNNotificationRequest(
+                identifier: chatID.uuidString,
+                content: content,
+                trigger: nil
+            )
+            UNUserNotificationCenter.current().add(request)
+        }
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         #if DEBUG
         return .terminateNow

@@ -82,5 +82,51 @@ struct ChatBrowserRow: View {
                 Label("Delete", systemImage: "trash")
             }
         }
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            Button {
+                if !chat.isArchived {
+                    if appState.selectedChat?.id == chat.id {
+                        appState.selectedChat = nil
+                    }
+                    chat.disconnect()
+                }
+                chat.isArchived.toggle()
+            } label: {
+                if chat.isArchived {
+                    Label("Unarchive", systemImage: "tray.and.arrow.up")
+                } else {
+                    Label("Archive", systemImage: "archivebox")
+                }
+            }
+            .labelStyle(.iconOnly)
+            .tint(.orange)
+
+            Button {
+                if chat.isActive {
+                    chat.disconnect()
+                } else {
+                    chat.connectIfNeeded()
+                }
+            } label: {
+                if chat.isActive {
+                    Label("Disconnect", systemImage: "bolt.slash")
+                } else {
+                    Label("Connect", systemImage: "bolt")
+                }
+            }
+            .labelStyle(.iconOnly)
+            .tint(chat.isActive ? .gray : .yellow)
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive) {
+                if appState.selectedChat?.id == chat.id {
+                    appState.selectedChat = nil
+                }
+                workspace.removeChat(chat)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+            .labelStyle(.iconOnly)
+        }
     }
 }

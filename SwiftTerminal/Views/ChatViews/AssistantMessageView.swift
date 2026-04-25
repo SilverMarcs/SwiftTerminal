@@ -31,7 +31,7 @@ struct AssistantMessageView: View {
 
             if hasContent {
                 VStack(alignment: .leading, spacing: 8) {
-                    if !message.blocks.isEmpty {
+                    // if !message.blocks.isEmpty {
                         AssistantBlocksRepresentable(
                             blocks: message.blocks,
                             fontSize: fontSize,
@@ -48,11 +48,11 @@ struct AssistantMessageView: View {
                             message.height = newHeight
                         }
                         .transaction { $0.animation = nil }
-                    }
+                    // }
 
                     if session.isProcessing && isLastMessage {
                         ProgressView()
-                            .id(UUID())
+                            // .id(UUID())
                             .controlSize(.small)
                     }
                 }

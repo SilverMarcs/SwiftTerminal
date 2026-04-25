@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(AppState.self) private var appState
+    @Environment(WorkspaceStore.self) private var store
     @State private var searchText = ""
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var showingOnboarding = false
@@ -47,6 +48,19 @@ struct ContentView: View {
             if !hasCompletedOnboarding {
                 showingOnboarding = true
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToChat)) { note in
+            guard let info = note.userInfo,
+                  let workspaceIDString = info["workspaceID"] as? String,
+                  let chatIDString = info["chatID"] as? String,
+                  let workspaceID = UUID(uuidString: workspaceIDString),
+                  let chatID = UUID(uuidString: chatIDString),
+                  let workspace = store.workspaces.first(where: { $0.id == workspaceID }),
+                  let chat = workspace.chats.first(where: { $0.id == chatID })
+            else { return }
+            appState.selectedWorkspace = workspace
+            appState.selectedChat = chat
+            appState.expandedWorkspaceIDs.insert("w:\(workspace.id.uuidString)")
         }
     }
 }

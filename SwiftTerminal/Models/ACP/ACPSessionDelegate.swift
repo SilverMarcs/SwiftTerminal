@@ -7,6 +7,9 @@ final class ACPSessionDelegate: ClientDelegate, @unchecked Sendable {
 
     var pendingPermission: PermissionPrompt?
 
+    @ObservationIgnored
+    var onPermissionRequest: ((PermissionPrompt) -> Void)?
+
     // MARK: - Permissions
 
     func handlePermissionRequest(request: RequestPermissionRequest) async throws -> RequestPermissionResponse {
@@ -17,6 +20,7 @@ final class ACPSessionDelegate: ClientDelegate, @unchecked Sendable {
 
         await MainActor.run {
             self.pendingPermission = prompt
+            self.onPermissionRequest?(prompt)
         }
 
         let optionId = await prompt.waitForResponse()

@@ -76,13 +76,20 @@ struct ChatSidebarRow: View {
             .tint(.orange)
 
             Button {
-                chat.disconnect()
+                if chat.isActive {
+                    chat.disconnect()
+                } else {
+                    chat.connectIfNeeded()
+                }
             } label: {
-                Label("Disconnect", systemImage: "bolt.slash")
+                if chat.isActive {
+                    Label("Disconnect", systemImage: "bolt.slash")
+                } else {
+                    Label("Connect", systemImage: "bolt")
+                }
             }
             .labelStyle(.iconOnly)
-            .tint(.yellow)
-            .disabled(!chat.isActive)
+            .tint(chat.isActive ? .gray : .yellow)
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
