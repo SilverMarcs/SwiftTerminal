@@ -141,6 +141,12 @@ final class Terminal: Identifiable, Hashable, Codable {
         guard let script = runScript?.trimmingCharacters(in: .whitespacesAndNewlines),
               !script.isEmpty,
               let tv = localProcessTerminalView else { return }
+        if let dir = workspace?.directory, !dir.isEmpty {
+            let escaped = dir
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "\"", with: "\\\"")
+            tv.send(txt: "cd \"\(escaped)\"\n")
+        }
         clearTerminal()
         tv.send(txt: script + "\n")
     }
