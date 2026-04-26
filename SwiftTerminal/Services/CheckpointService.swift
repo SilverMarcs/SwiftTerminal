@@ -191,17 +191,28 @@ struct CheckpointService {
         try await runGit(args: ["update-ref", refName, commitSha], cwd: workspace, env: refEnv)
     }
 
+    // Restore against a throwaway index so the user's staged changes survive.
+    // The working tree ends up at checkpoint state; the real index is untouched,
+    // so any divergence shows as unstaged changes.
     private static func restoreRepoCheckpoint(repo: URL, refName: String) async throws {
-        try await runGit(args: ["read-tree", refName], cwd: repo)
-        try await runGit(args: ["checkout-index", "-af"], cwd: repo)
-        try await runGit(args: ["clean", "-fd"], cwd: repo)
+        let tmpIndex = repo.appendingPathComponent(".git/st-restore-index").path
+        let env = ["GIT_INDEX_FILE": tmpIndex]
+        defer { try? FileManager.default.removeItem(atPath: tmpIndex) }
+
+        try await runGit(args: ["read-tree", refName], cwd: repo, env: env)
+        try await runGit(args: ["checkout-index", "-af"], cwd: repo, env: env)
+        try await runGit(args: ["clean", "-fd"], cwd: repo, env: env)
     }
 
     private static func restoreShadowCheckpoint(workspace: URL, shadowGitDir: URL, refName: String) async throws {
+        let tmpIndex = shadowGitDir.appendingPathComponent("st-restore-index").path
         let env: [String: String] = [
             "GIT_DIR": shadowGitDir.path,
             "GIT_WORK_TREE": workspace.path,
+            "GIT_INDEX_FILE": tmpIndex,
         ]
+        defer { try? FileManager.default.removeItem(atPath: tmpIndex) }
+
         try await runGit(args: ["read-tree", refName], cwd: workspace, env: env)
         try await runGit(args: ["checkout-index", "-af"], cwd: workspace, env: env)
         try await runGit(args: ["clean", "-fd"], cwd: workspace, env: env)
