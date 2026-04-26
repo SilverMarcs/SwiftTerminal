@@ -89,6 +89,16 @@ final class ACPSession {
         }
     }
 
+    func fetchSessionTitle() async -> String? {
+        guard let client, let sessionId else { return nil }
+        do {
+            let response = try await client.listSessions(cwd: workingDirectory)
+            return response.sessions.first(where: { $0.sessionId == sessionId })?.title
+        } catch {
+            return nil
+        }
+    }
+
     func applyModel(_ newModel: AgentModel) {
         model = newModel
         guard let client, let sessionId else { return }

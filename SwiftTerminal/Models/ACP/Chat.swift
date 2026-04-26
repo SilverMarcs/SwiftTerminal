@@ -194,6 +194,11 @@ final class Chat: Identifiable, Hashable, Codable {
             self.turnCount += 1
             self.date = Date()
             self.currentTurnMessage = nil
+
+            if let newTitle = await self.session.fetchSessionTitle(), !newTitle.isEmpty {
+                self.title = newTitle
+            }
+
             self.scheduleSave()
             self.notify("Finished responding")
 
@@ -395,6 +400,9 @@ final class Chat: Identifiable, Hashable, Codable {
     // MARK: - Helpers
     
     var displayTitle: String {
+        if !title.isEmpty, title != "New Chat" {
+            return title
+        }
         if let lastUserMessage = messages.last(where: { $0.role == .user }), !lastUserMessage.text.isEmpty {
             return String(lastUserMessage.text.prefix(30))
         }
