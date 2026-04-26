@@ -86,16 +86,6 @@ struct FileEditorPanel: View {
             .buttonStyle(.borderless)
             .keyboardShortcut("j", modifiers: [.command, .shift])
             .help("Show in File Tree")
-
-            // Save button removed but Cmd+S shortcut preserved
-            Button { panel.saveRequested = true } label: {
-                Color.clear.frame(width: 0, height: 0)
-            }
-            .buttonStyle(.plain)
-            .keyboardShortcut("s", modifiers: .command)
-            .frame(width: 0, height: 0)
-            .opacity(0)
-            .allowsHitTesting(false)
         } content: {
             if isLoaded {
                 CodeTextEditor(
@@ -105,7 +95,8 @@ struct FileEditorPanel: View {
                     gutterDiff: gutterDiff,
                     highlightRequest: panel.highlightRequest,
                     repositoryRootURL: directoryURL,
-                    onReloadFromDisk: { loadFile() }
+                    onReloadFromDisk: { loadFile() },
+                    onSave: { saveFile() }
                 )
             } else if let preview {
                 previewView(preview)

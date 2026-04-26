@@ -26,6 +26,7 @@ final class EditorTextView: NSTextView {
     var diffGutterClickHandler: ((Int, NSPoint) -> Void)?
     var repositoryRootURL: URL?
     var gutterDiffReloadHandler: (() async -> Void)?
+    var saveHandler: (() -> Void)?
 
     var editorFontSize: CGFloat = 12
     var lineNumberFontSize: CGFloat = 11
@@ -391,6 +392,12 @@ final class EditorTextView: NSTextView {
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         if event.modifierFlags.contains(.command), event.charactersIgnoringModifiers == "/" {
             toggleComment()
+            return true
+        }
+        if event.modifierFlags.intersection([.command, .shift, .option, .control]) == .command,
+           event.charactersIgnoringModifiers == "s",
+           let saveHandler {
+            saveHandler()
             return true
         }
         return super.performKeyEquivalent(with: event)

@@ -18,6 +18,7 @@ struct CodeTextEditor: NSViewRepresentable {
     private let mode: Mode
     private let repositoryRootURL: URL?
     private let onReloadFromDisk: (() async -> Void)?
+    private let onSave: (() -> Void)?
     @Environment(\.editorFontSize) private var fontSize
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage("editorWrapLines") private var wrapLines: Bool = true
@@ -31,7 +32,8 @@ struct CodeTextEditor: NSViewRepresentable {
         gutterDiff: GutterDiffResult,
         highlightRequest: HighlightRequest?,
         repositoryRootURL: URL? = nil,
-        onReloadFromDisk: (() async -> Void)? = nil
+        onReloadFromDisk: (() async -> Void)? = nil,
+        onSave: (() -> Void)? = nil
     ) {
         self.text = text
         self.documentID = documentID
@@ -39,6 +41,7 @@ struct CodeTextEditor: NSViewRepresentable {
         self.mode = .editable(gutterDiff: gutterDiff, highlightRequest: highlightRequest)
         self.repositoryRootURL = repositoryRootURL
         self.onReloadFromDisk = onReloadFromDisk
+        self.onSave = onSave
     }
 
     init(
@@ -53,6 +56,7 @@ struct CodeTextEditor: NSViewRepresentable {
         self.fileExtension = fileExtension
         repositoryRootURL = nil
         onReloadFromDisk = nil
+        onSave = nil
         mode = .diff(
             presentation: presentation,
             hunks: hunks,
@@ -264,6 +268,7 @@ struct CodeTextEditor: NSViewRepresentable {
             textView.diffGutterClickHandler = nil
             textView.repositoryRootURL = repositoryRootURL
             textView.gutterDiffReloadHandler = onReloadFromDisk
+            textView.saveHandler = onSave
 
             if let text {
                 let highlighted = SyntaxHighlighter.highlight(
@@ -343,6 +348,7 @@ struct CodeTextEditor: NSViewRepresentable {
             textView.diffGutterClickHandler = nil
             textView.repositoryRootURL = repositoryRootURL
             textView.gutterDiffReloadHandler = onReloadFromDisk
+            textView.saveHandler = onSave
 
             coordinator.updateMinimapMarkers(gutterDiff: gutterDiff, text: textView.string)
 
