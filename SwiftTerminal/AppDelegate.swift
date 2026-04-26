@@ -60,7 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             UNUserNotificationCenter.current().add(request)
 
             if !NSApp.isActive {
-                NSApp.dockTile.badgeLabel = "●"
+                NSApp.dockTile.badgeLabel = ""
                 NSApp.requestUserAttention(.criticalRequest)
             }
         }

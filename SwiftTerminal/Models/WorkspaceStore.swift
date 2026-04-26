@@ -102,6 +102,7 @@ final class WorkspaceStore {
                 _ = ws.projectTypeRaw
                 _ = ws.scratchPad
                 _ = ws.isArchived
+                _ = ws.customIconFilename
                 for cmd in ws.commands {
                     _ = cmd.title
                     _ = cmd.currentDirectory
@@ -140,6 +141,7 @@ final class WorkspaceStore {
         for chat in workspace.chats {
             chat.disconnect()
         }
+        workspace.clearCustomIcon()
         workspaces.removeAll { $0.id == workspace.id }
         scheduleSave()
     }

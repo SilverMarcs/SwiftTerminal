@@ -10,6 +10,7 @@ final class Workspace: Identifiable, Hashable, Codable {
     var projectTypeRaw: String
     var scratchPad: String
     var isArchived: Bool = false
+    private(set) var customIconFilename: String?
 
     private(set) var commands: [Terminal]
     private(set) var chats: [Chat]
@@ -36,6 +37,57 @@ final class Workspace: Identifiable, Hashable, Codable {
         projectType = ProjectType.detect(at: url)
     }
 
+    // MARK: - Custom Icon
+
+    static func iconsDirectory() -> URL {
+        let fm = FileManager.default
+        let appSupport = (try? fm.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )) ?? fm.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support")
+        let dir = appSupport
+            .appendingPathComponent("SwiftTerminal", isDirectory: true)
+            .appendingPathComponent("WorkspaceIcons", isDirectory: true)
+        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    var customIconURL: URL? {
+        guard let name = customIconFilename, !name.isEmpty else { return nil }
+        return Self.iconsDirectory().appendingPathComponent(name)
+    }
+
+    func setCustomIcon(from sourceURL: URL) throws {
+        let fm = FileManager.default
+        let dir = Self.iconsDirectory()
+        let allowed: Set<String> = ["icns", "png", "jpg", "jpeg"]
+        let ext = sourceURL.pathExtension.lowercased()
+        let safeExt = allowed.contains(ext) ? ext : "png"
+        let filename = "\(id.uuidString).\(safeExt)"
+        let dest = dir.appendingPathComponent(filename)
+
+        if let prior = customIconFilename {
+            try? fm.removeItem(at: dir.appendingPathComponent(prior))
+        }
+        if fm.fileExists(atPath: dest.path) {
+            try fm.removeItem(at: dest)
+        }
+        try fm.copyItem(at: sourceURL, to: dest)
+        customIconFilename = filename
+        store?.scheduleSave()
+    }
+
+    func clearCustomIcon() {
+        if let name = customIconFilename {
+            let url = Self.iconsDirectory().appendingPathComponent(name)
+            try? FileManager.default.removeItem(at: url)
+        }
+        customIconFilename = nil
+        store?.scheduleSave()
+    }
+
     init(name: String, directory: String) {
         self.id = UUID()
         self.name = name
@@ -50,6 +102,7 @@ final class Workspace: Identifiable, Hashable, Codable {
 
     private enum CodingKeys: String, CodingKey {
         case id, name, directory, projectTypeRaw, scratchPad, isArchived
+        case customIconFilename
         case commands, chats
     }
 
@@ -61,6 +114,7 @@ final class Workspace: Identifiable, Hashable, Codable {
         self.projectTypeRaw = try c.decodeIfPresent(String.self, forKey: .projectTypeRaw) ?? ProjectType.unknown.rawValue
         self.scratchPad = try c.decodeIfPresent(String.self, forKey: .scratchPad) ?? ""
         self.isArchived = try c.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
+        self.customIconFilename = try c.decodeIfPresent(String.self, forKey: .customIconFilename)
         self.commands = try c.decodeIfPresent([Terminal].self, forKey: .commands) ?? []
         self.chats = try c.decodeIfPresent([Chat].self, forKey: .chats) ?? []
         for cmd in commands { cmd.workspace = self }
@@ -75,6 +129,7 @@ final class Workspace: Identifiable, Hashable, Codable {
         try c.encode(projectTypeRaw, forKey: .projectTypeRaw)
         try c.encode(scratchPad, forKey: .scratchPad)
         try c.encode(isArchived, forKey: .isArchived)
+        try c.encodeIfPresent(customIconFilename, forKey: .customIconFilename)
         try c.encode(commands, forKey: .commands)
         try c.encode(chats, forKey: .chats)
     }

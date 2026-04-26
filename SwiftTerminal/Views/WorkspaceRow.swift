@@ -1,4 +1,6 @@
 import SwiftUI
+import AppKit
+import UniformTypeIdentifiers
 
 struct WorkspaceRow: View {
     @Environment(AppState.self) private var appState
@@ -10,7 +12,7 @@ struct WorkspaceRow: View {
     var onBrowseChats: (() -> Void)? = nil
 
     @State private var isRenaming = false
-    @FocusState private var isNameFieldFocused: Bool
+    @State private var renameText = ""
 
     private var isExpanded: Bool {
         appState.expandedWorkspaceIDs.contains("w:\(workspace.id.uuidString)")
@@ -32,9 +34,22 @@ struct WorkspaceRow: View {
         !isExpanded && notificationCount > 0
     }
 
+    private var customIconImage: NSImage? {
+        guard let url = workspace.customIconURL else { return nil }
+        return NSImage(contentsOf: url)
+    }
+
     var body: some View {
-        HStack(spacing: 8) {
-            if workspace.projectType != .unknown {
+        Label {
+            Text(workspace.name)
+                .lineLimit(1)
+        } icon: {
+            if let nsImage = customIconImage {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 20, height: 20)
+            } else if workspace.projectType != .unknown {
                 Image(workspace.projectType.iconName)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
@@ -42,21 +57,18 @@ struct WorkspaceRow: View {
             } else {
                 Image(systemName: "folder")
             }
-
-            if isRenaming {
-                TextField("Workspace Name", text: Bindable(workspace).name)
-                    .textFieldStyle(.plain)
-                    .focused($isNameFieldFocused)
-                    .onSubmit { isRenaming = false }
-                    .onExitCommand { isRenaming = false }
-                    .onAppear { isNameFieldFocused = true }
-            } else {
-                Text(workspace.name)
-                    .lineLimit(1)
-            }
         }
         .badge(badgeCount)
         .badgeProminence(badgeIsProminent ? .increased : .standard)
+        .alert("Rename Workspace", isPresented: $isRenaming) {
+            TextField("Workspace Name", text: $renameText)
+            Button("Cancel", role: .cancel) { }
+            Button("Rename") {
+                if !renameText.isEmpty {
+                    workspace.name = renameText
+                }
+            }
+        }
         .contextMenu {
             Menu {
                 ForEach(AgentProvider.allCases, id: \.self) { provider in
@@ -112,6 +124,20 @@ struct WorkspaceRow: View {
                 Label("Project Type", systemImage: "shippingbox")
             }
 
+            Button {
+                chooseCustomIcon()
+            } label: {
+                Label("Choose Icon…", systemImage: "photo")
+            }
+
+            if workspace.customIconFilename != nil {
+                Button {
+                    workspace.clearCustomIcon()
+                } label: {
+                    Label("Reset Icon", systemImage: "arrow.uturn.backward")
+                }
+            }
+
             Divider()
             Button {
                 workspace.disconnectAllActiveChats()
@@ -147,6 +173,7 @@ struct WorkspaceRow: View {
             }
         }
         .renameAction {
+            renameText = workspace.name
             isRenaming = true
         }
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
@@ -160,6 +187,23 @@ struct WorkspaceRow: View {
             }
             .labelStyle(.iconOnly)
             .tint(.orange)
+        }
+    }
+
+    private func chooseCustomIcon() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.icns, .png, .jpeg]
+        panel.message = "Choose an icon image"
+        panel.prompt = "Set Icon"
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try workspace.setCustomIcon(from: url)
+        } catch {
+            print("WorkspaceRow: failed to set custom icon: \(error)")
         }
     }
 
