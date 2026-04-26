@@ -67,10 +67,21 @@ enum PermissionMode: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    /// The config value string to send to the Gemini ACP agent.
+    var geminiConfigValue: String {
+        switch self {
+        case .standard: return "default"
+        case .acceptEdits: return "autoEdit"
+        case .plan: return "plan"
+        case .bypassPermissions: return "yolo"
+        }
+    }
+
     func configValue(for provider: AgentProvider) -> String {
         switch provider {
         case .claude: return claudeConfigValue
         case .codex: return codexConfigValue
+        case .gemini: return geminiConfigValue
         }
     }
 }

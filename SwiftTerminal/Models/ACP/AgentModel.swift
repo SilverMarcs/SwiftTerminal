@@ -10,6 +10,10 @@ enum AgentModel: String, Codable, CaseIterable, Identifiable {
     case gpt54 = "gpt-5.4"
     case gpt54Mini = "gpt-5-mini"
 
+    // Gemini
+    case geminiPro = "gemini-3.1-pro"
+    case geminiFlash = "gemini-3-flash"
+
     var id: String { rawValue }
 
     var name: String {
@@ -19,6 +23,8 @@ enum AgentModel: String, Codable, CaseIterable, Identifiable {
         case .claudeOpus: return "Opus"
         case .gpt54: return "GPT-5.4"
         case .gpt54Mini: return "GPT-5 Mini"
+        case .geminiPro: return "Gemini Pro"
+        case .geminiFlash: return "Gemini Flash"
         }
     }
 
@@ -28,6 +34,8 @@ enum AgentModel: String, Codable, CaseIterable, Identifiable {
             return "claude.symbols"
         case .gpt54, .gpt54Mini:
             return "openai.symbols"
+        case .geminiPro, .geminiFlash:
+            return "gemini.symbols"
         }
     }
 
@@ -35,6 +43,7 @@ enum AgentModel: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .claudeHaiku, .claudeSonnet, .claudeOpus: return .claude
         case .gpt54, .gpt54Mini: return .codex
+        case .geminiPro, .geminiFlash: return .gemini
         }
     }
 
@@ -46,6 +55,7 @@ enum AgentModel: String, Codable, CaseIterable, Identifiable {
         switch provider {
         case .claude: return .claudeOpus
         case .codex: return .gpt54
+        case .gemini: return .geminiPro
         }
     }
 }
