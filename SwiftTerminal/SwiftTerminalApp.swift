@@ -43,6 +43,7 @@ struct SwiftTerminalApp: App {
         Settings {
             SettingsView()
                 .environment(updater)
+                .environment(workspaceStore)
         }
     }
 }

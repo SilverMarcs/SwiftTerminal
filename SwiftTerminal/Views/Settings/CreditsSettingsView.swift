@@ -26,7 +26,7 @@ struct CreditsSettingsView: View {
                 .buttonStyle(.plain)
             }
 
-            Section("Open Source") {
+            Section("Open Source Attributions") {
                 CreditRow(
                     name: "SwiftTerm",
                     url: "https://github.com/migueldeicaza/SwiftTerm"
