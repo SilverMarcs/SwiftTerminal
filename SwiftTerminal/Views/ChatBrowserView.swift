@@ -2,9 +2,9 @@ import SwiftUI
 
 struct ChatBrowserView: View {
     let workspace: Workspace
-    var onSelect: (() -> Void)?
 
     @Environment(AppState.self) private var appState
+    @Environment(\.dismiss) private var dismiss
     @AppStorage("defaultChatMode") private var defaultChatMode: AgentProvider = .claude
     @AppStorage("defaultPermissionMode") private var defaultPermissionMode: PermissionMode = .bypassPermissions
 
@@ -17,37 +17,44 @@ struct ChatBrowserView: View {
     }
 
     var body: some View {
-        List {
-            if !regularChats.isEmpty {
-                ForEach(regularChats) { chat in
-                    ChatBrowserRow(chat: chat, workspace: workspace, onSelect: { onSelect?() })
+        NavigationStack {
+            List {
+                if !regularChats.isEmpty {
+                    ForEach(regularChats) { chat in
+                        ChatBrowserRow(chat: chat, workspace: workspace)
+                    }
                 }
-            }
 
-            if !archivedChats.isEmpty {
-                Section("Archived") {
-                    ForEach(archivedChats) { chat in
-                        ChatBrowserRow(chat: chat, workspace: workspace, onSelect: { onSelect?() })
+                if !archivedChats.isEmpty {
+                    Section("Archived") {
+                        ForEach(archivedChats) { chat in
+                            ChatBrowserRow(chat: chat, workspace: workspace)
+                        }
                     }
                 }
             }
-        }
-        .overlay {
-            if workspace.chats.isEmpty {
-                ContentUnavailableView {
-                    Label("No Chats", systemImage: "bubble.left.and.bubble.right")
-                } description: {
-                    Text("Start a new chat to begin.")
-                } actions: {
+            .overlay {
+                if workspace.chats.isEmpty {
+                    ContentUnavailableView {
+                        Label("No Chats", systemImage: "bubble.left.and.bubble.right")
+                    } description: {
+                        Text("Start a new chat to begin.")
+                    } actions: {
+                        newChatButton
+                    }
+                }
+            }
+            .navigationTitle(workspace.name)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                }
+                ToolbarItem(placement: .automatic) {
                     newChatButton
                 }
             }
         }
-        .toolbar {
-            ToolbarItem(placement: .automatic) {
-                newChatButton
-            }
-        }
+        .frame(minWidth: 480, minHeight: 520)
     }
 
     private var newChatButton: some View {
@@ -57,7 +64,7 @@ struct ChatBrowserView: View {
                     let chat = workspace.addChat(provider: provider, permissionMode: defaultPermissionMode)
                     appState.expandedWorkspaceIDs.insert("w:\(workspace.id.uuidString)")
                     appState.selectedChat = chat
-                    onSelect?()
+                    dismiss()
                 } label: {
                     Label(provider.rawValue, image: provider.imageName)
                 }
@@ -68,7 +75,7 @@ struct ChatBrowserView: View {
             let chat = workspace.addChat(provider: defaultChatMode, permissionMode: defaultPermissionMode)
             appState.expandedWorkspaceIDs.insert("w:\(workspace.id.uuidString)")
             appState.selectedChat = chat
-            onSelect?()
+            dismiss()
         }
     }
 

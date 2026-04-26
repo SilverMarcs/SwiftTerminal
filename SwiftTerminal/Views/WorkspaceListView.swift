@@ -9,8 +9,6 @@ struct WorkspaceListView: View {
     @AppStorage("defaultChatMode") private var defaultChatMode: AgentProvider = .claude
     @AppStorage("defaultPermissionMode") private var defaultPermissionMode: PermissionMode = .bypassPermissions
 
-    @State private var browsingWorkspace: Workspace?
-
     let searchText: String
 
     init(searchText: String = "") {
@@ -54,9 +52,7 @@ struct WorkspaceListView: View {
                         }
                     }
                 } label: {
-                    WorkspaceRow(workspace: workspace) {
-                        browsingWorkspace = workspace
-                    }
+                    WorkspaceRow(workspace: workspace)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
                     .onTapGesture {
@@ -93,20 +89,6 @@ struct WorkspaceListView: View {
             }
         }
         .environment(\.sidebarRowSize, sidebarRowSize.sidebarRowSize)
-        .sheet(item: $browsingWorkspace) { workspace in
-            NavigationStack {
-                ChatBrowserView(workspace: workspace, onSelect: {
-                    browsingWorkspace = nil
-                })
-                .navigationTitle(workspace.name)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Done") { browsingWorkspace = nil }
-                    }
-                }
-            }
-            .frame(minWidth: 480, minHeight: 520)
-        }
         .safeAreaBar(edge: .bottom) {
             HStack(spacing: 0) {
                 Button {
@@ -146,6 +128,8 @@ struct WorkspaceListView: View {
         let workspace = Workspace(name: name, directory: url.path)
         workspace.detectProjectType()
         store.addWorkspace(workspace)
-        browsingWorkspace = workspace
+        appState.expandedWorkspaceIDs.insert("w:\(workspace.id.uuidString)")
+        let chat = workspace.addChat(provider: defaultChatMode, permissionMode: defaultPermissionMode)
+        appState.selectedChat = chat
     }
 }

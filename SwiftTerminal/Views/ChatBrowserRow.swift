@@ -3,14 +3,14 @@ import SwiftUI
 struct ChatBrowserRow: View {
     let chat: Chat
     let workspace: Workspace
-    var onSelect: () -> Void
 
     @Environment(AppState.self) private var appState
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         Button {
             appState.selectedChat = chat
-            onSelect()
+            dismiss()
         } label: {
             HStack {
                 Label {

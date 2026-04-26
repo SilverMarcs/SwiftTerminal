@@ -9,10 +9,10 @@ struct WorkspaceRow: View {
     @AppStorage("defaultPermissionMode") private var defaultPermissionMode: PermissionMode = .bypassPermissions
 
     let workspace: Workspace
-    var onBrowseChats: (() -> Void)? = nil
 
     @State private var isRenaming = false
     @State private var renameText = ""
+    @State private var isBrowsingChats = false
 
     private var isExpanded: Bool {
         appState.expandedWorkspaceIDs.contains("w:\(workspace.id.uuidString)")
@@ -89,7 +89,7 @@ struct WorkspaceRow: View {
             }
 
             Button {
-                onBrowseChats?()
+                isBrowsingChats = true
             } label: {
                 Label("Browse Chats", systemImage: "list.bullet")
             }
@@ -187,6 +187,9 @@ struct WorkspaceRow: View {
             }
             .labelStyle(.iconOnly)
             .tint(.orange)
+        }
+        .sheet(isPresented: $isBrowsingChats) {
+            ChatBrowserView(workspace: workspace)
         }
     }
 
