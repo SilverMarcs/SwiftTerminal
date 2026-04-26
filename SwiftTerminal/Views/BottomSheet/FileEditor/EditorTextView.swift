@@ -746,21 +746,40 @@ final class EditorTextView: NSTextView {
                         triangle.fill()
 
                         if isFolded {
-                            let badgeText = " ⋯ " as NSString
+                            let closing = foldingManager.region(startingAt: lineNumber)?.closing ?? ""
+                            let badgeText = " ••• " as NSString
                             let usedRect = layoutManager.lineFragmentUsedRect(forGlyphAt: glyphRange.location, effectiveRange: nil)
                             let badgeSize = badgeText.size(withAttributes: foldBadgeAttrs)
                             let badgeX = containerOrigin.x + usedRect.maxX + 2
                             let badgeY = firstRect.minY + (firstRect.height - badgeSize.height) / 2
+                            badgeText.draw(at: NSPoint(x: badgeX, y: badgeY), withAttributes: foldBadgeAttrs)
 
-                            let badgeRect = NSRect(
-                                x: badgeX, y: badgeY - 1,
-                                width: badgeSize.width + 4, height: badgeSize.height + 2
-                            )
-                            NSColor.separatorColor.withAlphaComponent(0.15).setFill()
-                            NSBezierPath(roundedRect: badgeRect, xRadius: 3, yRadius: 3).fill()
-                            NSColor.separatorColor.withAlphaComponent(0.4).setStroke()
-                            NSBezierPath(roundedRect: badgeRect, xRadius: 3, yRadius: 3).stroke()
-                            badgeText.draw(at: NSPoint(x: badgeX + 2, y: badgeY), withAttributes: foldBadgeAttrs)
+                            // Render the closing token in the editor's own font + color so
+                            // it visually matches the opening bracket on this line.
+                            if !closing.isEmpty {
+                                var closingAttrs: [NSAttributedString.Key: Any] = [
+                                    .font: font ?? NSFont.monospacedSystemFont(ofSize: editorFontSize, weight: .regular),
+                                    .foregroundColor: textColor ?? NSColor.labelColor,
+                                ]
+                                if let textStorage, lineRange.length > 0 {
+                                    var sampleIdx = lineRange.location + lineRange.length - 1
+                                    while sampleIdx > lineRange.location {
+                                        let ch = text.character(at: sampleIdx)
+                                        if ch != 10 && ch != 13 { break }
+                                        sampleIdx -= 1
+                                    }
+                                    if sampleIdx >= 0 && sampleIdx < textStorage.length {
+                                        let storedAttrs = textStorage.attributes(at: sampleIdx, effectiveRange: nil)
+                                        if let f = storedAttrs[.font] as? NSFont { closingAttrs[.font] = f }
+                                        if let c = storedAttrs[.foregroundColor] as? NSColor { closingAttrs[.foregroundColor] = c }
+                                    }
+                                }
+                                let closingNS = (" " + closing) as NSString
+                                let closingSize = closingNS.size(withAttributes: closingAttrs)
+                                let closingX = badgeX + badgeSize.width
+                                let closingY = firstRect.minY + (firstRect.height - closingSize.height) / 2
+                                closingNS.draw(at: NSPoint(x: closingX, y: closingY), withAttributes: closingAttrs)
+                            }
                         }
                     }
                 }
