@@ -98,8 +98,8 @@ final class ToolCallGroupPopoverView: NSView {
             statusTint = .systemRed
         }
 
-        row.addArrangedSubview(toolIcon)
-        row.addArrangedSubview(label)
+        row.addView(toolIcon, in: .leading)
+        row.addView(label, in: .leading)
 
         if let name = statusSymbolName,
            let image = NSImage(systemSymbolName: name, accessibilityDescription: nil) {
@@ -112,7 +112,7 @@ final class ToolCallGroupPopoverView: NSView {
                 statusView.heightAnchor.constraint(equalToConstant: 14),
             ])
             statusView.setContentHuggingPriority(.required, for: .horizontal)
-            row.addArrangedSubview(statusView)
+            row.addView(statusView, in: .trailing)
         }
 
         return row
