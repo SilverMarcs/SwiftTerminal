@@ -18,20 +18,27 @@ struct WorkspaceRow: View {
         appState.expandedWorkspaceIDs.contains("w:\(workspace.id.uuidString)")
     }
 
-    private var notificationCount: Int {
+    private var notificationProviders: Set<AgentProvider> {
         let selectedID = appState.selectedChat?.id
-        return workspace.chats.lazy
+        return Set(workspace.chats.lazy
             .filter { !$0.isArchived && $0.hasNotification && $0.id != selectedID }
-            .count
+            .map { $0.provider })
     }
 
-    private var badgeCount: Int {
-        if isExpanded { return workspace.connectedChatCount }
-        return notificationCount > 0 ? notificationCount : workspace.connectedChatCount
-    }
-
-    private var badgeIsProminent: Bool {
-        !isExpanded && notificationCount > 0
+    private var displayedProviders: [AgentProvider] {
+        guard !isExpanded else { return [] }
+        var seen = Set<AgentProvider>()
+        var result: [AgentProvider] = []
+        for chat in workspace.chats where !chat.isArchived && chat.isActive {
+            if seen.insert(chat.provider).inserted {
+                result.append(chat.provider)
+            }
+        }
+        for provider in AgentProvider.allCases
+        where notificationProviders.contains(provider) && seen.insert(provider).inserted {
+            result.append(provider)
+        }
+        return result
     }
 
     private var customIconImage: NSImage? {
@@ -39,27 +46,43 @@ struct WorkspaceRow: View {
         return NSImage(contentsOf: url)
     }
 
+
     var body: some View {
-        Label {
-            Text(workspace.name)
-                .lineLimit(1)
-        } icon: {
-            if let nsImage = customIconImage {
-                Image(nsImage: nsImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 20, height: 20)
-            } else if workspace.projectType != .unknown {
-                Image(workspace.projectType.iconName)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 16, height: 16)
-            } else {
-                Image(systemName: "folder")
+        HStack(spacing: 6) {
+            Label {
+                Text(workspace.name)
+                    .lineLimit(1)
+            } icon: {
+                if let nsImage = customIconImage {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 24, height: 24)
+                        .clipShape(.rect(cornerRadius: 8))
+                } else if workspace.projectType != .unknown {
+                    Image(workspace.projectType.iconName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 22, height: 22)
+                } else {
+                    Image(systemName: "folder")
+                }
+            }
+
+            Spacer(minLength: 4)
+
+            if workspace.hasActiveChildProcess {
+                Image(systemName: "terminal.fill")
+                    .imageScale(.small)
+                    .foregroundStyle(.secondary)
+            }
+
+            ForEach(displayedProviders, id: \.self) { provider in
+                Image(provider.imageName)
+                    .foregroundStyle(provider.color)
+                    .symbolEffect(.pulse, isActive: notificationProviders.contains(provider))
             }
         }
-        .badge(badgeCount)
-        .badgeProminence(badgeIsProminent ? .increased : .standard)
         .alert("Rename Workspace", isPresented: $isRenaming) {
             TextField("Workspace Name", text: $renameText)
             Button("Cancel", role: .cancel) { }

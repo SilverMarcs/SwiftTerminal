@@ -178,6 +178,10 @@ final class Workspace: Identifiable, Hashable, Codable {
         commands.contains { $0.localProcessTerminalView != nil }
     }
 
+    var hasActiveChildProcess: Bool {
+        commands.contains { $0.hasChildProcess }
+    }
+
     func killAllRunningTerminals() {
         for cmd in commands {
             cmd.terminate()
