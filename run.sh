@@ -27,23 +27,15 @@ APP_BUNDLE=$(echo "$DERIVED_DATA"/$APP_NAME-*/Build/Products/Debug/$APP_NAME.app
 APP_BIN="$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
 run_app() {
-  open -W "$APP_BUNDLE" &
+  # "open" mode: proper bundle identit
+  if [[ "$MODE" == "open" ]]; then
+    open -W "$APP_BUNDLE" &
+  else
+    "$APP_BIN" &
+  fi
   APP_PID=$!
   trap "kill $APP_PID 2>/dev/null" EXIT
   wait $APP_PID
 }
 
-case "$MODE" in
-  run)
-    run_app
-    ;;
-  --logs|logs)
-    run_app &
-    /usr/bin/log stream --info --style compact \
-      --predicate "process == \"$APP_NAME\" OR subsystem == \"$BUNDLE_ID\""
-    ;;
-  *)
-    echo "usage: $0 [run|--logs]" >&2
-    exit 2
-    ;;
-esac
+run_app
